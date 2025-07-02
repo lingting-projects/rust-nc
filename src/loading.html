@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>正在初始化系统</title>
+    <style>
+        :root {
+            --color-primary: #3b82f6;
+            --color-success: #10b981;
+            --color-warning: #f59e0b;
+            --color-error: #ef4444;
+            --color-neutral: #64748b;
+            --color-bg-light: #f8fafc;
+            --color-bg-dark: #e2e8f0;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, var(--color-bg-light) 0%, var(--color-bg-dark) 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #334155;
+            overflow-x: hidden;
+        }
+
+        .loader-container {
+            margin-bottom: 2rem;
+            position: relative;
+            width: 140px;
+            height: 140px;
+        }
+
+        .outer-circle {
+            width: 100%;
+            height: 100%;
+            border: 5px solid rgba(59, 130, 246, 0.1);
+            border-radius: 50%;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .outer-circle::before {
+            content: '';
+            position: absolute;
+            inset: -5px;
+            background: conic-gradient(from 90deg, rgba(59, 130, 246, 0) 0%, rgba(59, 130, 246, 0.1) 100%);
+            animation: rotate 8s linear infinite;
+        }
+
+        .spinner {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border: 5px solid;
+            border-color: var(--color-primary) transparent var(--color-primary) transparent;
+            border-radius: 50%;
+            animation: spin 1.5s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+        }
+
+        .inner-circle {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            right: 15px;
+            bottom: 15px;
+            border: 3px solid rgba(59, 130, 246, 0.15);
+            border-radius: 50%;
+        }
+
+        .icon {
+            position: absolute;
+            top: 30px;
+            left: 30px;
+            right: 30px;
+            bottom: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--color-primary);
+            font-size: 2.5rem;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .loading-text {
+            text-align: center;
+            max-width: 450px;
+            width: 90%;
+            padding: 0 1rem;
+        }
+
+        .loading-text h2 {
+            font-size: clamp(1.5rem, 3vw, 2.2rem);
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            transition: color 0.3s ease;
+        }
+
+        .progress-container {
+            width: 100%;
+            height: 10px;
+            background-color: rgba(226, 232, 240, 0.7);
+            border-radius: 5px;
+            overflow: hidden;
+            margin: 1.25rem 0;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+            position: relative;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--color-primary) 0%, rgba(59, 130, 246, 0.8) 100%);
+            width: 0%;
+            transition: width 0.5s cubic-bezier(0.25, 0.1, 0.25, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .progress-bar::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0) 100%);
+            transform: translateX(-100%);
+            animation: shine 2s infinite;
+        }
+
+        .status-message {
+            font-size: clamp(1rem, 2vw, 1.25rem);
+            color: var(--color-neutral);
+            min-height: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes rotate {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(0.95); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes shine {
+            100% { transform: translateX(100%); }
+        }
+
+        .state-change {
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        /* 状态样式 */
+        .completed .spinner {
+            border-color: var(--color-success) transparent var(--color-success) transparent;
+            animation: spin 1s linear infinite;
+        }
+
+        .completed .icon {
+            color: var(--color-success);
+            animation: bounce 0.6s ease-out;
+        }
+
+        .completed .progress-bar {
+            background: linear-gradient(90deg, var(--color-success) 0%, rgba(16, 185, 129, 0.8) 100%);
+        }
+
+        /* 状态颜色 */
+        .info .spinner { border-color: var(--color-primary) transparent var(--color-primary) transparent; }
+        .info .icon { color: var(--color-primary); }
+        .info .progress-bar { background: linear-gradient(90deg, var(--color-primary) 0%, rgba(59, 130, 246, 0.8) 100%); }
+        .info .loading-text h2 { color: var(--color-primary); }
+
+        .warn .spinner { border-color: var(--color-warning) transparent var(--color-warning) transparent; }
+        .warn .icon { color: var(--color-warning); }
+        .warn .progress-bar { background: linear-gradient(90deg, var(--color-warning) 0%, rgba(245, 158, 11, 0.8) 100%); }
+        .warn .loading-text h2 { color: var(--color-warning); }
+
+        .error .spinner { border-color: var(--color-error) transparent var(--color-error) transparent; }
+        .error .icon { color: var(--color-error); }
+        .error .progress-bar { background: linear-gradient(90deg, var(--color-error) 0%, rgba(239, 68, 68, 0.8) 100%); }
+        .error .loading-text h2 { color: var(--color-error); }
+
+        .error .icon, .warn .icon {
+            animation: shake 0.5s ease-in-out;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        /* 响应式调整 */
+        @media (max-width: 480px) {
+            .loader-container {
+                width: 100px;
+                height: 100px;
+            }
+
+            .icon {
+                font-size: 2rem;
+                top: 20px;
+                left: 20px;
+                right: 20px;
+                bottom: 20px;
+            }
+
+            .inner-circle {
+                top: 10px;
+                left: 10px;
+                right: 10px;
+                bottom: 10px;
+            }
+        }
+    </style>
+</head>
+<body class="info">
+<div class="loader-container">
+    <div class="outer-circle"></div>
+    <div class="spinner"></div>
+    <div class="inner-circle"></div>
+    <div class="icon">
+        ⌛
+    </div>
+</div>
+
+<div class="loading-text">
+    <h2 id="loading-status">正在初始化系统</h2>
+    <div class="progress-container">
+        <div id="progress-bar" class="progress-bar"></div>
+    </div>
+    <p id="status-message">准备系统环境</p>
+</div>
+
+<script>
+    // 获取DOM元素
+    const loadingStatus = document.getElementById('loading-status');
+    const progressBar = document.getElementById('progress-bar');
+    const statusMessage = document.getElementById('status-message');
+    const body = document.body;
+    const docTitle = document.title;
+
+    // 暴露给外部调用的函数
+    // to(progress: number, title: string, message: string, type: string)
+    window.to = function(progress, title, message, type = 'info') {
+        // 限制进度范围
+        progress = Math.max(0, Math.min(100, progress));
+
+        // 更新文档标题
+        document.title = title;
+
+        // 添加状态变化动画
+        loadingStatus.classList.add('state-change');
+        statusMessage.classList.add('state-change');
+
+        // 更新UI
+        loadingStatus.textContent = title;
+        progressBar.style.width = `${progress}%`;
+        statusMessage.textContent = message;
+
+        // 更新类型样式
+        ['info', 'warn', 'error', 'completed'].forEach(cls => {
+            body.classList.remove(cls);
+        });
+        body.classList.add(type);
+
+        // 如果加载完成，添加完成样式
+        if (progress >= 100) {
+            body.classList.add('completed');
+            document.querySelector('.icon').textContent = '✅';
+        }
+
+        // 移除动画类
+        setTimeout(() => {
+            loadingStatus.classList.remove('state-change');
+            statusMessage.classList.remove('state-change');
+        }, 500);
+    };
+</script>
+</body>
+</html>
