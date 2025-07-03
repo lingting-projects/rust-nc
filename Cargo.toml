@@ -19,5 +19,7 @@ wry = "0.52"
 tao = "0.34"
 # 日志
 log = "0.4"
+simple_logger = "5.0"
+time = "0.3"
 # 自定义异常
 thiserror = "2.0"

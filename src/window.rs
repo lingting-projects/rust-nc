@@ -1,5 +1,5 @@
 use crate::core::AnyResult;
-use crate::init::{start_init, LoadingState, FIRST};
+use crate::init::{FIRST};
 use std::process::exit;
 use std::sync::{
     mpsc::{channel, Receiver, Sender},
