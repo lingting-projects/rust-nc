@@ -39,9 +39,11 @@ pub fn exit() {
 pub fn create() -> web_view::WebView<'static, ()> {
     log::info!("WebView初始化开始");
     // 创建WebView，使用带前缀的标题
+    let html = include_str!("../resources/loading.html");
+    let content = Content::Html(html);
     let webview = web_view::builder()
         .title(FIRST.window_title())
-        .content(Content::Html(include_str!("loading.html")))
+        .content(content)
         .size(1024, 768)
         .resizable(false)
         .visible(false)

@@ -1,7 +1,6 @@
 use crate::webview;
 use std::error::Error;
 use std::process::exit;
-use web_view::Handle;
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum LoadingState {
@@ -92,7 +91,7 @@ fn emit(state: LoadingState) -> Result<(), Box<dyn Error>> {
 
 pub fn start_init() -> Result<(), Box<dyn Error>> {
     emit(LoadingState::InitSystem)?;
-    init_system();
+    init_system()?;
     emit(LoadingState::InitDb)?;
     init_db();
     emit(LoadingState::CheckUpdate)?;
@@ -108,8 +107,13 @@ pub fn start_init() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn init_system() {
-    
+fn init_system() -> Result<(), Box<dyn Error>> {
+    let handle = webview::handle()?;
+    handle.dispatch(move |web_view| {
+        web_view.set_visible(true);
+        Ok(())
+    })?;
+    Ok(())
 }
 fn init_db() {}
 fn check_update() -> Option<String> {
