@@ -1,6 +1,9 @@
-use crate::webview;
-use std::error::Error;
+use crate::core::AnyResult;
+use crate::window::dispatch;
 use std::process::exit;
+use tao::dpi::PhysicalSize;
+use tao::platform::windows::IconExtWindows;
+use tao::window::Icon;
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum LoadingState {
@@ -61,35 +64,30 @@ impl LoadingState {
 
 pub const FIRST: LoadingState = LoadingState::InitSystem;
 
-fn emit(state: LoadingState) -> Result<(), Box<dyn Error>> {
+fn emit(state: LoadingState) -> AnyResult<()> {
     log::debug!("[初始化] {}", state.title());
-    let handle = webview::handle()?;
 
-    match handle.dispatch(move |wv| match wv.set_title(state.window_title()) {
-        Ok(_) => {
-            let js_code = format!(
-                "window.to({}, '{}', '{}', '{}');",
-                state.progress(),
-                state.title(),
-                state.message(),
-                "info"
-            );
-            wv.eval(&js_code)
+    dispatch(move |w, wv| {
+        w.set_title(state.window_title());
+
+        let js_code = format!(
+            "window.to({}, '{}', '{}', '{}');",
+            state.progress(),
+            state.title(),
+            state.message(),
+            "info"
+        );
+        match wv.evaluate_script(&js_code) {
+            Ok(_) => {}
+            Err(e) => {
+                log::error!("执行js异常! {}", e);
+                exit(3)
+            }
         }
-        Err(e) => {
-            log::error!("修改标题时异常! {}", state.window_title());
-            Err(e)
-        }
-    }) {
-        Ok(_) => Ok(()),
-        Err(e) => {
-            log::error!("提交状态异常! {}; {}", state.title(), e);
-            exit(2)
-        }
-    }
+    })
 }
 
-pub fn start_init() -> Result<(), Box<dyn Error>> {
+pub fn start_init() -> AnyResult<()> {
     emit(LoadingState::InitSystem)?;
     init_system()?;
     emit(LoadingState::InitDb)?;
@@ -107,18 +105,27 @@ pub fn start_init() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn init_system() -> Result<(), Box<dyn Error>> {
-    let handle = webview::handle()?;
-    handle.dispatch(move |web_view| {
-        web_view.set_visible(true);
-        Ok(())
-    })?;
-    Ok(())
+fn init_system() -> AnyResult<()> {
+    #[cfg(target_os = "windows")]
+    let icon = Icon::from_path("icons/256x256.ico", Some(PhysicalSize::new(256, 256)))?;
+    
+    #[cfg(not(target_os = "windows"))]
+    let icon = Icon::from_path("icons/256x256.png", Some(PhysicalSize::new(256, 256)))?;
+
+    dispatch(move |w, _| {
+        w.set_window_icon(Some(icon));
+        w.set_visible(true);
+    })
 }
+
 fn init_db() {}
+
 fn check_update() -> Option<String> {
     None
 }
+
 fn update(url: String) {}
+
 fn assets() {}
+
 fn completed() {}
