@@ -1,0 +1,14 @@
+[package]
+name = "library-web"
+authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
+categories.workspace = true
+license.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+library-nc = {path = "../library-nc"}
+library-core = {path = "../library-core"}
+log = "0.4.27"

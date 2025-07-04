@@ -1,0 +1,25 @@
+[package]
+name = "binary-ui"
+authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
+categories.workspace = true
+license.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[features]
+default = ['dev']
+dev = []
+uat = ['local-ui']
+prod = ['local-ui']
+
+local-ui = []
+
+[dependencies]
+# tauri 基础组件
+wry = { workspace = true }
+tao = { workspace = true }
+log = { workspace = true }
+library-web = { path = "../library-web" }
+library-core = { path = "../library-core" }

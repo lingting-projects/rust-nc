@@ -1,8 +1,35 @@
-[package]
-name = "rust-nc"
+[workspace]
+members = [
+    "crates/library-core",
+    "crates/library-nc",
+    "crates/library-web",
+
+    "crates/binary-ui",
+    "crates/binary-web",
+    "crates/binary-works-cloudflare",
+]
+resolver = "2"
+
+[workspace.package]
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.88.0"
+authors = ["lingting"]
+homepage = "https://github.com/lingting"
+repository = "https://github.com/lingting-projects/lingting-nc"
+categories = ["network"]
+license = "Apache-2.0 OR MIT"
+
+[workspace.dependencies]
+# 日志
+log = "0.4"
+simple_logger = "5.0"
+time = "0.3"
+# 自定义异常
+thiserror = "2.0"
+# tauri 基础组件
+wry = "0.52"
+tao = "0.34"
 
 [profile.release]
 # 编译优化 平衡编译速度和性能优化
@@ -11,23 +38,3 @@ lto = "thin"
 opt-level = 3
 # 减少代码生成单元，提高优化效果
 codegen-units = 1
-
-[features]
-default = ['dev']
-dev=[]
-uat=['local-ui']
-prod=['local-ui']
-
-local-ui = []
-
-
-[dependencies]
-# tauri 用户基础组件
-wry = "0.52"
-tao = "0.34"
-# 日志
-log = "0.4"
-simple_logger = "5.0"
-time = "0.3"
-# 自定义异常
-thiserror = "2.0"

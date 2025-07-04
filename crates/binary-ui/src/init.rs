@@ -1,6 +1,5 @@
-use crate::app::{Application};
-use crate::core::{AnyResult};
 use crate::window::dispatch;
+use library_core::{app::Application, core::AnyResult};
 use std::process::exit;
 use tao::dpi::PhysicalSize;
 use tao::platform::windows::IconExtWindows;
@@ -136,23 +135,16 @@ fn update(url: String) {}
 fn assets() {}
 
 fn completed() {
+    #[cfg(feature = "local-ui")]
     let application = Application.wait();
-
     #[cfg(feature = "local-ui")]
     let url = format!("file:///{}", application.ui_dir.to_str().unwrap());
     #[cfg(not(feature = "local-ui"))]
     let url = String::from("http://localhost:30000");
-    
-    dispatch(move |_, wv| {
-        match wv.load_url(&url) {
-            Ok(_) => {
-                
-            }
-            Err(_) => {
-                emit(LoadingState::UiError).unwrap()
-            }
-        }
-        
+
+    dispatch(move |_, wv| match wv.load_url(&url) {
+        Ok(_) => {}
+        Err(_) => emit(LoadingState::UiError).unwrap(),
     })
     .unwrap()
 }

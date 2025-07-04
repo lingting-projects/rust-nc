@@ -1,0 +1,15 @@
+[package]
+name = "library-core"
+authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
+categories.workspace = true
+license.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+log = { workspace = true }
+thiserror = { workspace = true }
+time = { workspace = true }
+simple_logger = { workspace = true }

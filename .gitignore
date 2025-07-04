@@ -1,5 +1,5 @@
-/target
-/ui
+target/
+ui/
 
 ### IntelliJ IDEA ###
 .idea/modules.xml

@@ -1,5 +1,5 @@
-use crate::core::AnyResult;
 use crate::init::FIRST;
+use library_core::core::AnyResult;
 use std::process::exit;
 use std::sync::{
     mpsc::{channel, Receiver, Sender},
@@ -69,7 +69,7 @@ impl WindowManager {
             .build(event_loop)
             .unwrap();
 
-        let html = include_str!("../assets/loading.html");
+        let html = include_str!("../../../assets/loading.html");
         // 创建webview
         let builder = WebViewBuilder::new()
             .with_html(html)
