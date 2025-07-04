@@ -54,8 +54,9 @@ pub fn start() -> AnyResult<()> {
         None => {
             let mut router = Router::new();
             router = route_setting::fill(router);
-            router = route_global::fill(router);
 
+            // 这个必须最后设置
+            router = route_global::fill(router);
             let inner = WebServerInner::new(router)?;
             match SERVER.set(inner) {
                 Ok(_) => Ok(()),
