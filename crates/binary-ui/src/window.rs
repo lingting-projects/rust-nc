@@ -1,4 +1,5 @@
 use crate::init::FIRST;
+use library_core::app::APP;
 use library_core::core::{AnyResult, Exit};
 use std::process::exit;
 use std::sync::{
@@ -59,11 +60,12 @@ impl WindowManager {
             }
         };
 
+        let app = APP.get().unwrap();
         // 创建窗口
         let size = PhysicalSize::new(1280, 960);
         let window = WindowBuilder::new()
             .with_title(FIRST.window_title())
-            .with_visible(false)
+            .with_visible(!app.run_on_minimize)
             .with_inner_size(size)
             .with_min_inner_size(size)
             .build(event_loop)
