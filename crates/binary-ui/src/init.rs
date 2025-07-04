@@ -1,4 +1,5 @@
 use crate::window::dispatch;
+use library_core::app::APP;
 use library_core::core::{AnyResult, Exit};
 use library_web::webserver;
 use std::panic;
@@ -171,16 +172,21 @@ fn update(url: String) {}
 fn assets() {}
 
 fn completed() {
-    #[cfg(feature = "local-ui")]
     let app = APP.wait();
     #[cfg(feature = "local-ui")]
     let url = format!("file:///{}", app.ui_dir.to_str().unwrap());
     #[cfg(not(feature = "local-ui"))]
     let url = String::from("http://localhost:30000");
 
-    dispatch(move |_, wv| match wv.load_url(&url) {
-        Ok(_) => {}
-        Err(_) => emit(LoadingState::UiError).unwrap(),
+    dispatch(move |w, wv| {
+        w.set_title("nc");
+        if app.run_on_minimize {
+            w.set_visible(false)
+        }
+        match wv.load_url(&url) {
+            Ok(_) => {}
+            Err(_) => emit(LoadingState::UiError).unwrap(),
+        }
     })
     .unwrap()
 }

@@ -15,3 +15,4 @@ log = { workspace = true }
 axum = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread"] }
 tower-http = { workspace = true, features = ["cors"] }
+reqwest = { workspace = true }

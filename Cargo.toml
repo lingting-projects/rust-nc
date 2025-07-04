@@ -3,7 +3,6 @@ members = [
     "crates/library-core",
     "crates/library-nc",
     "crates/library-web",
-
     "crates/binary-ui",
     "crates/binary-web",
     "crates/binary-works-cloudflare",
@@ -34,6 +33,7 @@ tao = "0.34"
 axum = "0.8"
 tokio = "1.44"
 tower-http = "0.6"
+reqwest = "0.12"
 
 [profile.release]
 # 编译优化 平衡编译速度和性能优化
