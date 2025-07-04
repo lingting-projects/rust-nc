@@ -1,5 +1,5 @@
 use crate::init::FIRST;
-use library_core::core::AnyResult;
+use library_core::core::{AnyResult, Exit};
 use std::process::exit;
 use std::sync::{
     mpsc::{channel, Receiver, Sender},
@@ -55,7 +55,7 @@ impl WindowManager {
             Ok(_) => {}
             Err(_) => {
                 log::error!("事件代理设置异常!");
-                exit(4)
+                exit(Exit::LoopProxyError.code())
             }
         };
 
@@ -73,9 +73,10 @@ impl WindowManager {
         // 创建webview
         let builder = WebViewBuilder::new()
             .with_html(html)
-            .with_on_page_load_handler(move |_, _| {
-                dispatch(move |_, wv| {
-                    let api = "http://localhost:49796";
+            .with_on_page_load_handler(move |_, _| match library_web::webserver::SERVER.get() {
+                None => {}
+                Some(server) => {
+                    let api = format!("http://localhost:{}", server.port);
                     let js = format!(
                         r#"
         try {{
@@ -88,9 +89,9 @@ impl WindowManager {
         "#,
                         api, api, api
                     );
-                    wv.evaluate_script(&js).unwrap()
-                })
-                .unwrap()
+
+                    dispatch(move |_, wv| wv.evaluate_script(&js).unwrap()).unwrap()
+                }
             });
 
         #[cfg(not(target_os = "linux"))]
@@ -107,7 +108,7 @@ impl WindowManager {
             Ok(_) => {}
             Err(_) => {
                 log::error!("设置全局事件发送通道异常!");
-                exit(1)
+                exit(Exit::WebViewSenderError.code())
             }
         }
 

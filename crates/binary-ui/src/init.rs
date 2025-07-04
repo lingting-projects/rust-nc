@@ -1,5 +1,7 @@
 use crate::window::dispatch;
-use library_core::{app::Application, core::AnyResult};
+use library_core::core::{AnyResult, Exit};
+use library_web::webserver;
+use std::panic;
 use std::process::exit;
 use tao::dpi::PhysicalSize;
 use tao::platform::windows::IconExtWindows;
@@ -86,13 +88,45 @@ fn emit(state: LoadingState) -> AnyResult<()> {
             Ok(_) => {}
             Err(e) => {
                 log::error!("执行js异常! {}", e);
-                exit(3)
+                exit(Exit::WebViewEvaluateJsError.code())
             }
         }
     })
 }
 
-pub fn start_init() -> AnyResult<()> {
+pub fn start_init() {
+    match panic::catch_unwind(|| _init()) {
+        Ok(r) => match r {
+            Ok(_) => {}
+            Err(e) => {
+                match e.source() {
+                    None => {
+                        log::error!("初始化异常! 未知异常!");
+                    }
+                    Some(e) => {
+                        log::error!("初始化异常! {}", e);
+                    }
+                }
+                exit(Exit::InitError.code())
+            }
+        },
+        Err(p) => {
+            // 处理 panic 信息
+            let error_msg = match p.downcast_ref::<String>() {
+                Some(s) => s.to_string(),
+                None => match p.downcast_ref::<&str>() {
+                    Some(s) => (*s).to_string(),
+                    None => "panic 未提供错误信息".to_string(),
+                },
+            };
+
+            log::error!("初始化过程中发生严重错误: {}", error_msg);
+            exit(Exit::InitPanicError.code())
+        }
+    }
+}
+
+fn _init() -> AnyResult<()> {
     emit(LoadingState::InitSystem)?;
     init_system()?;
     emit(LoadingState::InitDb)?;
@@ -121,6 +155,8 @@ fn init_system() -> AnyResult<()> {
         w.set_window_icon(Some(icon));
         w.set_visible(true);
     })?;
+
+    webserver::start()?;
     Ok(())
 }
 
@@ -136,9 +172,9 @@ fn assets() {}
 
 fn completed() {
     #[cfg(feature = "local-ui")]
-    let application = Application.wait();
+    let app = APP.wait();
     #[cfg(feature = "local-ui")]
-    let url = format!("file:///{}", application.ui_dir.to_str().unwrap());
+    let url = format!("file:///{}", app.ui_dir.to_str().unwrap());
     #[cfg(not(feature = "local-ui"))]
     let url = String::from("http://localhost:30000");
 

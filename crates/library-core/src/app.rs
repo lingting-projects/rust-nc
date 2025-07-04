@@ -146,7 +146,7 @@ fn create_sub_dir(parent: &PathBuf, name: &str) -> PathBuf {
     path
 }
 
-pub static Application: OnceLock<ApplicationInner> = OnceLock::new();
+pub static APP: OnceLock<ApplicationInner> = OnceLock::new();
 
 use simple_logger::SimpleLogger;
 use time::{format_description::FormatItem, macros::format_description};
@@ -155,7 +155,7 @@ const TIMESTAMP_FORMAT: &[FormatItem] =
     format_description!("[year]-[month]-[day] [hour]:[minute]:[second].[subsecond digits:3]");
 
 pub fn init() {
-    Application.get_or_init(ApplicationInner::new);
+    APP.get_or_init(ApplicationInner::new);
 
     let logger = SimpleLogger::new()
         .with_local_timestamps()
