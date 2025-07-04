@@ -12,8 +12,16 @@ opt-level = 3
 # 减少代码生成单元，提高优化效果
 codegen-units = 1
 
+[features]
+default = ['dev']
+dev=[]
+uat=['local-ui']
+prod=['local-ui']
+
+local-ui = []
+
+
 [dependencies]
-once_cell = "1.21"
 # tauri 用户基础组件
 wry = "0.52"
 tao = "0.34"

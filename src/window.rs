@@ -1,11 +1,12 @@
 use crate::core::AnyResult;
-use crate::init::{FIRST};
+use crate::init::FIRST;
 use std::process::exit;
 use std::sync::{
     mpsc::{channel, Receiver, Sender},
     OnceLock,
 };
 use tao::{
+    dpi::PhysicalSize,
     event::Event,
     event_loop::{ControlFlow, EventLoop, EventLoopProxy},
     window::{Window, WindowBuilder},
@@ -59,15 +60,38 @@ impl WindowManager {
         };
 
         // 创建窗口
+        let size = PhysicalSize::new(1280, 960);
         let window = WindowBuilder::new()
             .with_title(FIRST.window_title())
             .with_visible(false)
+            .with_inner_size(size)
+            .with_min_inner_size(size)
             .build(event_loop)
             .unwrap();
 
         let html = include_str!("../assets/loading.html");
         // 创建webview
-        let builder = WebViewBuilder::new().with_html(html);
+        let builder = WebViewBuilder::new()
+            .with_html(html)
+            .with_on_page_load_handler(move |_, _| {
+                dispatch(move |_, wv| {
+                    let api = "http://localhost:49796";
+                    let js = format!(
+                        r#"
+        try {{
+            localStorage.setItem("nc:requestPrefix", "{}");
+            window.requestPrefix="{}";
+            window.setRequestPrefix && window.setRequestPrefix("{}");
+        }} catch(e) {{
+            console.error("初始化请求前缀异常!", e);
+        }}
+        "#,
+                        api, api, api
+                    );
+                    wv.evaluate_script(&js).unwrap()
+                })
+                .unwrap()
+            });
 
         #[cfg(not(target_os = "linux"))]
         let webview = builder.build(&window).unwrap();

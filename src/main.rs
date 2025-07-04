@@ -1,6 +1,7 @@
 mod core;
 mod init;
 mod window;
+mod app;
 
 use crate::init::start_init;
 use crate::window::WindowManager;
@@ -20,6 +21,8 @@ const TIMESTAMP_FORMAT: &[FormatItem] = format_description!(
 );
 
 fn main() {
+    app::init();
+
     let logger = SimpleLogger::new()
         .with_local_timestamps()
         .with_timestamp_format(TIMESTAMP_FORMAT)

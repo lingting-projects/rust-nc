@@ -1,4 +1,5 @@
-use crate::core::AnyResult;
+use crate::app::{Application};
+use crate::core::{AnyResult};
 use crate::window::dispatch;
 use std::process::exit;
 use tao::dpi::PhysicalSize;
@@ -13,6 +14,7 @@ pub enum LoadingState {
     Updating,
     LoadingAssets,
     Completed,
+    UiError,
 }
 
 impl LoadingState {
@@ -24,6 +26,7 @@ impl LoadingState {
             LoadingState::Updating => 65,
             LoadingState::LoadingAssets => 75,
             LoadingState::Completed => 100,
+            LoadingState::UiError => 0,
         }
     }
 
@@ -35,6 +38,7 @@ impl LoadingState {
             LoadingState::Updating => "正在更新",
             LoadingState::LoadingAssets => "正在加载资源",
             LoadingState::Completed => "系统初始化完成",
+            LoadingState::UiError => "UI加载异常",
         }
     }
 
@@ -46,6 +50,7 @@ impl LoadingState {
             LoadingState::Updating => "正在更新",
             LoadingState::LoadingAssets => "正在加载资源",
             LoadingState::Completed => "正在进入系统",
+            LoadingState::UiError => "Ui加载异常, 请尝试重启程序",
         }
     }
 
@@ -58,6 +63,7 @@ impl LoadingState {
             LoadingState::Updating => "nc-正在进行更新",
             LoadingState::LoadingAssets => "nc-正在加载资源",
             LoadingState::Completed => "nc-系统初始化完成",
+            LoadingState::UiError => "nc-Ui加载异常",
         }
     }
 }
@@ -108,14 +114,15 @@ pub fn start_init() -> AnyResult<()> {
 fn init_system() -> AnyResult<()> {
     #[cfg(target_os = "windows")]
     let icon = Icon::from_path("icons/256x256.ico", Some(PhysicalSize::new(256, 256)))?;
-    
+
     #[cfg(not(target_os = "windows"))]
     let icon = Icon::from_path("icons/256x256.png", Some(PhysicalSize::new(256, 256)))?;
 
     dispatch(move |w, _| {
         w.set_window_icon(Some(icon));
         w.set_visible(true);
-    })
+    })?;
+    Ok(())
 }
 
 fn init_db() {}
@@ -128,4 +135,24 @@ fn update(url: String) {}
 
 fn assets() {}
 
-fn completed() {}
+fn completed() {
+    let application = Application.wait();
+
+    #[cfg(feature = "local-ui")]
+    let url = format!("file:///{}", application.ui_dir.to_str().unwrap());
+    #[cfg(not(feature = "local-ui"))]
+    let url = String::from("http://localhost:30000");
+    
+    dispatch(move |_, wv| {
+        match wv.load_url(&url) {
+            Ok(_) => {
+                
+            }
+            Err(_) => {
+                emit(LoadingState::UiError).unwrap()
+            }
+        }
+        
+    })
+    .unwrap()
+}
