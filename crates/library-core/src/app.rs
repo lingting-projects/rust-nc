@@ -40,7 +40,7 @@ impl ApplicationInner {
     // 公开构造函数
     pub fn new() -> Self {
         // 常量属性
-        let id = "live.lingting.kmp.nc";
+        let id = "live.lingting.nc.rust";
         let ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36";
         let owner = "lingting-projects";
         let repo = "lingting-nc";

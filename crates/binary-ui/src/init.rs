@@ -154,7 +154,6 @@ fn init_system() -> AnyResult<()> {
 
     dispatch(move |w, _| {
         w.set_window_icon(Some(icon));
-        w.set_visible(true);
     })?;
 
     webserver::start()?;
