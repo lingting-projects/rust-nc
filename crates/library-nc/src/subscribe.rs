@@ -1,8 +1,8 @@
 use crate::area::Area;
 use crate::core::{
-    base64_decode, url_decode, AnyResult, NcError, PREFIX_EXPIRE, PREFIX_REMAIN_TRAFFIC,
-    PRIORITY_CODES,
+    base64_decode, AnyResult, NcError, PREFIX_EXPIRE, PREFIX_REMAIN_TRAFFIC, PRIORITY_CODES,
 };
+use crate::http::url_decode;
 use crate::{area, data_size};
 use byte_unit::rust_decimal::prelude::ToPrimitive;
 use serde_json::Value;
@@ -42,8 +42,6 @@ impl Subscribe {
 
         match header_user_info {
             None => {
-                let prefix_remain_vec = PREFIX_REMAIN_TRAFFIC.clone();
-
                 nodes.iter().for_each(|node| {
                     if node.area.is_some() {
                         return;
@@ -54,7 +52,7 @@ impl Subscribe {
                     }
 
                     // 剩余流量
-                    let po = prefix_remain_vec.iter().find(|p| name.starts_with(*p));
+                    let po = PREFIX_REMAIN_TRAFFIC.iter().find(|p| name.starts_with(*p));
                     if po.is_some() {
                         let p = po.unwrap();
                         let bo = name.strip_prefix(p);
@@ -66,8 +64,7 @@ impl Subscribe {
                         }
                         return;
                     }
-                    let prefix_expire = PREFIX_EXPIRE.clone();
-                    let po = prefix_expire.iter().find(|p| name.starts_with(*p));
+                    let po = PREFIX_EXPIRE.iter().find(|p| name.starts_with(*p));
                     if po.is_some() {
                         let p = po.unwrap();
                         let bo = name.strip_prefix(p);
@@ -358,19 +355,18 @@ impl SubscribeNode {
             Err(_) => Self::from_text(input),
         };
 
-        let vec = PRIORITY_CODES.clone();
         // 排序逻辑
         let mut sorted_nodes = nodes;
         sorted_nodes.sort_by_key(|node| {
             let area_priority = match &node.area {
                 None => 0,
-                Some(area) if vec.contains(&area.code) => 1,
+                Some(area) if PRIORITY_CODES.contains(&area.code) => 1,
                 _ => 2,
             };
 
             let secondary_key = match &node.area {
                 None => "".to_string(),
-                Some(area) if vec.contains(&area.code) => vec
+                Some(area) if PRIORITY_CODES.contains(&area.code) => PRIORITY_CODES
                     .iter()
                     .position(|code| code == &area.code)
                     .unwrap_or(0)

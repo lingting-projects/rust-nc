@@ -56,14 +56,13 @@ fn init() {
     }
 }
 
-pub fn find(code: Option<String>) -> Option<&'static Area> {
-    let code = code?;
+pub fn find(code: &str) -> Option<&'static Area> {
     init();
     if code.is_empty() {
         return None;
     }
     let map = MAP_CODE.get()?;
-    map.get(&code).map(|v| &**v)
+    map.get(code).map(|v| &**v)
 }
 
 pub fn find_match(source: &str) -> Option<&'static Area> {
