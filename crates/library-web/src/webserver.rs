@@ -1,5 +1,4 @@
 use crate::{route_global, route_setting};
-use axum::serve::Serve;
 use axum::Router;
 use library_core::core::{AnyResult, BizError, Exit};
 use std::process::exit;

@@ -1,0 +1,1954 @@
+{
+  "PG": {
+    "enName": "Papua New Guinea",
+    "localName": "Papua New Guinea",
+    "code": "PG",
+    "dialCode": "675",
+    "name": "巴布亚新几内亚",
+    "phoneFormat": "681 2345"
+  },
+  "KH": {
+    "enName": "Cambodia",
+    "localName": "កម្ពុជា",
+    "code": "KH",
+    "dialCode": "855",
+    "name": "柬埔寨",
+    "phoneFormat": "091 234 567"
+  },
+  "KZ": {
+    "enName": "Kazakhstan",
+    "localName": "Казахстан",
+    "code": "KZ",
+    "dialCode": "7",
+    "name": "哈萨克斯坦",
+    "phoneFormat": "8 (771) 000 9998"
+  },
+  "PY": {
+    "enName": "Paraguay",
+    "localName": "Paraguay",
+    "code": "PY",
+    "dialCode": "595",
+    "name": "巴拉圭",
+    "phoneFormat": "0961 456789"
+  },
+  "SY": {
+    "enName": "Syria",
+    "localName": "‫سوريا‬‎",
+    "code": "SY",
+    "dialCode": "963",
+    "name": "叙利亚",
+    "phoneFormat": "0944 567 890"
+  },
+  "AX": {
+    "enName": "Åland Islands",
+    "localName": "Åland Islands",
+    "code": "AX",
+    "dialCode": "358",
+    "name": "Åland Islands",
+    "phoneFormat": "041 2345678"
+  },
+  "BS": {
+    "enName": "Bahamas",
+    "localName": "Bahamas",
+    "code": "BS",
+    "dialCode": "1242",
+    "name": "巴哈马",
+    "phoneFormat": "(242) 359-1234"
+  },
+  "CI": {
+    "enName": "Côte d’Ivoire",
+    "localName": "Côte d’Ivoire",
+    "code": "CI",
+    "dialCode": "225",
+    "name": "科特迪瓦",
+    "phoneFormat": "01 23 45 67"
+  },
+  "SB": {
+    "enName": "Solomon Islands",
+    "localName": "Solomon Islands",
+    "code": "SB",
+    "dialCode": "677",
+    "name": "所罗门群岛",
+    "phoneFormat": "74 21234"
+  },
+  "MS": {
+    "enName": "Montserrat",
+    "localName": "Montserrat",
+    "code": "MS",
+    "dialCode": "1664",
+    "name": "蒙塞拉特岛 (英国)",
+    "phoneFormat": "(664) 492-3456"
+  },
+  "ML": {
+    "enName": "Mali",
+    "localName": "Mali",
+    "code": "ML",
+    "dialCode": "223",
+    "name": "马里共和国",
+    "phoneFormat": "65 01 23 45"
+  },
+  "MH": {
+    "enName": "Marshall Islands",
+    "localName": "Marshall Islands",
+    "code": "MH",
+    "dialCode": "692",
+    "name": "马绍尔群岛",
+    "phoneFormat": "235-1234"
+  },
+  "GP": {
+    "enName": "Guadeloupe",
+    "localName": "Guadeloupe",
+    "code": "GP",
+    "dialCode": "590",
+    "name": "瓜德罗普",
+    "phoneFormat": "0690 30-1234"
+  },
+  "PA": {
+    "enName": "Panama",
+    "localName": "Panamá",
+    "code": "PA",
+    "dialCode": "507",
+    "name": "Panama",
+    "phoneFormat": "6001-2345"
+  },
+  "LA": {
+    "enName": "Laos",
+    "localName": "ລາວ",
+    "code": "LA",
+    "dialCode": "856",
+    "name": "老挝",
+    "phoneFormat": "020 23 123 456"
+  },
+  "AR": {
+    "enName": "Argentina",
+    "localName": "Argentina",
+    "code": "AR",
+    "dialCode": "54",
+    "name": "阿根廷",
+    "phoneFormat": "011 15-2345-6789"
+  },
+  "FK": {
+    "enName": "Falkland Islands",
+    "localName": "Islas Malvinas",
+    "code": "FK",
+    "dialCode": "500",
+    "name": "福克兰群岛",
+    "phoneFormat": "51234"
+  },
+  "SC": {
+    "enName": "Seychelles",
+    "localName": "Seychelles",
+    "code": "SC",
+    "dialCode": "248",
+    "name": "塞舌尔",
+    "phoneFormat": "2 510 123"
+  },
+  "BZ": {
+    "enName": "Belize",
+    "localName": "Belize",
+    "code": "BZ",
+    "dialCode": "501",
+    "name": "伯利兹",
+    "phoneFormat": "622-1234"
+  },
+  "ZM": {
+    "enName": "Zambia",
+    "localName": "Zambia",
+    "code": "ZM",
+    "dialCode": "260",
+    "name": "赞比亚",
+    "phoneFormat": "095 5123456"
+  },
+  "BH": {
+    "enName": "Bahrain",
+    "localName": "‫البحرين‬‎",
+    "code": "BH",
+    "dialCode": "973",
+    "name": "巴林",
+    "phoneFormat": "3600 1234"
+  },
+  "CG": {
+    "enName": "Congo",
+    "localName": "Republic) (Congo-Brazzaville",
+    "code": "CG",
+    "dialCode": "242",
+    "name": "刚果共和国",
+    "phoneFormat": "06 123 4567"
+  },
+  "GW": {
+    "enName": "Guinea-Bissau",
+    "localName": "Guiné Bissau",
+    "code": "GW",
+    "dialCode": "245",
+    "name": "几内亚比绍",
+    "phoneFormat": "955 012 345"
+  },
+  "NA": {
+    "enName": "Namibia",
+    "localName": "Namibië",
+    "code": "NA",
+    "dialCode": "264",
+    "name": "纳米比亚",
+    "phoneFormat": "081 123 4567"
+  },
+  "KM": {
+    "enName": "Comoros",
+    "localName": "‫جزر القمر‬‎",
+    "code": "KM",
+    "dialCode": "269",
+    "name": "科摩罗",
+    "phoneFormat": "321 23 45"
+  },
+  "FO": {
+    "enName": "Faroe Islands",
+    "localName": "Føroyar",
+    "code": "FO",
+    "dialCode": "298",
+    "name": "法罗群岛 (丹麦)",
+    "phoneFormat": "211234"
+  },
+  "FI": {
+    "enName": "Finland",
+    "localName": "Suomi",
+    "code": "FI",
+    "dialCode": "358",
+    "name": "芬兰",
+    "phoneFormat": "041 2345678"
+  },
+  "GE": {
+    "enName": "Georgia",
+    "localName": "საქართველო",
+    "code": "GE",
+    "dialCode": "995",
+    "name": "格鲁吉亚",
+    "phoneFormat": "555 12 34 56"
+  },
+  "KN": {
+    "enName": "Saint Kitts and Nevis",
+    "localName": "Saint Kitts and Nevis",
+    "code": "KN",
+    "dialCode": "1869",
+    "name": "圣基茨和尼维斯",
+    "phoneFormat": "(869) 765-2917"
+  },
+  "YE": {
+    "enName": "Yemen",
+    "localName": "‫اليمن‬‎",
+    "code": "YE",
+    "dialCode": "967",
+    "name": "也门",
+    "phoneFormat": "0712 345 678"
+  },
+  "ER": {
+    "enName": "Eritrea",
+    "localName": "Eritrea",
+    "code": "ER",
+    "dialCode": "291",
+    "name": "厄立特里亚",
+    "phoneFormat": "07 123 456"
+  },
+  "PR": {
+    "enName": "Puerto Rico",
+    "localName": "Puerto Rico",
+    "code": "PR",
+    "dialCode": "1",
+    "name": "波多黎各 (美国)",
+    "phoneFormat": "(787) 234-5678"
+  },
+  "AW": {
+    "enName": "Aruba",
+    "localName": "Aruba",
+    "code": "AW",
+    "dialCode": "297",
+    "name": "阿鲁巴 (荷兰王国)",
+    "phoneFormat": "560 1234"
+  },
+  "MG": {
+    "enName": "Madagascar",
+    "localName": "Madagasikara",
+    "code": "MG",
+    "dialCode": "261",
+    "name": "马达加斯加",
+    "phoneFormat": "032 12 345 67"
+  },
+  "LY": {
+    "enName": "Libya",
+    "localName": "‫ليبيا‬‎",
+    "code": "LY",
+    "dialCode": "218",
+    "name": "利比亚",
+    "phoneFormat": "091-2345678"
+  },
+  "SJ": {
+    "enName": "Svalbard and Jan Mayen",
+    "localName": "Svalbard and Jan Mayen",
+    "code": "SJ",
+    "dialCode": "47",
+    "name": "Svalbard and Jan Mayen",
+    "phoneFormat": "412 34 567"
+  },
+  "MF": {
+    "enName": "Saint Martin",
+    "localName": "Saint-Martin (partie française)",
+    "code": "MF",
+    "dialCode": "590",
+    "name": "法属圣马丁岛",
+    "phoneFormat": "0690 30-1234"
+  },
+  "SE": {
+    "enName": "Sweden",
+    "localName": "Sverige",
+    "code": "SE",
+    "dialCode": "46",
+    "name": "瑞典",
+    "phoneFormat": "070-123 45 67"
+  },
+  "MW": {
+    "enName": "Malawi",
+    "localName": "Malawi",
+    "code": "MW",
+    "dialCode": "265",
+    "name": "马拉维",
+    "phoneFormat": "0991 23 45 67"
+  },
+  "AD": {
+    "enName": "Andorra",
+    "localName": "Andorra",
+    "code": "AD",
+    "dialCode": "376",
+    "name": "安道尔",
+    "phoneFormat": "312 345"
+  },
+  "LI": {
+    "enName": "Liechtenstein",
+    "localName": "Liechtenstein",
+    "code": "LI",
+    "dialCode": "423",
+    "name": "列支敦士登",
+    "phoneFormat": "660 234 567"
+  },
+  "PL": {
+    "enName": "Poland",
+    "localName": "Polska",
+    "code": "PL",
+    "dialCode": "48",
+    "name": "波兰",
+    "phoneFormat": "512 345 678"
+  },
+  "BG": {
+    "enName": "Bulgaria",
+    "localName": "България",
+    "code": "BG",
+    "dialCode": "359",
+    "name": "保加利亚",
+    "phoneFormat": "048 123 456"
+  },
+  "JO": {
+    "enName": "Jordan",
+    "localName": "‫الأردن‬‎",
+    "code": "JO",
+    "dialCode": "962",
+    "name": "约旦",
+    "phoneFormat": "07 9012 3456"
+  },
+  "TN": {
+    "enName": "Tunisia",
+    "localName": "‫تونس‬‎",
+    "code": "TN",
+    "dialCode": "216",
+    "name": "突尼斯",
+    "phoneFormat": "20 123 456"
+  },
+  "TV": {
+    "enName": "Tuvalu",
+    "localName": "Tuvalu",
+    "code": "TV",
+    "dialCode": "688",
+    "name": "图瓦卢",
+    "phoneFormat": "901234"
+  },
+  "AE": {
+    "enName": "United Arab Emirates",
+    "localName": "‫الإمارات العربية المتحدة‬‎",
+    "code": "AE",
+    "dialCode": "971",
+    "name": "阿拉伯联合酋长国",
+    "phoneFormat": "050 123 4567"
+  },
+  "KE": {
+    "enName": "Kenya",
+    "localName": "Kenya",
+    "code": "KE",
+    "dialCode": "254",
+    "name": "肯尼亚",
+    "phoneFormat": "0712 123456"
+  },
+  "PF": {
+    "enName": "French Polynesia",
+    "localName": "Polynésie française",
+    "code": "PF",
+    "dialCode": "689",
+    "name": "法属波利尼西亚 (法国)",
+    "phoneFormat": "87 12 34 56"
+  },
+  "BN": {
+    "enName": "Brunei",
+    "localName": "Brunei",
+    "code": "BN",
+    "dialCode": "673",
+    "name": "文莱",
+    "phoneFormat": "712 3456"
+  },
+  "DJ": {
+    "enName": "Djibouti",
+    "localName": "Djibouti",
+    "code": "DJ",
+    "dialCode": "253",
+    "name": "吉布提",
+    "phoneFormat": "77 83 10 01"
+  },
+  "LB": {
+    "enName": "Lebanon",
+    "localName": "‫لبنان‬‎",
+    "code": "LB",
+    "dialCode": "961",
+    "name": "黎巴嫩",
+    "phoneFormat": "71 123 456"
+  },
+  "AZ": {
+    "enName": "Azerbaijan",
+    "localName": "Azərbaycan",
+    "code": "AZ",
+    "dialCode": "994",
+    "name": "阿塞拜疆",
+    "phoneFormat": "040 123 45 67"
+  },
+  "CU": {
+    "enName": "Cuba",
+    "localName": "Cuba",
+    "code": "CU",
+    "dialCode": "53",
+    "name": "古巴",
+    "phoneFormat": "05 1234567"
+  },
+  "CZ": {
+    "enName": "Czech Republic",
+    "localName": "Česká republika",
+    "code": "CZ",
+    "dialCode": "420",
+    "name": "捷克",
+    "phoneFormat": "601 123 456"
+  },
+  "MR": {
+    "enName": "Mauritania",
+    "localName": "‫موريتانيا‬‎",
+    "code": "MR",
+    "dialCode": "222",
+    "name": "毛里塔尼亚",
+    "phoneFormat": "22 12 34 56"
+  },
+  "LC": {
+    "enName": "Saint Lucia",
+    "localName": "Saint Lucia",
+    "code": "LC",
+    "dialCode": "1758",
+    "name": "圣卢西亚",
+    "phoneFormat": "(758) 284-5678"
+  },
+  "GG": {
+    "enName": "Guernsey",
+    "localName": "Guernsey",
+    "code": "GG",
+    "dialCode": "44",
+    "name": "Guernsey",
+    "phoneFormat": "07781 123456"
+  },
+  "YT": {
+    "enName": "Mayotte",
+    "localName": "Mayotte",
+    "code": "YT",
+    "dialCode": "262",
+    "name": "Mayotte",
+    "phoneFormat": "0639 12 34 56"
+  },
+  "IL": {
+    "enName": "Israel",
+    "localName": "‫ישראל‬‎",
+    "code": "IL",
+    "dialCode": "972",
+    "name": "以色列",
+    "phoneFormat": "050-123-4567"
+  },
+  "SM": {
+    "enName": "San Marino",
+    "localName": "San Marino",
+    "code": "SM",
+    "dialCode": "378",
+    "name": "圣马力诺",
+    "phoneFormat": "66 66 12 12"
+  },
+  "AU": {
+    "enName": "Australia",
+    "localName": "Australia",
+    "code": "AU",
+    "dialCode": "61",
+    "name": "澳大利亚",
+    "phoneFormat": "0412 345 678"
+  },
+  "TJ": {
+    "enName": "Tajikistan",
+    "localName": "Tajikistan",
+    "code": "TJ",
+    "dialCode": "992",
+    "name": "塔吉克斯坦",
+    "phoneFormat": "(8) 917 12 3456"
+  },
+  "MM": {
+    "enName": "Myanmar",
+    "localName": "Burma) (မြန်မာ",
+    "code": "MM",
+    "dialCode": "95",
+    "name": "缅甸",
+    "phoneFormat": "09 212 3456"
+  },
+  "CM": {
+    "enName": "Cameroon",
+    "localName": "Cameroun",
+    "code": "CM",
+    "dialCode": "237",
+    "name": "喀麦隆",
+    "phoneFormat": "6 71 23 45 67"
+  },
+  "GI": {
+    "enName": "Gibraltar",
+    "localName": "Gibraltar",
+    "code": "GI",
+    "dialCode": "350",
+    "name": "直布罗陀 (英国)",
+    "phoneFormat": "57123456"
+  },
+  "CY": {
+    "enName": "Cyprus",
+    "localName": "Κύπρος",
+    "code": "CY",
+    "dialCode": "357",
+    "name": "塞浦路斯",
+    "phoneFormat": "96 123456"
+  },
+  "MP": {
+    "enName": "Northern Mariana Islands",
+    "localName": "Northern Mariana Islands",
+    "code": "MP",
+    "dialCode": "1670",
+    "name": "北马里亚纳群岛 (美国)",
+    "phoneFormat": "(670) 234-5678"
+  },
+  "MY": {
+    "enName": "Malaysia",
+    "localName": "Malaysia",
+    "code": "MY",
+    "dialCode": "60",
+    "name": "马来西亚",
+    "phoneFormat": "012-345 6789"
+  },
+  "IS": {
+    "enName": "Iceland",
+    "localName": "Ísland",
+    "code": "IS",
+    "dialCode": "354",
+    "name": "冰岛",
+    "phoneFormat": "611 1234"
+  },
+  "OM": {
+    "enName": "Oman",
+    "localName": "‫عُمان‬‎",
+    "code": "OM",
+    "dialCode": "968",
+    "name": "阿曼",
+    "phoneFormat": "9212 3456"
+  },
+  "AM": {
+    "enName": "Armenia",
+    "localName": "Հայաստան",
+    "code": "AM",
+    "dialCode": "374",
+    "name": "亚美尼亚",
+    "phoneFormat": "077 123456"
+  },
+  "GA": {
+    "enName": "Gabon",
+    "localName": "Gabon",
+    "code": "GA",
+    "dialCode": "241",
+    "name": "加蓬",
+    "phoneFormat": "06 03 12 34"
+  },
+  "MO": {
+    "enName": "China/Macau",
+    "localName": "中国澳门",
+    "code": "MO",
+    "dialCode": "853",
+    "name": "中国澳门",
+    "phoneFormat": "6612 3456"
+  },
+  "LU": {
+    "enName": "Luxembourg",
+    "localName": "Luxembourg",
+    "code": "LU",
+    "dialCode": "352",
+    "name": "卢森堡",
+    "phoneFormat": "628 123 456"
+  },
+  "BR": {
+    "enName": "Brazil",
+    "localName": "Brasil",
+    "code": "BR",
+    "dialCode": "55",
+    "name": "巴西",
+    "phoneFormat": "(11) 96123-4567"
+  },
+  "TC": {
+    "enName": "Turks and Caicos Islands",
+    "localName": "Turks and Caicos Islands",
+    "code": "TC",
+    "dialCode": "1649",
+    "name": "特克斯和凯科斯群岛",
+    "phoneFormat": "(649) 231-1234"
+  },
+  "DZ": {
+    "enName": "Algeria",
+    "localName": "‫الجزائر‬‎",
+    "code": "DZ",
+    "dialCode": "213",
+    "name": "阿尔及利亚",
+    "phoneFormat": "0551 23 45 67"
+  },
+  "JE": {
+    "enName": "Jersey",
+    "localName": "Jersey",
+    "code": "JE",
+    "dialCode": "44",
+    "name": "Jersey",
+    "phoneFormat": "07797 123456"
+  },
+  "SI": {
+    "enName": "Slovenia",
+    "localName": "Slovenija",
+    "code": "SI",
+    "dialCode": "386",
+    "name": "斯洛文尼亚",
+    "phoneFormat": "031 234 567"
+  },
+  "CC": {
+    "enName": "Cocos",
+    "localName": "Keeling",
+    "code": "CC",
+    "dialCode": "61",
+    "name": "科科斯群岛",
+    "phoneFormat": "0412 345 678"
+  },
+  "AG": {
+    "enName": "Antigua and Barbuda",
+    "localName": "Antigua and Barbuda",
+    "code": "AG",
+    "dialCode": "1268",
+    "name": "安提瓜和巴布达",
+    "phoneFormat": "(268) 464-1234"
+  },
+  "CO": {
+    "enName": "Colombia",
+    "localName": "Colombia",
+    "code": "CO",
+    "dialCode": "57",
+    "name": "哥伦比亚",
+    "phoneFormat": "321 1234567"
+  },
+  "EC": {
+    "enName": "Ecuador",
+    "localName": "Ecuador",
+    "code": "EC",
+    "dialCode": "593",
+    "name": "厄瓜多尔",
+    "phoneFormat": "099 123 4567"
+  },
+  "TW": {
+    "enName": "China/Taiwan",
+    "localName": "中国台湾",
+    "code": "TW",
+    "dialCode": "886",
+    "name": "中国台湾",
+    "phoneFormat": "0912 345 678"
+  },
+  "MD": {
+    "enName": "Moldova",
+    "localName": "Republica Moldova",
+    "code": "MD",
+    "dialCode": "373",
+    "name": "摩尔多瓦",
+    "phoneFormat": "0621 12 345"
+  },
+  "VU": {
+    "enName": "Vanuatu",
+    "localName": "Vanuatu",
+    "code": "VU",
+    "dialCode": "678",
+    "name": "瓦努阿图",
+    "phoneFormat": "591 2345"
+  },
+  "HN": {
+    "enName": "Honduras",
+    "localName": "Honduras",
+    "code": "HN",
+    "dialCode": "504",
+    "name": "Honduras",
+    "phoneFormat": "9123-4567"
+  },
+  "IT": {
+    "enName": "Italy",
+    "localName": "Italia",
+    "code": "IT",
+    "dialCode": "39",
+    "name": "意大利",
+    "phoneFormat": "312 345 6789"
+  },
+  "NR": {
+    "enName": "Nauru",
+    "localName": "Nauru",
+    "code": "NR",
+    "dialCode": "674",
+    "name": "瑙鲁",
+    "phoneFormat": "555 1234"
+  },
+  "HT": {
+    "enName": "Haiti",
+    "localName": "Haiti",
+    "code": "HT",
+    "dialCode": "509",
+    "name": "海地",
+    "phoneFormat": "34 10 1234"
+  },
+  "AF": {
+    "enName": "Afghanistan",
+    "localName": "‫افغانستان‬‎",
+    "code": "AF",
+    "dialCode": "93",
+    "name": "阿富汗",
+    "phoneFormat": "070 123 4567"
+  },
+  "BI": {
+    "enName": "Burundi",
+    "localName": "Uburundi",
+    "code": "BI",
+    "dialCode": "257",
+    "name": "布隆迪",
+    "phoneFormat": "79 56 12 34"
+  },
+  "SG": {
+    "enName": "Singapore",
+    "localName": "Singapore",
+    "code": "SG",
+    "dialCode": "65",
+    "name": "新加坡",
+    "phoneFormat": "8123 4567"
+  },
+  "GF": {
+    "enName": "French Guiana",
+    "localName": "Guyane française",
+    "code": "GF",
+    "dialCode": "594",
+    "name": "法属圭亚那",
+    "phoneFormat": "0694 20 12 34"
+  },
+  "AS": {
+    "enName": "American Samoa",
+    "localName": "American Samoa",
+    "code": "AS",
+    "dialCode": "1684",
+    "name": "美属萨摩亚 (美国)",
+    "phoneFormat": "(684) 733-1234"
+  },
+  "CX": {
+    "enName": "Christmas Island",
+    "localName": "Christmas Island",
+    "code": "CX",
+    "dialCode": "61",
+    "name": "圣诞岛",
+    "phoneFormat": "0412 345 678"
+  },
+  "VA": {
+    "enName": "Vatican City",
+    "localName": "Città del Vaticano",
+    "code": "VA",
+    "dialCode": "39",
+    "name": "梵蒂冈",
+    "phoneFormat": "312 345 6789"
+  },
+  "RU": {
+    "enName": "Russia",
+    "localName": "Россия",
+    "code": "RU",
+    "dialCode": "7",
+    "name": "俄罗斯",
+    "phoneFormat": "8 (912) 345-67-89"
+  },
+  "CD": {
+    "enName": "Congo (DRC)",
+    "localName": "Jamhuri ya Kidemokrasia ya Kongo",
+    "code": "CD",
+    "dialCode": "243",
+    "name": "刚果民主共和国",
+    "phoneFormat": "0991 234 567"
+  },
+  "NL": {
+    "enName": "Netherlands",
+    "localName": "Nederland",
+    "code": "NL",
+    "dialCode": "31",
+    "name": "荷兰",
+    "phoneFormat": "06 12345678"
+  },
+  "CN": {
+    "enName": "China",
+    "localName": "中国",
+    "code": "CN",
+    "dialCode": "86",
+    "name": "中华人民共和国",
+    "phoneFormat": "131 2345 6789"
+  },
+  "MQ": {
+    "enName": "Martinique",
+    "localName": "Martinique",
+    "code": "MQ",
+    "dialCode": "596",
+    "name": "马提尼克",
+    "phoneFormat": "0696 20 12 34"
+  },
+  "SX": {
+    "enName": "Sint Maarten",
+    "localName": "Sint Maarten",
+    "code": "SX",
+    "dialCode": "1721",
+    "name": "Sint Maarten",
+    "phoneFormat": "(721) 520-5678"
+  },
+  "PM": {
+    "enName": "Saint Pierre and Miquelon",
+    "localName": "Saint-Pierre-et-Miquelon",
+    "code": "PM",
+    "dialCode": "508",
+    "name": "圣皮埃尔和密克隆群岛 (法国)",
+    "phoneFormat": "055 12 34"
+  },
+  "KG": {
+    "enName": "Kyrgyzstan",
+    "localName": "Кыргызстан",
+    "code": "KG",
+    "dialCode": "996",
+    "name": "吉尔吉斯斯坦",
+    "phoneFormat": "0700 123 456"
+  },
+  "BT": {
+    "enName": "Bhutan",
+    "localName": "འབྲུག",
+    "code": "BT",
+    "dialCode": "975",
+    "name": "不丹",
+    "phoneFormat": "17 12 34 56"
+  },
+  "RO": {
+    "enName": "Romania",
+    "localName": "România",
+    "code": "RO",
+    "dialCode": "40",
+    "name": "罗马尼亚",
+    "phoneFormat": "0712 345 678"
+  },
+  "TG": {
+    "enName": "Togo",
+    "localName": "Togo",
+    "code": "TG",
+    "dialCode": "228",
+    "name": "多哥",
+    "phoneFormat": "90 11 23 45"
+  },
+  "PH": {
+    "enName": "Philippines",
+    "localName": "Philippines",
+    "code": "PH",
+    "dialCode": "63",
+    "name": "菲律宾",
+    "phoneFormat": "0905 123 4567"
+  },
+  "UZ": {
+    "enName": "Uzbekistan",
+    "localName": "Oʻzbekiston",
+    "code": "UZ",
+    "dialCode": "998",
+    "name": "乌兹别克斯坦",
+    "phoneFormat": "8 91 234 56 78"
+  },
+  "VG": {
+    "enName": "British Virgin Islands",
+    "localName": "British Virgin Islands",
+    "code": "VG",
+    "dialCode": "1284",
+    "name": "英属维尔京群岛 (英国)",
+    "phoneFormat": "(284) 300-1234"
+  },
+  "ZW": {
+    "enName": "Zimbabwe",
+    "localName": "Zimbabwe",
+    "code": "ZW",
+    "dialCode": "263",
+    "name": "津巴布韦",
+    "phoneFormat": "071 123 4567"
+  },
+  "IO": {
+    "enName": "British Indian Ocean Territory",
+    "localName": "British Indian Ocean Territory",
+    "code": "IO",
+    "dialCode": "246",
+    "name": "British Indian Ocean Territory",
+    "phoneFormat": "380 1234"
+  },
+  "ME": {
+    "enName": "Montenegro",
+    "localName": "Crna Gora",
+    "code": "ME",
+    "dialCode": "382",
+    "name": "黑山共和国",
+    "phoneFormat": "067 622 901"
+  },
+  "DM": {
+    "enName": "Dominica",
+    "localName": "Dominica",
+    "code": "DM",
+    "dialCode": "1767",
+    "name": "Dominica",
+    "phoneFormat": "(767) 225-1234"
+  },
+  "ID": {
+    "enName": "Indonesia",
+    "localName": "Indonesia",
+    "code": "ID",
+    "dialCode": "62",
+    "name": "印度尼西亚",
+    "phoneFormat": "0812-345-678"
+  },
+  "BJ": {
+    "enName": "Benin",
+    "localName": "Bénin",
+    "code": "BJ",
+    "dialCode": "229",
+    "name": "贝宁",
+    "phoneFormat": "90 01 12 34"
+  },
+  "AO": {
+    "enName": "Angola",
+    "localName": "Angola",
+    "code": "AO",
+    "dialCode": "244",
+    "name": "安哥拉",
+    "phoneFormat": "923 123 456"
+  },
+  "SD": {
+    "enName": "Sudan",
+    "localName": "‫السودان‬‎",
+    "code": "SD",
+    "dialCode": "249",
+    "name": "苏丹",
+    "phoneFormat": "091 123 1234"
+  },
+  "PT": {
+    "enName": "Portugal",
+    "localName": "Portugal",
+    "code": "PT",
+    "dialCode": "351",
+    "name": "葡萄牙",
+    "phoneFormat": "912 345 678"
+  },
+  "NC": {
+    "enName": "New Caledonia",
+    "localName": "Nouvelle-Calédonie",
+    "code": "NC",
+    "dialCode": "687",
+    "name": "新喀里多尼亚 (法国)",
+    "phoneFormat": "75.12.34"
+  },
+  "GD": {
+    "enName": "Grenada",
+    "localName": "Grenada",
+    "code": "GD",
+    "dialCode": "1473",
+    "name": "格林纳达",
+    "phoneFormat": "(473) 403-1234"
+  },
+  "KP": {
+    "enName": "North Korea",
+    "localName": "조선 민주주의 인민 공화국",
+    "code": "KP",
+    "dialCode": "850",
+    "name": "北朝鲜",
+    "phoneFormat": "0192 123 4567"
+  },
+  "KY": {
+    "enName": "Cayman Islands",
+    "localName": "Cayman Islands",
+    "code": "KY",
+    "dialCode": "1345",
+    "name": "开曼群岛 (英国)",
+    "phoneFormat": "(345) 323-1234"
+  },
+  "GR": {
+    "enName": "Greece",
+    "localName": "Ελλάδα",
+    "code": "GR",
+    "dialCode": "30",
+    "name": "希腊",
+    "phoneFormat": "691 234 5678"
+  },
+  "LV": {
+    "enName": "Latvia",
+    "localName": "Latvija",
+    "code": "LV",
+    "dialCode": "371",
+    "name": "拉脱维亚",
+    "phoneFormat": "21 234 567"
+  },
+  "MN": {
+    "enName": "Mongolia",
+    "localName": "Монгол",
+    "code": "MN",
+    "dialCode": "976",
+    "name": "蒙古国",
+    "phoneFormat": "8812 3456"
+  },
+  "IR": {
+    "enName": "Iran",
+    "localName": "‫ایران‬‎",
+    "code": "IR",
+    "dialCode": "98",
+    "name": "伊朗",
+    "phoneFormat": "0912 345 6789"
+  },
+  "MA": {
+    "enName": "Morocco",
+    "localName": "‫المغرب‬‎",
+    "code": "MA",
+    "dialCode": "212",
+    "name": "摩洛哥",
+    "phoneFormat": "0650-123456"
+  },
+  "GT": {
+    "enName": "Guatemala",
+    "localName": "Guatemala",
+    "code": "GT",
+    "dialCode": "502",
+    "name": "危地马拉",
+    "phoneFormat": "5123 4567"
+  },
+  "GY": {
+    "enName": "Guyana",
+    "localName": "Guyana",
+    "code": "GY",
+    "dialCode": "592",
+    "name": "圭亚那",
+    "phoneFormat": "609 1234"
+  },
+  "IQ": {
+    "enName": "Iraq",
+    "localName": "‫العراق‬‎",
+    "code": "IQ",
+    "dialCode": "964",
+    "name": "伊拉克",
+    "phoneFormat": "0791 234 5678"
+  },
+  "CL": {
+    "enName": "Chile",
+    "localName": "Chile",
+    "code": "CL",
+    "dialCode": "56",
+    "name": "智利",
+    "phoneFormat": "09 6123 4567"
+  },
+  "NP": {
+    "enName": "Nepal",
+    "localName": "नेपाल",
+    "code": "NP",
+    "dialCode": "977",
+    "name": "尼泊尔",
+    "phoneFormat": "984-1234567"
+  },
+  "IM": {
+    "enName": "Isle of Man",
+    "localName": "Isle of Man",
+    "code": "IM",
+    "dialCode": "44",
+    "name": "马恩岛",
+    "phoneFormat": "07924 123456"
+  },
+  "TZ": {
+    "enName": "Tanzania",
+    "localName": "Tanzania",
+    "code": "TZ",
+    "dialCode": "255",
+    "name": "坦桑尼亚",
+    "phoneFormat": "0621 234 567"
+  },
+  "UA": {
+    "enName": "Ukraine",
+    "localName": "Україна",
+    "code": "UA",
+    "dialCode": "380",
+    "name": "乌克兰",
+    "phoneFormat": "039 123 4567"
+  },
+  "CW": {
+    "enName": "Curaçao",
+    "localName": "Curaçao",
+    "code": "CW",
+    "dialCode": "599",
+    "name": "Curaçao",
+    "phoneFormat": "9 518 1234"
+  },
+  "GH": {
+    "enName": "Ghana",
+    "localName": "Gaana",
+    "code": "GH",
+    "dialCode": "233",
+    "name": "加纳",
+    "phoneFormat": "023 123 4567"
+  },
+  "AI": {
+    "enName": "Anguilla",
+    "localName": "Anguilla",
+    "code": "AI",
+    "dialCode": "1264",
+    "name": "安圭拉",
+    "phoneFormat": "(264) 235-1234"
+  },
+  "IN": {
+    "enName": "India",
+    "localName": "भारत",
+    "code": "IN",
+    "dialCode": "91",
+    "name": "印度",
+    "phoneFormat": "099876 54321"
+  },
+  "CA": {
+    "enName": "Canada",
+    "localName": "Canada",
+    "code": "CA",
+    "dialCode": "1",
+    "name": "加拿大",
+    "phoneFormat": "(204) 234-5678"
+  },
+  "MV": {
+    "enName": "Maldives",
+    "localName": "Maldives",
+    "code": "MV",
+    "dialCode": "960",
+    "name": "马尔代夫",
+    "phoneFormat": "771-2345"
+  },
+  "TR": {
+    "enName": "Turkey",
+    "localName": "Türkiye",
+    "code": "TR",
+    "dialCode": "90",
+    "name": "土耳其",
+    "phoneFormat": "0501 234 56 78"
+  },
+  "BE": {
+    "enName": "Belgium",
+    "localName": "België",
+    "code": "BE",
+    "dialCode": "32",
+    "name": "比利时",
+    "phoneFormat": "0470 12 34 56"
+  },
+  "ZA": {
+    "enName": "South Africa",
+    "localName": "South Africa",
+    "code": "ZA",
+    "dialCode": "27",
+    "name": "南非",
+    "phoneFormat": "071 123 4567"
+  },
+  "TT": {
+    "enName": "Trinidad and Tobago",
+    "localName": "Trinidad and Tobago",
+    "code": "TT",
+    "dialCode": "1868",
+    "name": "特立尼达和多巴哥",
+    "phoneFormat": "(868) 291-1234"
+  },
+  "BM": {
+    "enName": "Bermuda",
+    "localName": "Bermuda",
+    "code": "BM",
+    "dialCode": "1441",
+    "name": "百慕大 (英国)",
+    "phoneFormat": "(441) 370-1234"
+  },
+  "CF": {
+    "enName": "Central African Republic",
+    "localName": "République centrafricaine",
+    "code": "CF",
+    "dialCode": "236",
+    "name": "中非共和国",
+    "phoneFormat": "70 01 23 45"
+  },
+  "JM": {
+    "enName": "Jamaica",
+    "localName": "Jamaica",
+    "code": "JM",
+    "dialCode": "1876",
+    "name": "牙买加",
+    "phoneFormat": "(876) 210-1234"
+  },
+  "PE": {
+    "enName": "Peru",
+    "localName": "Perú",
+    "code": "PE",
+    "dialCode": "51",
+    "name": "Peru",
+    "phoneFormat": "912 345 678"
+  },
+  "TM": {
+    "enName": "Turkmenistan",
+    "localName": "Turkmenistan",
+    "code": "TM",
+    "dialCode": "993",
+    "name": "土库曼斯坦",
+    "phoneFormat": "8 66 123456"
+  },
+  "DE": {
+    "enName": "Germany",
+    "localName": "Deutschland",
+    "code": "DE",
+    "dialCode": "49",
+    "name": "德国",
+    "phoneFormat": "01512 3456789"
+  },
+  "FJ": {
+    "enName": "Fiji",
+    "localName": "Fiji",
+    "code": "FJ",
+    "dialCode": "679",
+    "name": "斐济",
+    "phoneFormat": "701 2345"
+  },
+  "TK": {
+    "enName": "Tokelau",
+    "localName": "Tokelau",
+    "code": "TK",
+    "dialCode": "690",
+    "name": "托克劳",
+    "phoneFormat": "7290"
+  },
+  "GN": {
+    "enName": "Guinea",
+    "localName": "Guinée",
+    "code": "GN",
+    "dialCode": "224",
+    "name": "几内亚",
+    "phoneFormat": "601 12 34 56"
+  },
+  "US": {
+    "enName": "United States",
+    "localName": "United States",
+    "code": "US",
+    "dialCode": "1",
+    "name": "美国",
+    "phoneFormat": "(201) 555-0123"
+  },
+  "TD": {
+    "enName": "Chad",
+    "localName": "Tchad",
+    "code": "TD",
+    "dialCode": "235",
+    "name": "乍得",
+    "phoneFormat": "63 01 23 45"
+  },
+  "SO": {
+    "enName": "Somalia",
+    "localName": "Soomaaliya",
+    "code": "SO",
+    "dialCode": "252",
+    "name": "索马里",
+    "phoneFormat": "7 1123456"
+  },
+  "TH": {
+    "enName": "Thailand",
+    "localName": "ไทย",
+    "code": "TH",
+    "dialCode": "66",
+    "name": "泰国",
+    "phoneFormat": "081 234 5678"
+  },
+  "GQ": {
+    "enName": "Equatorial Guinea",
+    "localName": "Guinea Ecuatorial",
+    "code": "GQ",
+    "dialCode": "240",
+    "name": "赤道几内亚",
+    "phoneFormat": "222 123 456"
+  },
+  "KI": {
+    "enName": "Kiribati",
+    "localName": "Kiribati",
+    "code": "KI",
+    "dialCode": "686",
+    "name": "基里巴斯",
+    "phoneFormat": "72012345"
+  },
+  "CR": {
+    "enName": "Costa Rica",
+    "localName": "Costa Rica",
+    "code": "CR",
+    "dialCode": "506",
+    "name": "Costa Rica",
+    "phoneFormat": "8312 3456"
+  },
+  "HK": {
+    "enName": "China/Hong Kong",
+    "localName": "中国香港",
+    "code": "HK",
+    "dialCode": "852",
+    "name": "中国香港",
+    "phoneFormat": "5123 4567"
+  },
+  "VN": {
+    "enName": "Vietnam",
+    "localName": "Việt Nam",
+    "code": "VN",
+    "dialCode": "84",
+    "name": "越南",
+    "phoneFormat": "091 234 56 78"
+  },
+  "ST": {
+    "enName": "São Tomé and Príncipe",
+    "localName": "São Tomé e Príncipe",
+    "code": "ST",
+    "dialCode": "239",
+    "name": "圣多美普林西比",
+    "phoneFormat": "981 2345"
+  },
+  "KW": {
+    "enName": "Kuwait",
+    "localName": "‫الكويت‬‎",
+    "code": "KW",
+    "dialCode": "965",
+    "name": "科威特",
+    "phoneFormat": "500 12345"
+  },
+  "NG": {
+    "enName": "Nigeria",
+    "localName": "Nigeria",
+    "code": "NG",
+    "dialCode": "234",
+    "name": "尼日利亚",
+    "phoneFormat": "0802 123 4567"
+  },
+  "HR": {
+    "enName": "Croatia",
+    "localName": "Hrvatska",
+    "code": "HR",
+    "dialCode": "385",
+    "name": "克罗地亚",
+    "phoneFormat": "091 234 5678"
+  },
+  "CK": {
+    "enName": "Cook Islands",
+    "localName": "Cook Islands",
+    "code": "CK",
+    "dialCode": "682",
+    "name": "库克群岛 (新西兰)",
+    "phoneFormat": "71 234"
+  },
+  "LK": {
+    "enName": "Sri Lanka",
+    "localName": "ශ්‍රී ලංකාව",
+    "code": "LK",
+    "dialCode": "94",
+    "name": "斯里兰卡",
+    "phoneFormat": "071 234 5678"
+  },
+  "UY": {
+    "enName": "Uruguay",
+    "localName": "Uruguay",
+    "code": "UY",
+    "dialCode": "598",
+    "name": "乌拉圭",
+    "phoneFormat": "094 231 234"
+  },
+  "BQ": {
+    "enName": "Caribbean Netherlands",
+    "localName": "Caribbean Netherlands",
+    "code": "BQ",
+    "dialCode": "599",
+    "name": "Caribbean Netherlands",
+    "phoneFormat": "318 1234"
+  },
+  "TL": {
+    "enName": "Timor-Leste",
+    "localName": "Timor-Leste",
+    "code": "TL",
+    "dialCode": "670",
+    "name": "东帝汶",
+    "phoneFormat": "7721 2345"
+  },
+  "GB": {
+    "enName": "United Kingdom",
+    "localName": "United Kingdom",
+    "code": "GB",
+    "dialCode": "44",
+    "name": "英国",
+    "phoneFormat": "07400 123456"
+  },
+  "UK": {
+    "enName": "United Kingdom",
+    "localName": "United Kingdom",
+    "code": "UK",
+    "dialCode": "44",
+    "name": "英国",
+    "phoneFormat": "07400 123456"
+  },
+  "CH": {
+    "enName": "Switzerland",
+    "localName": "Schweiz",
+    "code": "CH",
+    "dialCode": "41",
+    "name": "瑞士",
+    "phoneFormat": "078 123 45 67"
+  },
+  "WS": {
+    "enName": "Samoa",
+    "localName": "Samoa",
+    "code": "WS",
+    "dialCode": "685",
+    "name": "萨摩亚",
+    "phoneFormat": "601234"
+  },
+  "PS": {
+    "enName": "Palestine",
+    "localName": "‫فلسطين‬‎",
+    "code": "PS",
+    "dialCode": "970",
+    "name": "Palestine",
+    "phoneFormat": "0599 123 456"
+  },
+  "ES": {
+    "enName": "Spain",
+    "localName": "España",
+    "code": "ES",
+    "dialCode": "34",
+    "name": "西班牙",
+    "phoneFormat": "612 34 56 78"
+  },
+  "LR": {
+    "enName": "Liberia",
+    "localName": "Liberia",
+    "code": "LR",
+    "dialCode": "231",
+    "name": "利比里亚",
+    "phoneFormat": "077 012 3456"
+  },
+  "VE": {
+    "enName": "Venezuela",
+    "localName": "Venezuela",
+    "code": "VE",
+    "dialCode": "58",
+    "name": "委内瑞拉",
+    "phoneFormat": "0412-1234567"
+  },
+  "BF": {
+    "enName": "Burkina Faso",
+    "localName": "Burkina Faso",
+    "code": "BF",
+    "dialCode": "226",
+    "name": "布基纳法索",
+    "phoneFormat": "70 12 34 56"
+  },
+  "SZ": {
+    "enName": "Swaziland",
+    "localName": "Swaziland",
+    "code": "SZ",
+    "dialCode": "268",
+    "name": "斯威士兰",
+    "phoneFormat": "7612 3456"
+  },
+  "PW": {
+    "enName": "Palau",
+    "localName": "Palau",
+    "code": "PW",
+    "dialCode": "680",
+    "name": "帕劳",
+    "phoneFormat": "620 1234"
+  },
+  "BL": {
+    "enName": "Saint Barthélemy",
+    "localName": "Saint-Barthélemy",
+    "code": "BL",
+    "dialCode": "590",
+    "name": "圣巴泰勒米岛",
+    "phoneFormat": "0690 30-1234"
+  },
+  "EE": {
+    "enName": "Estonia",
+    "localName": "Eesti",
+    "code": "EE",
+    "dialCode": "372",
+    "name": "爱沙尼亚",
+    "phoneFormat": "5123 4567"
+  },
+  "WF": {
+    "enName": "Wallis and Futuna",
+    "localName": "Wallis and Futuna",
+    "code": "WF",
+    "dialCode": "681",
+    "name": "瓦利斯和富图纳群岛 (法国)",
+    "phoneFormat": "50 12 34"
+  },
+  "NU": {
+    "enName": "Niue",
+    "localName": "Niue",
+    "code": "NU",
+    "dialCode": "683",
+    "name": "纽埃",
+    "phoneFormat": "1234"
+  },
+  "AT": {
+    "enName": "Austria",
+    "localName": "Österreich",
+    "code": "AT",
+    "dialCode": "43",
+    "name": "奥地利",
+    "phoneFormat": "0664 123456"
+  },
+  "KR": {
+    "enName": "South Korea",
+    "localName": "대한민국",
+    "code": "KR",
+    "dialCode": "82",
+    "name": "韩国",
+    "phoneFormat": "010-0000-0000"
+  },
+  "MZ": {
+    "enName": "Mozambique",
+    "localName": "Moçambique",
+    "code": "MZ",
+    "dialCode": "258",
+    "name": "莫桑比克",
+    "phoneFormat": "82 123 4567"
+  },
+  "SV": {
+    "enName": "El Salvador",
+    "localName": "El Salvador",
+    "code": "SV",
+    "dialCode": "503",
+    "name": "萨尔瓦多",
+    "phoneFormat": "7012 3456"
+  },
+  "MC": {
+    "enName": "Monaco",
+    "localName": "Monaco",
+    "code": "MC",
+    "dialCode": "377",
+    "name": "摩纳哥",
+    "phoneFormat": "06 12 34 56 78"
+  },
+  "GU": {
+    "enName": "Guam",
+    "localName": "Guam",
+    "code": "GU",
+    "dialCode": "1671",
+    "name": "关岛 (美国)",
+    "phoneFormat": "(671) 300-1234"
+  },
+  "LS": {
+    "enName": "Lesotho",
+    "localName": "Lesotho",
+    "code": "LS",
+    "dialCode": "266",
+    "name": "莱索托",
+    "phoneFormat": "5012 3456"
+  },
+  "TO": {
+    "enName": "Tonga",
+    "localName": "Tonga",
+    "code": "TO",
+    "dialCode": "676",
+    "name": "汤加",
+    "phoneFormat": "771 5123"
+  },
+  "EH": {
+    "enName": "Western Sahara",
+    "localName": "‫الصحراء الغربية‬‎",
+    "code": "EH",
+    "dialCode": "212",
+    "name": "Western Sahara",
+    "phoneFormat": "0650-123456"
+  },
+  "HU": {
+    "enName": "Hungary",
+    "localName": "Magyarország",
+    "code": "HU",
+    "dialCode": "36",
+    "name": "匈牙利",
+    "phoneFormat": "(20) 123 4567"
+  },
+  "RE": {
+    "enName": "Réunion",
+    "localName": "La Réunion",
+    "code": "RE",
+    "dialCode": "262",
+    "name": "留尼汪",
+    "phoneFormat": "0692 12 34 56"
+  },
+  "SS": {
+    "enName": "South Sudan",
+    "localName": "‫جنوب السودان‬‎",
+    "code": "SS",
+    "dialCode": "211",
+    "name": "南苏丹",
+    "phoneFormat": "0977 123 456"
+  },
+  "JP": {
+    "enName": "Japan",
+    "localName": "日本",
+    "code": "JP",
+    "dialCode": "81",
+    "name": "日本",
+    "phoneFormat": "090-1234-5678"
+  },
+  "BY": {
+    "enName": "Belarus",
+    "localName": "Беларусь",
+    "code": "BY",
+    "dialCode": "375",
+    "name": "白俄罗斯",
+    "phoneFormat": "8 029 491-19-11"
+  },
+  "MU": {
+    "enName": "Mauritius",
+    "localName": "Moris",
+    "code": "MU",
+    "dialCode": "230",
+    "name": "毛里求斯",
+    "phoneFormat": "5251 2345"
+  },
+  "AL": {
+    "enName": "Albania",
+    "localName": "Shqipëri",
+    "code": "AL",
+    "dialCode": "355",
+    "name": "阿尔巴尼亚",
+    "phoneFormat": "066 123 4567"
+  },
+  "NF": {
+    "enName": "Norfolk Island",
+    "localName": "Norfolk Island",
+    "code": "NF",
+    "dialCode": "672",
+    "name": "Norfolk Island",
+    "phoneFormat": "3 81234"
+  },
+  "NZ": {
+    "enName": "New Zealand",
+    "localName": "New Zealand",
+    "code": "NZ",
+    "dialCode": "64",
+    "name": "新西兰",
+    "phoneFormat": "021 123 4567"
+  },
+  "SN": {
+    "enName": "Senegal",
+    "localName": "Sénégal",
+    "code": "SN",
+    "dialCode": "221",
+    "name": "塞内加尔",
+    "phoneFormat": "70 123 45 67"
+  },
+  "MK": {
+    "enName": "Macedonia",
+    "localName": "FYROM) (Македонија",
+    "code": "MK",
+    "dialCode": "389",
+    "name": "马其顿",
+    "phoneFormat": "072 345 678"
+  },
+  "ET": {
+    "enName": "Ethiopia",
+    "localName": "Ethiopia",
+    "code": "ET",
+    "dialCode": "251",
+    "name": "埃塞俄比亚",
+    "phoneFormat": "091 123 4567"
+  },
+  "EG": {
+    "enName": "Egypt",
+    "localName": "‫مصر‬‎",
+    "code": "EG",
+    "dialCode": "20",
+    "name": "埃及",
+    "phoneFormat": "0100 123 4567"
+  },
+  "SL": {
+    "enName": "Sierra Leone",
+    "localName": "Sierra Leone",
+    "code": "SL",
+    "dialCode": "232",
+    "name": "塞拉利昂",
+    "phoneFormat": "(025) 123456"
+  },
+  "BO": {
+    "enName": "Bolivia",
+    "localName": "Bolivia",
+    "code": "BO",
+    "dialCode": "591",
+    "name": "玻利维亚",
+    "phoneFormat": "71234567"
+  },
+  "MT": {
+    "enName": "Malta",
+    "localName": "Malta",
+    "code": "MT",
+    "dialCode": "356",
+    "name": "马耳他",
+    "phoneFormat": "9696 1234"
+  },
+  "SA": {
+    "enName": "Saudi Arabia",
+    "localName": "‫المملكة العربية السعودية‬‎",
+    "code": "SA",
+    "dialCode": "966",
+    "name": "沙特阿拉伯",
+    "phoneFormat": "051 234 5678"
+  },
+  "CV": {
+    "enName": "Cape Verde",
+    "localName": "Kabu Verdi",
+    "code": "CV",
+    "dialCode": "238",
+    "name": "佛得角",
+    "phoneFormat": "991 12 34"
+  },
+  "PK": {
+    "enName": "Pakistan",
+    "localName": "‫پاکستان‬‎",
+    "code": "PK",
+    "dialCode": "92",
+    "name": "巴基斯坦",
+    "phoneFormat": "0301 2345678"
+  },
+  "XK": {
+    "enName": "Kosovo",
+    "localName": "Kosovo",
+    "code": "XK",
+    "dialCode": "383",
+    "name": "Kosovo",
+    "phoneFormat": ""
+  },
+  "GM": {
+    "enName": "Gambia",
+    "localName": "Gambia",
+    "code": "GM",
+    "dialCode": "220",
+    "name": "冈比亚",
+    "phoneFormat": "301 2345"
+  },
+  "IE": {
+    "enName": "Ireland",
+    "localName": "Ireland",
+    "code": "IE",
+    "dialCode": "353",
+    "name": "爱尔兰共和国",
+    "phoneFormat": "085 012 3456"
+  },
+  "QA": {
+    "enName": "Qatar",
+    "localName": "‫قطر‬‎",
+    "code": "QA",
+    "dialCode": "974",
+    "name": "卡塔尔",
+    "phoneFormat": "3312 3456"
+  },
+  "VI": {
+    "enName": "U.S. Virgin Islands",
+    "localName": "U.S. Virgin Islands",
+    "code": "VI",
+    "dialCode": "1340",
+    "name": "美属维尔京群岛 (美国)",
+    "phoneFormat": "(340) 642-1234"
+  },
+  "SK": {
+    "enName": "Slovakia",
+    "localName": "Slovensko",
+    "code": "SK",
+    "dialCode": "421",
+    "name": "斯洛伐克",
+    "phoneFormat": "0912 123 456"
+  },
+  "FR": {
+    "enName": "France",
+    "localName": "France",
+    "code": "FR",
+    "dialCode": "33",
+    "name": "法国",
+    "phoneFormat": "06 12 34 56 78"
+  },
+  "LT": {
+    "enName": "Lithuania",
+    "localName": "Lietuva",
+    "code": "LT",
+    "dialCode": "370",
+    "name": "立陶宛",
+    "phoneFormat": "(8-612) 34567"
+  },
+  "RS": {
+    "enName": "Serbia",
+    "localName": "Србија",
+    "code": "RS",
+    "dialCode": "381",
+    "name": "塞尔维亚共和国",
+    "phoneFormat": "060 1234567"
+  },
+  "BA": {
+    "enName": "Bosnia and Herzegovina",
+    "localName": "Босна и Херцеговина",
+    "code": "BA",
+    "dialCode": "387",
+    "name": "波斯尼亚与赫塞哥维纳",
+    "phoneFormat": "061 123 456"
+  },
+  "NE": {
+    "enName": "Niger",
+    "localName": "Nijar",
+    "code": "NE",
+    "dialCode": "227",
+    "name": "尼日尔",
+    "phoneFormat": "93 12 34 56"
+  },
+  "RW": {
+    "enName": "Rwanda",
+    "localName": "Rwanda",
+    "code": "RW",
+    "dialCode": "250",
+    "name": "卢旺达",
+    "phoneFormat": "0720 123 456"
+  },
+  "BD": {
+    "enName": "Bangladesh",
+    "localName": "বাংলাদেশ",
+    "code": "BD",
+    "dialCode": "880",
+    "name": "孟加拉国",
+    "phoneFormat": "01812-345678"
+  },
+  "BB": {
+    "enName": "Barbados",
+    "localName": "Barbados",
+    "code": "BB",
+    "dialCode": "1246",
+    "name": "巴巴多斯",
+    "phoneFormat": "(246) 250-1234"
+  },
+  "NI": {
+    "enName": "Nicaragua",
+    "localName": "Nicaragua",
+    "code": "NI",
+    "dialCode": "505",
+    "name": "Nicaragua",
+    "phoneFormat": "8123 4567"
+  },
+  "NO": {
+    "enName": "Norway",
+    "localName": "Norge",
+    "code": "NO",
+    "dialCode": "47",
+    "name": "挪威",
+    "phoneFormat": "406 12 345"
+  },
+  "BW": {
+    "enName": "Botswana",
+    "localName": "Botswana",
+    "code": "BW",
+    "dialCode": "267",
+    "name": "博茨瓦纳",
+    "phoneFormat": "71 123 456"
+  },
+  "VC": {
+    "enName": "Saint Vincent and the Grenadines",
+    "localName": "Saint Vincent and the Grenadines",
+    "code": "VC",
+    "dialCode": "1784",
+    "name": "圣文森特和格林纳丁斯",
+    "phoneFormat": "(784) 430-1234"
+  },
+  "DK": {
+    "enName": "Denmark",
+    "localName": "Danmark",
+    "code": "DK",
+    "dialCode": "45",
+    "name": "丹麦",
+    "phoneFormat": "20 12 34 56"
+  },
+  "DO": {
+    "enName": "Dominican Republic",
+    "localName": "República Dominicana",
+    "code": "DO",
+    "dialCode": "1",
+    "name": "多米尼加共和国",
+    "phoneFormat": "(809) 234-5678"
+  },
+  "MX": {
+    "enName": "Mexico",
+    "localName": "México",
+    "code": "MX",
+    "dialCode": "52",
+    "name": "墨西哥",
+    "phoneFormat": "044 222 123 4567"
+  },
+  "UG": {
+    "enName": "Uganda",
+    "localName": "Uganda",
+    "code": "UG",
+    "dialCode": "256",
+    "name": "乌干达",
+    "phoneFormat": "0712 345678"
+  },
+  "FM": {
+    "enName": "Micronesia",
+    "localName": "Micronesia",
+    "code": "FM",
+    "dialCode": "691",
+    "name": "密克罗尼西亚联邦",
+    "phoneFormat": "350 1234"
+  },
+  "SR": {
+    "enName": "Suriname",
+    "localName": "Suriname",
+    "code": "SR",
+    "dialCode": "597",
+    "name": "Suriname",
+    "phoneFormat": "741-2345"
+  },
+  "GL": {
+    "enName": "Greenland",
+    "localName": "Kalaallit Nunaat",
+    "code": "GL",
+    "dialCode": "299",
+    "name": "格陵兰 (丹麦)",
+    "phoneFormat": "22 12 34"
+  },
+  "SH": {
+    "enName": "Saint Helena",
+    "localName": "Saint Helena",
+    "code": "SH",
+    "dialCode": "290",
+    "name": "圣赫勒拿岛",
+    "phoneFormat": "51234"
+  }
+}

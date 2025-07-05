@@ -1,0 +1,34 @@
+use base64::prelude::BASE64_STANDARD;
+use base64::Engine;
+use std::error::Error;
+use std::string::ToString;
+use std::sync::LazyLock;
+
+pub type AnyResult<T> = Result<T, Box<dyn Error>>;
+
+pub fn base64_decode(source: &str) -> AnyResult<String> {
+    let vec = BASE64_STANDARD.decode(source)?;
+    let string = String::from_utf8(vec)?;
+    Ok(string)
+}
+
+pub fn url_decode(source: &str) -> AnyResult<String> {
+    let decode = percent_encoding::percent_decode_str(source);
+    let cow = decode.decode_utf8()?;
+    let string = cow.into_owned();
+    Ok(string)
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum NcError {
+    #[error("不支持的来源")]
+    UnsupportedSource,
+}
+
+pub static PRIORITY_CODES: LazyLock<Vec<String>> =
+    LazyLock::new(|| vec!["SG".to_string(), "JP".to_string(), "US".to_string()]);
+
+pub static PREFIX_REMAIN_TRAFFIC: LazyLock<Vec<String>> =
+    LazyLock::new(|| vec!["剩余流量：".to_string()]);
+
+pub static PREFIX_EXPIRE: LazyLock<Vec<String>> = LazyLock::new(|| vec!["套餐到期：".to_string()]);
