@@ -5,8 +5,8 @@ use crate::kernel::{
 };
 use crate::rule::{Rule, RuleType};
 use crate::subscribe::SubscribeNode;
-use std::collections::HashMap;
 use serde_json::{json, to_string, Value};
+use std::collections::HashMap;
 use std::slice::Iter;
 
 pub const tag_selector: &str = "节点选择";
@@ -23,15 +23,6 @@ pub const default_mixed_listen: &str = "127.0.0.1";
 pub const default_mixed_port: u16 = 7890;
 
 impl KernelConfig {
-    pub fn ip_strategy(&self) -> String {
-        if self.ipv6 {
-            "prefer_ipv6"
-        } else {
-            "ipv4_only"
-        }
-        .to_string()
-    }
-
     pub fn sing_box_default(&self) -> AnyResult<String> {
         self.sing_box(default_ui, default_mixed_listen, default_mixed_port)
     }
@@ -341,6 +332,7 @@ impl KernelConfig {
             &mut rules_other,
             &mut rules_ip,
         );
+
         let tags_direct = self.fill_rule(
             self.rules_direct.iter(),
             key_direct,
@@ -348,6 +340,7 @@ impl KernelConfig {
             &mut rules_other,
             &mut rules_ip,
         );
+
         let tags_proxy = self.fill_rule(
             self.rules_proxy.iter(),
             key_proxy,
@@ -365,11 +358,6 @@ impl KernelConfig {
         }
         for rule in rules_ip {
             rule_set.push(rule)
-        }
-
-        if self.geo_cn_direct {
-            let rule = Rule::from_remote(RuleType::Ip, geo_ip_cn.to_string());
-            rule_set.push(rule.sing_box(&format!("{}_geo_ip", key_direct)))
         }
 
         route.insert("rule_set".to_string(), json!(rule_set));
@@ -423,6 +411,14 @@ impl KernelConfig {
         rules_ip: &mut Vec<HashMap<String, String>>,
     ) -> Vec<String> {
         let mut tags = Vec::new();
+
+        if self.geo_cn_direct {
+            let rule = Rule::from_remote(RuleType::Ip, geo_ip_cn.to_string());
+            let tag = format!("{}_i_geo", key_direct);
+            rules_ip.push(rule.sing_box(&tag));
+            tags.push(tag)
+        }
+
         vec.for_each(|rule| match rule.rule_type {
             RuleType::Ip => {
                 let rule = rule.sing_box(&format!("{}_i_{}", prefix, rules_ip.len()));
@@ -440,6 +436,7 @@ impl KernelConfig {
                 rules_other.push(rule);
             }
         });
+
         tags
     }
 

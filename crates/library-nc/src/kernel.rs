@@ -76,6 +76,15 @@ impl KernelConfig {
             .collect();
         self
     }
+
+    pub fn ip_strategy(&self) -> String {
+        if self.ipv6 {
+            "prefer_ipv6"
+        } else {
+            "ipv4_only"
+        }
+        .to_string()
+    }
 }
 
 // 多个参数值并行. 必须
@@ -198,7 +207,13 @@ pub const exclude_default: LazyLock<NodeContains> = LazyLock::new(|| NodeContain
         "MO".to_string(),
         "TW".to_string(),
     ],
-    name_contains: vec!["IEPL".to_string(), "IPLC".to_string(), "境外".to_string()],
+    name_contains: vec![
+        "IEPL".to_string(),
+        "IPLC".to_string(),
+        "境外".to_string(),
+        "回国".to_string(),
+        "专线".to_string(),
+    ],
 });
 
 pub const include_main: LazyLock<NodeContains> = LazyLock::new(|| NodeContains {
