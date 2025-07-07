@@ -142,6 +142,7 @@ impl ConvertParams {
     ) -> AnyResult<KernelConfig> {
         let config = KernelConfig {
             nodes: subscribe.nodes,
+            debug: self.debug,
             tun: self.tun,
             fake_ip: self.fake_ip,
             ipv6: self.ipv6,

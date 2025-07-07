@@ -8,6 +8,7 @@ use worker::console_debug;
 #[derive(Default)]
 pub struct KernelConfig {
     pub nodes: Vec<SubscribeNode>,
+    pub debug: bool,
     pub tun: bool,
     pub fake_ip: bool,
     pub ipv6: bool,

@@ -46,7 +46,14 @@ impl KernelConfig {
 
     fn fill_log(&self, map: &mut HashMap<String, Value>) {
         let mut log: HashMap<String, Value> = HashMap::new();
-        log.insert("level".to_string(), json!("info"));
+        log.insert(
+            "level".to_string(),
+            if self.debug {
+                json!("debug")
+            } else {
+                json!("info")
+            },
+        );
         log.insert("timestamp".to_string(), json!(true));
 
         map.insert("log".to_string(), json!(log));
