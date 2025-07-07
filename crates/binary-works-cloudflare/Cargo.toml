@@ -7,6 +7,19 @@ categories.workspace = true
 license.workspace = true
 edition.workspace = true
 rust-version.workspace = true
+description = "cloudflare works"
+
+[package.metadata.release]
+release = false
+
+# https://github.com/rustwasm/wasm-pack/issues/1247
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false
+
+[lib]
+crate-type = ["cdylib"]
 
 [dependencies]
-library-nc = {path = "../library-nc"}
+library-nc = { path = "../library-nc", features = ["wrangler"] }
+worker = { workspace = true }
+console_error_panic_hook = { version = "0.1.7" }

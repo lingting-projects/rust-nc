@@ -1,0 +1,16 @@
+name = "lingting-nc"
+main = "build/worker/shim.mjs"
+compatibility_date = "2024-06-19"
+workers_dev = false
+
+[build]
+command = "cargo install -q worker-build && worker-build --release"
+
+[placement]
+mode = "smart"
+
+[env.dev.vars]
+isDev = true
+
+[env.prod.vars]
+isDev = false
