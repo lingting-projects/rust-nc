@@ -1,5 +1,6 @@
 use crate::core::fast;
 use std::collections::HashMap;
+use crate::kernel::key_direct;
 
 pub enum RuleType {
     // 针对ip的规则
@@ -24,6 +25,7 @@ impl Rule {
             remote: false,
         }
     }
+
     pub fn from_remote(rule_type: RuleType, url: String) -> Self {
         let path = fast(&url);
         Self {
@@ -40,7 +42,7 @@ impl Rule {
         if self.remote {
             map.insert("url", &self.path);
             map.insert("type", "remote");
-            map.insert("download_detour", "DIRECT");
+            map.insert("download_detour", key_direct);
             map.insert("update_interval", "1d");
         } else {
             map.insert("path", &self.path);

@@ -1,9 +1,12 @@
+use std::clone::Clone;
 use crate::http::pick_host;
 use base64::prelude::BASE64_STANDARD;
 use base64::Engine;
 use std::error::Error;
+use std::iter::Iterator;
 use std::string::ToString;
 use std::sync::LazyLock;
+use crate::kernel::include_main;
 
 pub type AnyResult<T> = Result<T, Box<dyn Error>>;
 
@@ -19,7 +22,7 @@ pub enum NcError {
 }
 
 pub static PRIORITY_CODES: LazyLock<Vec<String>> =
-    LazyLock::new(|| vec!["SG".to_string(), "JP".to_string(), "US".to_string()]);
+    LazyLock::new(|| include_main.area.clone());
 
 pub static PREFIX_REMAIN_TRAFFIC: LazyLock<Vec<String>> =
     LazyLock::new(|| vec!["剩余流量：".to_string()]);

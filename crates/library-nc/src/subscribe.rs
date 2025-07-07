@@ -1,18 +1,19 @@
 use crate::area::Area;
-use crate::core::{
-    base64_decode, AnyResult, NcError, PREFIX_EXPIRE, PREFIX_REMAIN_TRAFFIC, PRIORITY_CODES,
-};
+use crate::core::{base64_decode, AnyResult, NcError, PREFIX_EXPIRE, PREFIX_REMAIN_TRAFFIC};
 use crate::http::url_decode;
 use crate::{area, data_size};
 use byte_unit::rust_decimal::prelude::ToPrimitive;
-use serde_json::Value;
 use std::collections::HashMap;
+use serde_json::Value;
 use time::macros::format_description;
 use time::PrimitiveDateTime;
+use worker::{console_error, console_warn};
 
 pub struct Subscribe {
-    // 已使用流量. 单位: bytes
-    pub used: Option<u64>,
+    // 已使用下行流量. 单位: bytes
+    pub download: Option<u64>,
+    // 已使用上行流量. 单位: bytes
+    pub upload: Option<u64>,
     // 最多流量. 单位: bytes
     pub max: Option<u64>,
     // 过期时间. 毫秒级别时间戳
@@ -21,22 +22,12 @@ pub struct Subscribe {
     pub nodes: Vec<SubscribeNode>,
 }
 
-#[derive(Debug)]
-pub struct SubscribeNode {
-    pub node_type: String,
-    pub name: String,
-    pub server: String,
-    pub port: Option<i32>,
-    pub password: Option<String>,
-    pub area: Option<&'static Area>,
-    pub attribute: HashMap<String, Value>,
-}
-
 impl Subscribe {
-    pub fn resolve(input: &str, header_user_info: Option<&str>) -> AnyResult<Self> {
+    pub fn resolve(input: &str, header_user_info: Option<String>) -> AnyResult<Self> {
         let nodes = SubscribeNode::resolve(input)?;
 
-        let mut used: Option<u64> = None;
+        let mut download: Option<u64> = None;
+        let mut upload: Option<u64> = None;
         let mut max: Option<u64> = None;
         let mut expire: Option<u64> = None;
 
@@ -96,14 +87,8 @@ impl Subscribe {
                     })
                     .collect();
 
-                let download = map
-                    .get("download")
-                    .and_then(|s| s.parse::<u64>().ok())
-                    .unwrap_or(0);
-                let upload = map
-                    .get("upload")
-                    .and_then(|s| s.parse::<u64>().ok())
-                    .unwrap_or(0);
+                download = map.get("download").and_then(|s| s.parse::<u64>().ok());
+                upload = map.get("upload").and_then(|s| s.parse::<u64>().ok());
                 let total = map
                     .get("total")
                     .and_then(|s| s.parse::<u64>().ok())
@@ -113,19 +98,53 @@ impl Subscribe {
                     .and_then(|s| s.parse::<u64>().ok())
                     .unwrap_or(0);
 
-                used = Some(download + upload);
                 max = Some(total);
                 expire = Some(expire_seconds * 1000)
             }
         }
 
         Ok(Self {
-            used,
+            download,
+            upload,
             max,
             expire,
             nodes,
         })
     }
+
+    pub fn info(&self) -> Option<String> {
+        if self.download.is_none()
+            && self.upload.is_none()
+            && self.max.is_none()
+            && self.expire.is_none()
+        {
+            return None;
+        }
+
+        let download = self.download.unwrap_or(0);
+        let upload = self.upload.unwrap_or(0);
+        let max = self.max.unwrap_or(0);
+        let expire = self.expire.unwrap_or(0);
+        let expire_str = &expire.to_string();
+        Some(format!(
+            "download={};upload={};total={};expire={};",
+            download,
+            upload,
+            max,
+            if expire < 1 { "-" } else { expire_str }
+        ))
+    }
+}
+
+#[derive(Debug)]
+pub struct SubscribeNode {
+    pub node_type: String,
+    pub name: String,
+    pub server: String,
+    pub port: Option<i32>,
+    pub password: Option<String>,
+    pub area: Option<&'static Area>,
+    pub attribute: HashMap<String, Value>,
 }
 
 impl SubscribeNode {
@@ -208,16 +227,20 @@ impl SubscribeNode {
             match r {
                 Ok(o) => match o {
                     None => {
-                        #[cfg(feature = "log")]
+                        #[cfg(feature = "binary")]
                         log::warn!("解析结果为空! {}", line);
+                        #[cfg(feature = "wrangler")]
+                        console_warn!("解析结果为空! {}", line);
                     }
                     Some(node) => {
                         nodes.push(node);
                     }
                 },
                 Err(e) => {
-                    #[cfg(feature = "log")]
+                    #[cfg(feature = "binary")]
                     log::error!("解析异常! {}; {}", line, e);
+                    #[cfg(feature = "wrangler")]
+                    console_error!("解析异常! {}; {}", line, e);
                 }
             }
         }
@@ -355,28 +378,6 @@ impl SubscribeNode {
             Err(_) => Self::from_text(input),
         };
 
-        // 排序逻辑
-        let mut sorted_nodes = nodes;
-        sorted_nodes.sort_by_key(|node| {
-            let area_priority = match &node.area {
-                None => 0,
-                Some(area) if PRIORITY_CODES.contains(&area.code) => 1,
-                _ => 2,
-            };
-
-            let secondary_key = match &node.area {
-                None => "".to_string(),
-                Some(area) if PRIORITY_CODES.contains(&area.code) => PRIORITY_CODES
-                    .iter()
-                    .position(|code| code == &area.code)
-                    .unwrap_or(0)
-                    .to_string(),
-                Some(area) => area.code.clone(),
-            };
-
-            (area_priority, secondary_key)
-        });
-
-        Ok(sorted_nodes)
+        Ok(nodes)
     }
 }

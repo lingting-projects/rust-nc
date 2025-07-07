@@ -1,22 +1,26 @@
-use crate::core::fast;
+use crate::core::{fast, AnyResult};
 use crate::kernel::{
     clash_ui_url, fake_ipv4, fake_ipv6, inner_ipv4, inner_ipv6, key_direct, key_proxy,
     key_reject, route_ipv4, route_ipv6, test_url, virtual_ipv4, virtual_ipv6, KernelConfig,
 };
 use crate::rule::{Rule, RuleType};
 use crate::subscribe::SubscribeNode;
-use serde_json::{json, Value};
 use std::collections::HashMap;
+use serde_json::{json, to_string, Value};
 use std::slice::Iter;
 
-pub const tag_selector: &str = "节点";
+pub const tag_selector: &str = "节点选择";
 pub const tag_fallback: &str = "默认选择";
-pub const tag_dns_cn: &str = "dns-nc";
+pub const tag_dns_cn: &str = "dns-cn";
 pub const tag_dns_fake: &str = "dns-fake";
 pub const tag_dns_proxy: &str = "dns-proxy";
 
 pub const geo_ip_cn: &str =
     "https://raw.githubusercontent.com/SagerNet/sing-geoip/rule-set/geoip-cn.srs";
+
+pub const default_ui: &str = "127.0.0.1:9090";
+pub const default_mixed_listen: &str = "127.0.0.1";
+pub const default_mixed_port: u16 = 7890;
 
 impl KernelConfig {
     pub fn ip_strategy(&self) -> String {
@@ -28,12 +32,11 @@ impl KernelConfig {
         .to_string()
     }
 
-    pub fn sing_box(
-        &self,
-        ui: &str,
-        mixed_listen: &str,
-        mixed_port: &str,
-    ) -> HashMap<String, Value> {
+    pub fn sing_box_default(&self) -> AnyResult<String> {
+        self.sing_box(default_ui, default_mixed_listen, default_mixed_port)
+    }
+
+    pub fn sing_box(&self, ui: &str, mixed_listen: &str, mixed_port: u16) -> AnyResult<String> {
         let mut map: HashMap<String, Value> = HashMap::new();
 
         self.fill_log(&mut map);
@@ -41,11 +44,13 @@ impl KernelConfig {
         self.fill_inbounds(&mut map, mixed_listen, mixed_port);
         self.fill_outbounds(&mut map);
         let tags = self.fill_route(&mut map);
-        let tags_other = tags.get(0).unwrap();
+        let tags_direct = tags.get(0).unwrap();
         let tags_proxy = tags.get(1).unwrap();
-        self.fill_dns(&mut map, tags_other, tags_proxy);
+        self.fill_dns(&mut map, tags_direct, tags_proxy);
 
-        map
+        let json = json!(map);
+        let json = to_string(&json)?;
+        Ok(json)
     }
 
     fn fill_log(&self, map: &mut HashMap<String, Value>) {
@@ -81,7 +86,7 @@ impl KernelConfig {
         map.insert("experimental".to_string(), json!(experimental));
     }
 
-    fn fill_inbounds(&self, map: &mut HashMap<String, Value>, listen: &str, port: &str) {
+    fn fill_inbounds(&self, map: &mut HashMap<String, Value>, listen: &str, port: u16) {
         let mut inbounds = Vec::new();
 
         if self.tun {
@@ -131,7 +136,7 @@ impl KernelConfig {
         json!(map)
     }
 
-    fn build_mixed(&self, listen: &str, port: &str) -> Value {
+    fn build_mixed(&self, listen: &str, port: u16) -> Value {
         let mut map: HashMap<String, Value> = HashMap::new();
         map.insert("type".to_string(), json!("mixed"));
         map.insert("tag".to_string(), json!("mixed-in"));
@@ -162,7 +167,7 @@ impl KernelConfig {
             &auto_area,
         );
 
-        let fallback = self.build_node_selector(tag_fallback, json!("DIRECT"), &auto, &auto_area);
+        let fallback = self.build_node_selector(tag_fallback, json!(key_direct), &auto, &auto_area);
 
         let mut outbounds = Vec::new();
         outbounds.push(selector);
@@ -203,15 +208,15 @@ impl KernelConfig {
 
             let area = node.area.unwrap();
             let code = &area.code;
-            let option = map.get(code);
-            let mut nodes = if option.is_none() {
-                Vec::new()
-            } else {
-                option.unwrap().clone()
-            };
 
-            nodes.push(node);
-            map.insert(code.clone(), nodes);
+            match map.get_mut(code) {
+                None => {
+                    map.insert(code.clone(), vec![node]);
+                }
+                Some(vec) => {
+                    vec.push(node);
+                }
+            }
         });
 
         let mut vec = Vec::new();
@@ -336,7 +341,7 @@ impl KernelConfig {
             &mut rules_other,
             &mut rules_ip,
         );
-        self.fill_rule(
+        let tags_direct = self.fill_rule(
             self.rules_direct.iter(),
             key_direct,
             &mut rules_process,
@@ -351,11 +356,6 @@ impl KernelConfig {
             &mut rules_ip,
         );
 
-        let tags_other: Vec<String> = rules_other
-            .iter()
-            .map(|m| m.get("tag").unwrap().to_string())
-            .collect();
-
         let mut rule_set = Vec::new();
         for rule in rules_process {
             rule_set.push(rule)
@@ -367,7 +367,7 @@ impl KernelConfig {
             rule_set.push(rule)
         }
 
-        if self.geo_cn_ip_direct {
+        if self.geo_cn_direct {
             let rule = Rule::from_remote(RuleType::Ip, geo_ip_cn.to_string());
             rule_set.push(rule.sing_box(&format!("{}_geo_ip", key_direct)))
         }
@@ -404,13 +404,14 @@ impl KernelConfig {
                 set.insert("action".to_string(), "reject".to_string());
             }
 
-            set.insert("tag".to_string(), tag);
+            set.insert("rule_set".to_string(), tag);
+            rules.push(set);
         });
 
         route.insert("rules".to_string(), json!(rules));
 
         map.insert("route".to_string(), json!(route));
-        vec![tags_other, tags_proxy]
+        vec![tags_direct, tags_proxy]
     }
 
     fn fill_rule(
@@ -445,7 +446,7 @@ impl KernelConfig {
     fn fill_dns(
         &self,
         map: &mut HashMap<String, Value>,
-        tags_other: &Vec<String>,
+        tags_direct: &Vec<String>,
         tags_proxy: &Vec<String>,
     ) {
         let mut dns: HashMap<String, Value> = HashMap::new();
@@ -461,7 +462,11 @@ impl KernelConfig {
 
         let mut rules = Vec::new();
 
-        for tag in tags_other {
+        for tag in tags_direct {
+            // 直连 只设置 other 规则的dns
+            if !tag.contains("_o_") {
+                continue;
+            }
             let mut rule = HashMap::new();
             rule.insert("rule_set".to_string(), tag.clone());
             rule.insert("server".to_string(), tag_dns_cn.to_string());
@@ -469,17 +474,23 @@ impl KernelConfig {
             rules.push(rule);
         }
 
+        // 代理 除了 ip 规则, 都要设置dns
+        let rules_proxy_tags: Vec<_> = tags_proxy
+            .iter()
+            .filter(|tag| !tag.contains("_i_"))
+            .collect();
+
         if self.fake_ip {
-            tags_proxy.iter().for_each(|tag| {
+            rules_proxy_tags.iter().for_each(|tag| {
                 let mut rule = HashMap::new();
-                rule.insert("rule_set".to_string(), tag.clone());
+                rule.insert("rule_set".to_string(), (*tag).clone());
                 rule.insert("server".to_string(), tag_dns_fake.to_string());
 
                 rules.push(rule);
             })
         }
 
-        for tag in tags_proxy {
+        for tag in rules_proxy_tags {
             let mut rule = HashMap::new();
             rule.insert("server".to_string(), tag_dns_proxy.to_string());
             rule.insert("rule_set".to_string(), tag.clone());
@@ -487,14 +498,17 @@ impl KernelConfig {
             rules.push(rule);
         }
 
+        dns.insert("rules".to_string(), json!(rules));
+
+        let mut fake = HashMap::new();
+        fake.insert("enabled".to_string(), json!(self.fake_ip));
         if self.fake_ip {
-            let mut fake = HashMap::new();
-            fake.insert("enabled".to_string(), json!(true));
             fake.insert("inet4_range".to_string(), json!(fake_ipv4));
             if self.ipv6 {
                 fake.insert("inet6_range".to_string(), json!(fake_ipv6));
             }
         }
+        dns.insert("fakeip".to_string(), json!(fake));
 
         map.insert("dns".to_string(), json!(dns));
     }

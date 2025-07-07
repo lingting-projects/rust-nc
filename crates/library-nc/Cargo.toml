@@ -7,10 +7,13 @@ categories.workspace = true
 license.workspace = true
 edition.workspace = true
 rust-version.workspace = true
+description.workspace = true
 
 [features]
 default = []
 log = []
+wrangler = ["log"]
+binary = ["log"]
 
 [dependencies]
 log = { workspace = true }
@@ -22,4 +25,5 @@ serde_yaml = { workspace = true }
 percent-encoding = { workspace = true }
 base64 = { workspace = true }
 regex = { workspace = true }
-time = { workspace = true , features = ["macros", "parsing"]}
+time = { workspace = true, features = ["macros", "parsing"] }
+worker = { workspace = true }

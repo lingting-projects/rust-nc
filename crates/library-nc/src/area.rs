@@ -1,8 +1,9 @@
+use std::collections::HashMap;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::fmt;
 use std::sync::OnceLock;
+use worker::{console_debug, console_error};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Area {
@@ -34,9 +35,9 @@ fn init() {
                 root.into_iter()
                     .filter_map(|(code, data)| {
                         // 提取各语言名称，使用默认值防止缺失
-                        let name_cn = data.get("name_cn").cloned().unwrap_or_default();
-                        let name_en = data.get("name_en").cloned().unwrap_or_default();
-                        let name_local = data.get("name_local").cloned().unwrap_or_default();
+                        let name_cn = data.get("name").cloned().unwrap_or_default();
+                        let name_en = data.get("enName").cloned().unwrap_or_default();
+                        let name_local = data.get("localName").cloned().unwrap_or_default();
 
                         Some(Area {
                             code,
@@ -76,14 +77,76 @@ pub fn find_match(source: &str) -> Option<&'static Area> {
         let pattern = format!("[^a-zA-Z]{}[^a-zA-Z]", area.code);
         match Regex::new(&pattern) {
             Ok(regex) => {
-                regex.is_match(&upper)
-                    || source.contains(&area.name_cn)
-                    || source.contains(&area.name_en)
-                    || source.contains(&area.name_local)
+                let m_r = regex.is_match(&upper);
+                if m_r {
+                    #[cfg(feature = "binary")]
+                    log::debug!("[{}] 正则匹配成功! code: {}", source, area.code);
+                    #[cfg(feature = "wrangler")]
+                    console_debug!("[{}] 正则匹配成功! code: {}", source, area.code);
+                    return true;
+                }
+                let m_cn = source.contains(&area.name_cn);
+                if m_cn {
+                    #[cfg(feature = "binary")]
+                    log::debug!(
+                        "[{}] 名称[cn]匹配成功! code: {}; name: {}",
+                        source,
+                        area.code,
+                        area.name_cn
+                    );
+                    #[cfg(feature = "wrangler")]
+                    console_debug!(
+                        "[{}] 名称[cn]匹配成功! code: {}; name: {}",
+                        source,
+                        area.code,
+                        area.name_cn
+                    );
+                    return true;
+                }
+                let m_en = source.contains(&area.name_en);
+                if m_en {
+                    #[cfg(feature = "binary")]
+                    log::debug!(
+                        "[{}] 名称[en]匹配成功! code: {}; name: {}",
+                        source,
+                        area.code,
+                        area.name_en
+                    );
+                    #[cfg(feature = "wrangler")]
+                    console_debug!(
+                        "[{}] 名称[en]匹配成功! code: {}; name: {}",
+                        source,
+                        area.code,
+                        area.name_en
+                    );
+                    return true;
+                }
+                let m_local = source.contains(&area.name_local);
+                if m_local {
+                    #[cfg(feature = "binary")]
+                    log::debug!(
+                        "[{}] 名称[local]匹配成功! code: {}; name: {}",
+                        source,
+                        area.code,
+                        area.name_local
+                    );
+                    #[cfg(feature = "wrangler")]
+                    console_debug!(
+                        "[{}] 名称[local]匹配成功! code: {}; name: {}",
+                        source,
+                        area.code,
+                        area.name_local
+                    );
+                    return true;
+                }
+
+                false
             }
             Err(e) => {
-                #[cfg(feature = "log")]
+                #[cfg(feature = "binary")]
                 log::error!("正则构建异常! code: {}; {}", area.code, e);
+                #[cfg(feature = "wrangler")]
+                console_error!("正则构建异常! code: {}; {}", area.code, e);
                 false
             }
         }
