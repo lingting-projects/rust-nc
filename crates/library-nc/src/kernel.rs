@@ -120,7 +120,7 @@ pub struct NodeContains {
 
 impl NodeContains {
     pub fn is_empty(&self) -> bool {
-        self.area.is_empty() || self.name_contains.is_empty()
+        self.area.is_empty() && self.name_contains.is_empty()
     }
 
     fn match_area(&self, node: &SubscribeNode) -> bool {

@@ -19,6 +19,9 @@ wasm-opt = false
 [lib]
 crate-type = ["cdylib"]
 
+[features]
+log = ["library-nc/wrangler"]
+
 [dependencies]
 library-nc = { path = "../library-nc" }
 worker = { workspace = true }
