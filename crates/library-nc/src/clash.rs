@@ -6,39 +6,215 @@ use crate::kernel::{
 use crate::rule::{Rule, RuleType};
 use crate::singbox::geo_ip_cn;
 use crate::subscribe::SubscribeNode;
-use serde_yaml::{to_string, Mapping, Value};
+use serde::Serialize;
+use serde_yaml::Value;
 use std::collections::HashMap;
-use std::slice::Iter;
 use std::sync::LazyLock;
 
-const url_geoip: &str =
+const URL_GEOIP: &str =
     "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geoip-lite.dat";
-const url_geosite: &str =
+const URL_GEOSITE: &str =
     "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geosite.dat";
-const url_mmdb: &str =
+const URL_MMDB: &str =
     "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/country-lite.mmdb";
 
-const tag_direct: &str = "DIRECT";
-const tag_reject: &str = "REJECT";
+const TAG_DIRECT: &str = "DIRECT";
+const TAG_REJECT: &str = "REJECT";
 
-const fake_ip_filter: LazyLock<Vec<Value>> = LazyLock::new(|| {
-    vec![
-        Value::String("+.lan".to_string()),
-        Value::String("+.local".to_string()),
-        Value::String("+.localhost".to_string()),
-        Value::String("+.localdomain".to_string()),
-        Value::String("+.msftconnecttest.com".to_string()),
-        Value::String("+.msftncsi.com".to_string()),
-        Value::String("+.stun.*".to_string()),
-        Value::String("+.stun.*.*".to_string()),
-        Value::String("+.stun.*.*.*".to_string()),
-        Value::String("+.stun.*.*.*.*".to_string()),
-        Value::String("localhost.*".to_string()),
-        Value::String("localhost.*.*".to_string()),
-        Value::String("localhost.*.*.*".to_string()),
-        Value::String("localhost.*.*.*.*".to_string()),
-    ]
+const FAKE_IP_FILTER_STR: &[&str] = &[
+    "+.lan",
+    "+.local",
+    "+.localhost",
+    "+.localdomain",
+    "+.msftconnecttest.com",
+    "+.msftncsi.com",
+    "+.stun.*",
+    "+.stun.*.*",
+    "+.stun.*.*.*",
+    "+.stun.*.*.*.*",
+    "localhost.*",
+    "localhost.*.*",
+    "localhost.*.*.*",
+    "localhost.*.*.*.*",
+];
+
+const FAKE_IP_FILTER: LazyLock<Vec<Value>> = LazyLock::new(|| {
+    FAKE_IP_FILTER_STR
+        .iter()
+        .map(|s| Value::String(s.to_string()))
+        .collect()
 });
+
+#[derive(Serialize)]
+struct ClashConfig {
+    #[serde(rename = "port")]
+    port: u16,
+    #[serde(rename = "allow-lan")]
+    allow_lan: bool,
+    #[serde(rename = "bind-address")]
+    bind_address: String,
+    #[serde(rename = "mode")]
+    mode: String,
+    #[serde(rename = "log-level")]
+    log_level: String,
+    #[serde(rename = "external-controller")]
+    external_controller: String,
+    #[serde(rename = "unified-delay")]
+    unified_delay: bool,
+    #[serde(rename = "tcp-concurrent")]
+    tcp_concurrent: bool,
+    #[serde(rename = "global-client-fingerprint")]
+    global_client_fingerprint: String,
+    #[serde(rename = "profile")]
+    profile: ProfileConfig,
+    #[serde(rename = "geodata-mode")]
+    geodata_mode: bool,
+    #[serde(rename = "geodata-loader")]
+    geodata_loader: String,
+    #[serde(rename = "geo-auto-update")]
+    geo_auto_update: bool,
+    #[serde(rename = "geo-update-interval")]
+    geo_update_interval: u64,
+    #[serde(rename = "geox-url")]
+    geox_url: GeoxUrl,
+    #[serde(rename = "ipv6")]
+    ipv6: bool,
+    #[serde(rename = "tun")]
+    tun: TunConfig,
+    #[serde(rename = "dns")]
+    dns: DnsConfig,
+    #[serde(rename = "proxies")]
+    proxies: Vec<Proxy>,
+    #[serde(rename = "proxy-groups")]
+    proxy_groups: Vec<ProxyGroup>,
+    #[serde(rename = "rule-providers")]
+    rule_providers: HashMap<String, RuleProvider>,
+    #[serde(rename = "rules")]
+    rules: Vec<String>,
+}
+
+#[derive(Serialize)]
+struct ProfileConfig {
+    #[serde(rename = "store-selected")]
+    store_selected: bool,
+    #[serde(rename = "store-fake-ip", skip_serializing_if = "Option::is_none")]
+    store_fake_ip: Option<bool>,
+}
+
+#[derive(Serialize)]
+struct GeoxUrl {
+    #[serde(rename = "geoip")]
+    geoip: String,
+    #[serde(rename = "geosite")]
+    geosite: String,
+    #[serde(rename = "mmdb")]
+    mmdb: String,
+}
+
+#[derive(Serialize)]
+struct TunConfig {
+    #[serde(rename = "enable")]
+    enable: bool,
+    #[serde(rename = "stack")]
+    stack: String,
+    #[serde(rename = "dns-hijack")]
+    dns_hijack: Vec<String>,
+    #[serde(rename = "auto-route")]
+    auto_route: bool,
+    #[serde(rename = "auto-detect-interface")]
+    auto_detect_interface: bool,
+    #[serde(rename = "ipv6")]
+    ipv6: bool,
+}
+
+#[derive(Serialize)]
+struct DnsConfig {
+    #[serde(rename = "enable")]
+    enable: bool,
+    #[serde(rename = "listen")]
+    listen: String,
+    #[serde(rename = "ipv6")]
+    ipv6: bool,
+    #[serde(rename = "prefer-h3")]
+    prefer_h3: bool,
+    #[serde(rename = "cache-algorithm")]
+    cache_algorithm: String,
+    #[serde(rename = "use-system-hosts")]
+    use_system_hosts: bool,
+    #[serde(rename = "enhanced-mode")]
+    enhanced_mode: String,
+    #[serde(rename = "fake-ip-range")]
+    fake_ip_range: String,
+    #[serde(rename = "fake-ip-filter")]
+    fake_ip_filter: Vec<Value>,
+    #[serde(rename = "default-nameserver")]
+    default_nameserver: Vec<String>,
+    #[serde(rename = "nameserver")]
+    nameserver: Vec<String>,
+    #[serde(rename = "proxy-server-nameserver")]
+    proxy_server_nameserver: Vec<String>,
+    #[serde(rename = "nameserver-policy")]
+    nameserver_policy: HashMap<String, Vec<String>>,
+}
+
+#[derive(Serialize)]
+struct Proxy {
+    #[serde(rename = "name")]
+    name: String,
+    #[serde(rename = "type")]
+    type_: String,
+    #[serde(flatten)]
+    attributes: HashMap<String, Value>,
+    #[serde(rename = "skip-cert-verify")]
+    skip_cert_verify: bool,
+    server: String,
+    port: u16,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    password: Option<String>,
+}
+
+#[derive(Serialize)]
+#[serde(untagged)]
+enum ProxyGroup {
+    UrlTest {
+        #[serde(rename = "name")]
+        name: String,
+        #[serde(rename = "type")]
+        type_: String,
+        #[serde(rename = "url")]
+        url: String,
+        #[serde(rename = "interval")]
+        interval: u64,
+        #[serde(rename = "tolerance")]
+        tolerance: u64,
+        #[serde(rename = "proxies")]
+        proxies: Vec<String>,
+    },
+    Select {
+        #[serde(rename = "name")]
+        name: String,
+        #[serde(rename = "type")]
+        type_: String,
+        #[serde(rename = "default")]
+        default: String,
+        #[serde(rename = "url")]
+        url: String,
+        #[serde(rename = "interval")]
+        interval: u64,
+        #[serde(rename = "tolerance")]
+        tolerance: u64,
+        #[serde(rename = "proxies")]
+        proxies: Vec<String>,
+    },
+}
+
+#[derive(Serialize)]
+struct RuleProvider {
+    #[serde(rename = "type")]
+    type_: String,
+    #[serde(rename = "rules")]
+    rules: Vec<String>,
+}
 
 impl KernelConfig {
     pub fn clash_default(&self) -> AnyResult<String> {
@@ -46,435 +222,83 @@ impl KernelConfig {
     }
 
     pub fn clash(&self, ui: &str, mixed_listen: &str, mixed_port: u16) -> AnyResult<String> {
-        let mut map: HashMap<String, Value> = HashMap::new();
-        self.clash_fill_basic(&mut map, ui, mixed_listen, mixed_port);
-        self.clash_fill_tun(&mut map);
-        let rule_names_proxy = self.clash_fill_rules(&mut map);
-        self.clash_fill_dns(&mut map, rule_names_proxy);
-        self.clash_fill_proxies(&mut map);
-        self.clash_fill_groups(&mut map);
+        // 构建规则相关数据
+        let (rule_providers, rules, rule_names_proxy) = self.build_rules();
 
-        let yml = to_string(&map)?;
+        // 构建DNS配置
+        let dns = self.build_dns(rule_names_proxy);
+
+        // 构建代理列表
+        let proxies = self.build_proxies();
+
+        // 构建代理组
+        let proxy_groups = self.build_proxy_groups();
+
+        // 构建完整配置
+        let config = ClashConfig {
+            port: mixed_port,
+            allow_lan: true,
+            bind_address: mixed_listen.to_string(),
+            mode: "rule".to_string(),
+            log_level: if self.debug { "debug" } else { "info" }.to_string(),
+            external_controller: ui.to_string(),
+            unified_delay: true,
+            tcp_concurrent: false,
+            global_client_fingerprint: "chrome".to_string(),
+            profile: ProfileConfig {
+                store_selected: true,
+                store_fake_ip: self.fake_ip.then_some(true),
+            },
+            geodata_mode: true,
+            geodata_loader: "standard".to_string(),
+            geo_auto_update: true,
+            geo_update_interval: 24,
+            geox_url: GeoxUrl {
+                geoip: URL_GEOIP.to_string(),
+                geosite: URL_GEOSITE.to_string(),
+                mmdb: URL_MMDB.to_string(),
+            },
+            ipv6: self.ipv6,
+            tun: TunConfig {
+                enable: self.tun,
+                stack: "system".to_string(),
+                dns_hijack: vec!["any:53".to_string(), "tcp://any:53".to_string()],
+                auto_route: true,
+                auto_detect_interface: true,
+                ipv6: self.ipv6,
+            },
+            dns,
+            proxies,
+            proxy_groups,
+            rule_providers,
+            rules,
+        };
+
+        let yml = serde_yaml::to_string(&config)?;
         Ok(yml)
     }
 
-    fn clash_fill_basic(
-        &self,
-        map: &mut HashMap<String, Value>,
-        ui: &str,
-        mixed_listen: &str,
-        mixed_port: u16,
-    ) {
-        map.insert("port".to_string(), Value::Number(mixed_port.into()));
-        map.insert("allow-lan".to_string(), Value::Bool(true));
-        map.insert(
-            "bind-address".to_string(),
-            Value::String(mixed_listen.to_string()),
-        );
-        map.insert("mode".to_string(), Value::String("rule".to_string()));
-        map.insert(
-            "log-level".to_string(),
-            Value::String(if self.debug { "debug" } else { "info" }.to_string()),
-        );
-        map.insert(
-            "external-controller".to_string(),
-            Value::String(ui.to_string()),
-        );
-        map.insert("unified-delay".to_string(), Value::Bool(true));
-        map.insert("tcp-concurrent".to_string(), Value::Bool(false));
-        map.insert(
-            "global-client-fingerprint".to_string(),
-            Value::String("chrome".to_string()),
-        );
+    fn build_rules(&self) -> (HashMap<String, RuleProvider>, Vec<String>, Vec<String>) {
+        let mut rules_process = Vec::new();
+        let mut rules_other = Vec::new();
+        let mut rules_ip = Vec::new();
 
-        let mut profile = Mapping::new();
-        profile.insert(
-            Value::String("store-selected".to_string()),
-            Value::Bool(true),
-        );
-        if self.fake_ip {
-            profile.insert(
-                Value::String("store-fake-ip".to_string()),
-                Value::Bool(true),
-            );
-        }
-
-        map.insert("profile".to_string(), Value::Mapping(profile));
-
-        map.insert("geodata-mode".to_string(), Value::Bool(true));
-        map.insert(
-            "geodata-loader".to_string(),
-            Value::String("standard".to_string()),
-        );
-        map.insert("geo-auto-update".to_string(), Value::Bool(true));
-        map.insert("geo-update-interval".to_string(), Value::Number(24.into()));
-
-        let mut geox = Mapping::new();
-        geox.insert(
-            Value::String("geoip".to_string()),
-            Value::String(url_geoip.to_string()),
-        );
-        geox.insert(
-            Value::String("geosite".to_string()),
-            Value::String(url_geosite.to_string()),
-        );
-        geox.insert(
-            Value::String("mmdb".to_string()),
-            Value::String(url_mmdb.to_string()),
-        );
-        map.insert("geox-url".to_string(), Value::Mapping(geox));
-
-        map.insert("ipv6".to_string(), Value::Bool(self.ipv6));
-    }
-
-    fn clash_fill_tun(&self, map: &mut HashMap<String, Value>) {
-        let mut tun = Mapping::new();
-        tun.insert(Value::String("enable".to_string()), Value::Bool(self.tun));
-        tun.insert(
-            Value::String("stack".to_string()),
-            Value::String("system".to_string()),
-        );
-        tun.insert(
-            Value::String("dns-hijack".to_string()),
-            Value::Sequence(vec![
-                Value::String("any:53".to_string()),
-                Value::String("tcp://any:53".to_string()),
-            ]),
-        );
-        tun.insert(Value::String("auto-route".to_string()), Value::Bool(true));
-        tun.insert(
-            Value::String("auto-detect-interface".to_string()),
-            Value::Bool(true),
-        );
-        tun.insert(Value::String("ipv6".to_string()), Value::Bool(self.ipv6));
-        map.insert("tun".to_string(), Value::Mapping(tun));
-    }
-
-    fn clash_fill_dns(&self, map: &mut HashMap<String, Value>, rule_names_proxy: Vec<String>) {
-        // 添加 DNS 配置
-        let mut dns = Mapping::new();
-        dns.insert(Value::String("enable".to_string()), Value::Bool(true));
-        dns.insert(
-            Value::String("listen".to_string()),
-            Value::String("0.0.0.0:1053".to_string()),
-        );
-        dns.insert(Value::String("ipv6".to_string()), Value::Bool(self.ipv6));
-        dns.insert(Value::String("prefer-h3".to_string()), Value::Bool(false));
-        dns.insert(
-            Value::String("cache-algorithm".to_string()),
-            Value::String("arc".to_string()),
-        );
-        dns.insert(
-            Value::String("use-system-hosts".to_string()),
-            Value::Bool(false),
-        );
-        dns.insert(
-            Value::String("enhanced-mode".to_string()),
-            Value::String(
-                if self.fake_ip {
-                    "fake-ip"
-                } else {
-                    "redir-host"
-                }
-                .to_string(),
-            ),
-        );
-        dns.insert(
-            Value::String("fake-ip-range".to_string()),
-            Value::String("198.18.0.1/16".to_string()),
-        );
-
-        dns.insert(
-            Value::String("fake-ip-filter".to_string()),
-            Value::Sequence(fake_ip_filter.clone()),
-        );
-
-        let dns_cn = self
-            .dns_cn
-            .iter()
-            .map(|s| Value::String(s.to_string()))
-            .collect::<Vec<_>>();
-
-        // 添加默认 DNS 服务器
-        dns.insert(
-            Value::String("default-nameserver".to_string()),
-            Value::Sequence(dns_cn.clone()),
-        );
-        dns.insert(
-            Value::String("nameserver".to_string()),
-            Value::Sequence(dns_cn.clone()),
-        );
-        dns.insert(
-            Value::String("proxy-server-nameserver".to_string()),
-            Value::Sequence(dns_cn.clone()),
-        );
-
-        // 添加 dns 策略
-        let mut nameserver_policy = Mapping::new();
-
-        // 添加 rule-set:proxy 策略
-        let dns_proxy = self
-            .dns_proxy
-            .iter()
-            .map(|s| Value::String(s.to_string()))
-            .collect::<Vec<_>>();
-
-        for name in rule_names_proxy {
-            nameserver_policy.insert(
-                Value::String(format!("rule-set:{}", name)),
-                Value::Sequence(dns_proxy.clone()),
-            );
-        }
-
-        dns.insert(
-            Value::String("nameserver-policy".to_string()),
-            Value::Mapping(nameserver_policy),
-        );
-
-        map.insert("dns".to_string(), Value::Mapping(dns));
-    }
-
-    fn clash_fill_proxies(&self, map: &mut HashMap<String, Value>) {
-        let mut vec: Vec<Value> = Vec::new();
-        self.nodes.iter().for_each(|node| {
-            let mut mapping = Mapping::new();
-
-            node.attribute.iter().for_each(|(k, v)| {
-                let key = Value::String(k.clone());
-                let mut values = Vec::new();
-
-                if v.is_array() {
-                    v.as_array().map(|s| {
-                        s.into_iter().for_each(|i| {
-                            if let Some(str) = SubscribeNode::json_v_string(i) {
-                                values.push(Value::String(str))
-                            }
-                        })
-                    });
-                } else if let Some(str) = SubscribeNode::json_v_string(v) {
-                    values.push(Value::String(str))
-                };
-
-                if values.len() > 1 {
-                    mapping.insert(key, Value::Sequence(values));
-                } else {
-                    for v in values {
-                        mapping.insert(key, v);
-                        break;
-                    }
-                }
-            });
-
-            mapping.remove("allowInsecure");
-            if node.node_type == "ss" || node.node_type == "shadowsocks" {
-                mapping.insert(
-                    Value::String("type".to_string()),
-                    Value::String("ss".to_string()),
-                );
-            } else {
-                mapping.insert(
-                    Value::String("type".to_string()),
-                    Value::String(node.node_type.clone()),
-                );
-            }
-
-            mapping.insert(
-                Value::String("skip-cert-verify".to_string()),
-                Value::Bool(node.disable_ssl()),
-            );
-            mapping.insert(
-                Value::String("name".to_string()),
-                Value::String(node.name.clone()),
-            );
-            mapping.insert(
-                Value::String("server".to_string()),
-                Value::String(node.server.clone()),
-            );
-            if let Some(port) = node.port {
-                mapping.insert(
-                    Value::String("port".to_string()),
-                    Value::Number(port.into()),
-                );
-            }
-            if let Some(password) = &node.password {
-                mapping.insert(
-                    Value::String("password".to_string()),
-                    Value::String(password.into()),
-                );
-            }
-            vec.push(Value::Mapping(mapping))
-        });
-
-        map.insert("proxies".to_string(), Value::Sequence(vec));
-    }
-
-    fn clash_fill_groups(&self, map: &mut HashMap<String, Value>) {
-        // 全部节点的 国家自动切换节点
-        let auto_area = self.clash_build_node_auto_area();
-        // 自动选择节点
-        let mut auto_outbounds = Vec::new();
-        auto_area.iter().for_each(|node| {
-            let tag = node.get("name").unwrap();
-            auto_outbounds.push(tag.as_str().unwrap().to_string())
-        });
-        let auto = self.clash_build_node_auto(tag_auto, auto_outbounds);
-
-        let selector = self.clash_build_node_selector(
-            tag_selector,
-            auto_area.get(0).unwrap().get("name").unwrap().clone(),
-            &auto,
-            &auto_area,
-        );
-
-        let fallback = self.clash_build_node_selector(
-            tag_fallback,
-            Value::String(tag_direct.to_string()),
-            &auto,
-            &auto_area,
-        );
-        let mut outbounds = Vec::new();
-        outbounds.push(selector);
-        outbounds.push(auto);
-        outbounds.push(fallback);
-
-        for node in auto_area {
-            outbounds.push(node)
-        }
-
-        map.insert("proxy-groups".to_string(), Value::Sequence(outbounds));
-    }
-
-    fn clash_build_node_auto_area(&self) -> Vec<Value> {
-        let map = self.node_map_area();
-
-        let mut vec = Vec::new();
-
-        map.iter().for_each(|(code, nodes)| {
-            let area = nodes.get(0).unwrap().area.unwrap();
-            let tag = format!("[{}] {}自动", code, area.name_cn);
-
-            let mut outbounds = Vec::new();
-            nodes
-                .iter()
-                .for_each(|node| outbounds.push(node.name.to_string()));
-
-            let value = self.clash_build_node_auto(&tag, outbounds);
-            vec.push(value)
-        });
-
-        vec
-    }
-
-    fn clash_build_node_auto(&self, tag: &str, outbounds: Vec<String>) -> Value {
-        let mut node = Mapping::new();
-
-        node.insert(
-            Value::String("name".to_string()),
-            Value::String(tag.to_string()),
-        );
-        node.insert(
-            Value::String("type".to_string()),
-            Value::String("url-test".to_string()),
-        );
-        node.insert(
-            Value::String("url".to_string()),
-            Value::String(test_url.to_string()),
-        );
-        node.insert(
-            Value::String("interval".to_string()),
-            Value::Number(1800i32.into()),
-        );
-        node.insert(
-            Value::String("tolerance".to_string()),
-            Value::Number(150i32.into()),
-        );
-
-        let mut proxies = Vec::new();
-
-        for tag in outbounds {
-            proxies.push(Value::String(tag));
-        }
-
-        node.insert(
-            Value::String("proxies".to_string()),
-            Value::Sequence(proxies),
-        );
-        Value::Mapping(node)
-    }
-    fn clash_build_node_selector(
-        &self,
-        tag: &str,
-        default: Value,
-        auto: &Value,
-        auto_area: &Vec<Value>,
-    ) -> Value {
-        let mut node = Mapping::new();
-
-        node.insert(
-            Value::String("name".to_string()),
-            Value::String(tag.to_string()),
-        );
-        node.insert(
-            Value::String("type".to_string()),
-            Value::String("select".to_string()),
-        );
-        node.insert(Value::String("default".to_string()), default);
-        node.insert(
-            Value::String("url".to_string()),
-            Value::String(test_url.to_string()),
-        );
-        node.insert(
-            Value::String("interval".to_string()),
-            Value::Number(1800i32.into()),
-        );
-        node.insert(
-            Value::String("tolerance".to_string()),
-            Value::Number(150i32.into()),
-        );
-
-        let mut proxies = Vec::new();
-
-        proxies.push(Value::String(tag_direct.to_string()));
-        proxies.push(Value::String(tag_reject.to_string()));
-        proxies.push(auto.get("name").unwrap().clone());
-
-        auto_area
-            .iter()
-            .for_each(|node| proxies.push(node.get("name").unwrap().clone()));
-
-        self.nodes
-            .iter()
-            .for_each(|node| proxies.push(Value::String(node.name.clone())));
-
-        node.insert(
-            Value::String("proxies".to_string()),
-            Value::Sequence(proxies),
-        );
-        Value::Mapping(node)
-    }
-
-    fn clash_fill_rules(&self, map: &mut HashMap<String, Value>) -> Vec<String> {
-        let mut rules_process: Vec<HashMap<String, String>> = Vec::new();
-        let mut rules_other: Vec<HashMap<String, String>> = Vec::new();
-        let mut rules_ip: Vec<HashMap<String, String>> = Vec::new();
-
-        self.clash_fill_rule(
+        // 分类处理规则
+        self.process_rules(
             self.rules_reject.iter(),
             key_reject,
             &mut rules_process,
             &mut rules_other,
             &mut rules_ip,
         );
-
-        self.clash_fill_rule(
+        self.process_rules(
             self.rules_direct.iter(),
             key_direct,
             &mut rules_process,
             &mut rules_other,
             &mut rules_ip,
         );
-
-        self.clash_fill_rule(
+        self.process_rules(
             self.rules_proxy.iter(),
             key_proxy,
             &mut rules_process,
@@ -482,90 +306,291 @@ impl KernelConfig {
             &mut rules_ip,
         );
 
-        let mut providers = Mapping::new();
-        let mut names = Vec::new();
-        Self::clash_processor_rule(rules_process, &mut names, &mut providers);
-        Self::clash_processor_rule(rules_other, &mut names, &mut providers);
-        Self::clash_processor_rule(rules_ip, &mut names, &mut providers);
+        // 构建规则提供者和规则列表
+        let mut rule_providers = HashMap::new();
+        let mut names: Vec<String> = Vec::new();
+        self.build_rule_providers(rules_process, &mut names, &mut rule_providers);
+        self.build_rule_providers(rules_other, &mut names, &mut rule_providers);
+        self.build_rule_providers(rules_ip, &mut names, &mut rule_providers);
 
-        map.insert("rule-providers".to_string(), Value::Mapping(providers));
-
+        // 生成最终规则
         let mut rules = Vec::new();
         let mut rule_names_proxy = Vec::new();
 
         for name in names {
-            let mut t = "rule-set";
-            let mut n = name.as_str();
-
-            if name.ends_with("_i_geo") {
-                t = "GEOIP";
-                // 后面改成从字符串中提取
-                n = "CN";
-            }
-            let o = if name.starts_with(key_direct) {
-                tag_direct
-            } else if name.starts_with(key_proxy) {
-                rule_names_proxy.push(name.clone());
-                tag_selector
+            let (rule_type, target, outbound) = if name.ends_with("_i_geo") {
+                ("GEOIP", "CN", self.get_outbound_by_prefix(&name))
             } else {
-                tag_reject
+                (
+                    "rule-set",
+                    name.as_str(),
+                    self.get_outbound_by_prefix(&name),
+                )
             };
 
-            rules.push(Value::String(format!("{}, {}, {}", t, n, o)));
+            if outbound == tag_selector {
+                rule_names_proxy.push(name.clone());
+            }
+
+            rules.push(format!("{}, {}, {}", rule_type, target, outbound));
         }
-        rules.push(Value::String(format!("MATCH, {}", tag_fallback)));
+        rules.push(format!("MATCH, {}", tag_fallback));
 
-        map.insert("rules".to_string(), Value::Sequence(rules));
-
-        rule_names_proxy
+        (rule_providers, rules, rule_names_proxy)
     }
 
-    fn clash_fill_rule(
+    fn process_rules<'a>(
         &self,
-        vec: Iter<Rule>,
+        rules: impl Iterator<Item = &'a Rule>,
         prefix: &str,
         rules_process: &mut Vec<HashMap<String, String>>,
         rules_other: &mut Vec<HashMap<String, String>>,
         rules_ip: &mut Vec<HashMap<String, String>>,
     ) {
-        if self.geo_cn_direct && prefix.starts_with(key_direct) {
+        // 处理CN IP直连规则
+        if self.geo_cn_direct && prefix == key_direct {
             let rule = Rule::from_remote(RuleType::Ip, geo_ip_cn.to_string());
             let tag = format!("{}_cn_i_geo", prefix);
             rules_ip.push(rule.clash(&tag));
         }
 
-        vec.for_each(|rule| match rule.rule_type {
-            RuleType::Ip => {
-                let tag = &format!("{}_i_{}", prefix, rules_ip.len());
-                let rule = rule.clash(tag);
-                rules_ip.push(rule);
+        // 分类处理规则
+        for rule in rules {
+            let tag = match rule.rule_type {
+                RuleType::Process => format!("{}_p_{}", prefix, rules_process.len()),
+                RuleType::Ip => format!("{}_i_{}", prefix, rules_ip.len()),
+                RuleType::Other => format!("{}_o_{}", prefix, rules_other.len()),
+            };
+
+            match rule.rule_type {
+                RuleType::Process => rules_process.push(rule.clash(&tag)),
+                RuleType::Ip => rules_ip.push(rule.clash(&tag)),
+                RuleType::Other => rules_other.push(rule.clash(&tag)),
             }
-            RuleType::Process => {
-                let tag = &format!("{}_p_{}", prefix, rules_process.len());
-                let rule = rule.clash(tag);
-                rules_process.push(rule);
-            }
-            RuleType::Other => {
-                let tag = &format!("{}_o_{}", prefix, rules_other.len());
-                let rule = rule.clash(tag);
-                rules_other.push(rule);
-            }
-        });
+        }
     }
 
-    fn clash_processor_rule(
+    fn build_rule_providers(
+        &self,
         rules: Vec<HashMap<String, String>>,
         names: &mut Vec<String>,
-        providers: &mut Mapping,
+        providers: &mut HashMap<String, RuleProvider>,
     ) {
-        for mut rule in rules {
-            let name = rule.remove("name").unwrap();
-            names.push(name.clone());
-            let mut value = Mapping::new();
-            for (k, v) in rule {
-                value.insert(Value::String(k), Value::String(v));
+        for rule in rules {
+            let name = rule.get("name").unwrap().clone();
+            let rule_type = rule.get("type").unwrap().clone();
+            let rules_list = rule
+                .get("rules")
+                .map(|s| s.split(';').map(|r| r.to_string()).collect())
+                .unwrap_or_default();
+
+            providers.insert(
+                name.clone(),
+                RuleProvider {
+                    type_: rule_type,
+                    rules: rules_list,
+                },
+            );
+            names.push(name);
+        }
+    }
+
+    fn get_outbound_by_prefix(&self, name: &str) -> &'static str {
+        if name.starts_with(key_direct) {
+            TAG_DIRECT
+        } else if name.starts_with(key_proxy) {
+            tag_selector
+        } else {
+            TAG_REJECT
+        }
+    }
+
+    fn build_dns(&self, rule_names_proxy: Vec<String>) -> DnsConfig {
+        // 构建DNS服务器列表（避免克隆）
+        let dns_cn: Vec<String> = self.dns_cn.iter().cloned().collect();
+        let dns_proxy: Vec<String> = self.dns_proxy.iter().cloned().collect();
+
+        // 构建DNS策略
+        let mut nameserver_policy = HashMap::new();
+        for name in rule_names_proxy {
+            nameserver_policy.insert(format!("rule-set:{}", name), dns_proxy.clone());
+        }
+
+        DnsConfig {
+            enable: true,
+            listen: "0.0.0.0:1053".to_string(),
+            ipv6: self.ipv6,
+            prefer_h3: false,
+            cache_algorithm: "arc".to_string(),
+            use_system_hosts: false,
+            enhanced_mode: if self.fake_ip {
+                "fake-ip"
+            } else {
+                "redir-host"
             }
-            providers.insert(Value::String(name), Value::Mapping(value));
+            .to_string(),
+            fake_ip_range: "198.18.0.1/16".to_string(),
+            fake_ip_filter: FAKE_IP_FILTER.clone(),
+            default_nameserver: dns_cn.clone(),
+            nameserver: dns_cn.clone(),
+            proxy_server_nameserver: dns_cn,
+            nameserver_policy,
+        }
+    }
+
+    fn build_proxies(&self) -> Vec<Proxy> {
+        self.nodes
+            .iter()
+            .map(|node| {
+                let mut attributes = HashMap::new();
+                node.attribute.iter().for_each(|(k, v)| {
+                    let value = if v.is_array() {
+                        Value::Sequence(
+                            v.as_array()
+                                .unwrap()
+                                .iter()
+                                .filter_map(|i| SubscribeNode::json_v_string(i).map(Value::String))
+                                .collect(),
+                        )
+                    } else {
+                        SubscribeNode::json_v_string(v)
+                            .map(Value::String)
+                            .unwrap_or(Value::Null)
+                    };
+                    attributes.insert(k.clone(), value);
+                });
+
+                // 移除不需要的字段
+                attributes.remove("allowInsecure");
+                // 移除可能得重复字段
+                attributes.remove("type");
+
+                Proxy {
+                    name: node.name.clone(),
+                    type_: if node.node_type == "ss" || node.node_type == "shadowsocks" {
+                        "ss".to_string()
+                    } else {
+                        node.node_type.clone()
+                    },
+                    attributes,
+                    skip_cert_verify: node.disable_ssl(),
+                    server: node.server.clone(),
+                    port: node.port.unwrap_or(0),
+                    password: node.password.clone(),
+                }
+            })
+            .collect()
+    }
+
+    fn build_proxy_groups(&self) -> Vec<ProxyGroup> {
+        let auto_area = self.build_node_auto_area();
+        let auto_outbounds: Vec<String> = auto_area
+            .iter()
+            .filter_map(|group| match group {
+                ProxyGroup::UrlTest { name, .. } => Some(name.clone()),
+                _ => None,
+            })
+            .collect();
+
+        // 构建自动选择组
+        let auto = ProxyGroup::UrlTest {
+            name: tag_auto.to_string(),
+            type_: "url-test".to_string(),
+            url: test_url.to_string(),
+            interval: 1800,
+            tolerance: 150,
+            proxies: auto_outbounds,
+        };
+
+        // 构建选择器组
+        let default_selector = auto_area
+            .first()
+            .and_then(|g| match g {
+                ProxyGroup::UrlTest { name, .. } => Some(name.clone()),
+                _ => None,
+            })
+            .unwrap_or_else(|| TAG_DIRECT.to_string());
+
+        let selector = self.build_selector_group(tag_selector, default_selector, &auto, &auto_area);
+
+        // 构建fallback组
+        let fallback =
+            self.build_selector_group(tag_fallback, TAG_DIRECT.to_string(), &auto, &auto_area);
+
+        // 合并所有代理组
+        let mut groups = vec![selector, auto, fallback];
+        groups.extend(auto_area);
+
+        groups
+    }
+
+    fn build_node_auto_area(&self) -> Vec<ProxyGroup> {
+        let area_map = self.node_map_area();
+        area_map
+            .into_iter()
+            .map(|(_, nodes)| {
+                let area_name = nodes
+                    .first()
+                    .unwrap()
+                    .area
+                    .as_ref()
+                    .unwrap()
+                    .name_cn
+                    .clone();
+                let group_name = format!(
+                    "[{}] {}自动",
+                    nodes.first().unwrap().area.unwrap().code,
+                    area_name
+                );
+                let proxies = nodes.iter().map(|n| n.name.clone()).collect();
+
+                ProxyGroup::UrlTest {
+                    name: group_name,
+                    type_: "url-test".to_string(),
+                    url: test_url.to_string(),
+                    interval: 1800,
+                    tolerance: 150,
+                    proxies,
+                }
+            })
+            .collect()
+    }
+
+    fn build_selector_group(
+        &self,
+        name: &str,
+        default: String,
+        auto_group: &ProxyGroup,
+        auto_area: &[ProxyGroup],
+    ) -> ProxyGroup {
+        let auto_name = match auto_group {
+            ProxyGroup::UrlTest { name, .. } => name,
+            _ => tag_auto,
+        };
+
+        let mut proxies = vec![
+            TAG_DIRECT.to_string(),
+            TAG_REJECT.to_string(),
+            auto_name.to_string(),
+        ];
+
+        // 添加地区自动组
+        proxies.extend(auto_area.iter().filter_map(|g| match g {
+            ProxyGroup::UrlTest { name, .. } => Some(name.clone()),
+            _ => None,
+        }));
+
+        // 添加原始节点
+        proxies.extend(self.nodes.iter().map(|n| n.name.clone()));
+
+        ProxyGroup::Select {
+            name: name.to_string(),
+            type_: "select".to_string(),
+            default,
+            url: test_url.to_string(),
+            interval: 1800,
+            tolerance: 150,
+            proxies,
         }
     }
 }

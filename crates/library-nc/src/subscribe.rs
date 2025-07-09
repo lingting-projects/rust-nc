@@ -143,7 +143,7 @@ pub struct SubscribeNode {
     pub node_type: String,
     pub name: String,
     pub server: String,
-    pub port: Option<i32>,
+    pub port: Option<u16>,
     pub password: Option<String>,
     pub area: Option<&'static Area>,
     pub attribute: HashMap<String, Value>,
@@ -166,7 +166,7 @@ impl SubscribeNode {
                 let mut node_type = String::new();
                 let mut name = String::new();
                 let mut server = String::new();
-                let mut port: Option<i32> = None;
+                let mut port: Option<u16> = None;
                 let mut password: Option<String> = None;
                 let mut attribute = HashMap::new();
                 let mut area: Option<&'static Area> = None;
@@ -273,7 +273,7 @@ impl SubscribeNode {
         let parts: Vec<&str> = rest.splitn(2, '#').collect();
         let (port_str, name_encoded) = (parts[0], parts[1]);
 
-        let port = port_str.parse::<i32>()?;
+        let port = port_str.parse::<u16>()?;
         let name = url_decode(name_encoded)?;
         let area = area::find_match(&name);
 
@@ -317,7 +317,7 @@ impl SubscribeNode {
         let host_parts: Vec<&str> = host_part.split(':').collect();
         let server = host_parts[0].trim().to_string();
         let port = if host_parts.len() > 1 {
-            host_parts[1].parse::<i32>()?
+            host_parts[1].parse::<u16>()?
         } else {
             443
         };
