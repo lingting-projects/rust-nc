@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use crate::core::PRIORITY_CODES;
 use crate::rule::Rule;
 use crate::subscribe::SubscribeNode;
@@ -85,6 +86,28 @@ impl KernelConfig {
             "ipv4_only"
         }
         .to_string()
+    }
+
+    pub fn node_map_area(&self)-> HashMap<String, Vec<&SubscribeNode>>{
+        let mut map: HashMap<String, Vec<&SubscribeNode>> = HashMap::new();
+        self.nodes.iter().for_each(|node| {
+            if node.area.is_none() {
+                return;
+            }
+
+            let area = node.area.unwrap();
+            let code = &area.code;
+
+            match map.get_mut(code) {
+                None => {
+                    map.insert(code.clone(), vec![node]);
+                }
+                Some(vec) => {
+                    vec.push(node);
+                }
+            }
+        });
+        map
     }
 }
 
@@ -250,3 +273,11 @@ pub const dns_default_proxy: LazyLock<Vec<String>> = LazyLock::new(|| {
         "https://208.67.222.22/dns-query".to_string(),
     ]
 });
+
+pub const default_ui: &str = "127.0.0.1:9090";
+pub const default_mixed_listen: &str = "127.0.0.1";
+pub const default_mixed_port: u16 = 7890;
+
+pub const tag_selector: &str = "节点选择";
+pub const tag_auto: &str = "自动选择";
+pub const tag_fallback: &str = "默认选择";

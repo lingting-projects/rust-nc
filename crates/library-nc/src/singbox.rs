@@ -1,7 +1,8 @@
 use crate::core::{fast, AnyResult};
 use crate::kernel::{
-    clash_ui_url, fake_ipv4, fake_ipv6, inner_ipv4, inner_ipv6, key_direct, key_proxy,
-    key_reject, route_ipv4, route_ipv6, test_url, virtual_ipv4, virtual_ipv6, KernelConfig,
+    clash_ui_url, default_mixed_listen, default_mixed_port, default_ui, fake_ipv4, fake_ipv6,
+    inner_ipv4, inner_ipv6, key_direct, key_proxy, key_reject, route_ipv4, route_ipv6, tag_auto,
+    tag_fallback, tag_selector, test_url, virtual_ipv4, virtual_ipv6, KernelConfig,
 };
 use crate::rule::{Rule, RuleType};
 use crate::subscribe::SubscribeNode;
@@ -9,18 +10,12 @@ use serde_json::{json, to_string, Value};
 use std::collections::HashMap;
 use std::slice::Iter;
 
-pub const tag_selector: &str = "节点选择";
-pub const tag_fallback: &str = "默认选择";
 pub const tag_dns_cn: &str = "dns-cn";
 pub const tag_dns_fake: &str = "dns-fake";
 pub const tag_dns_proxy: &str = "dns-proxy";
 
 pub const geo_ip_cn: &str =
     "https://raw.githubusercontent.com/SagerNet/sing-geoip/rule-set/geoip-cn.srs";
-
-pub const default_ui: &str = "127.0.0.1:9090";
-pub const default_mixed_listen: &str = "127.0.0.1";
-pub const default_mixed_port: u16 = 7890;
 
 impl KernelConfig {
     pub fn sing_box_default(&self) -> AnyResult<String> {
@@ -30,21 +25,21 @@ impl KernelConfig {
     pub fn sing_box(&self, ui: &str, mixed_listen: &str, mixed_port: u16) -> AnyResult<String> {
         let mut map: HashMap<String, Value> = HashMap::new();
 
-        self.fill_log(&mut map);
-        self.fill_experimental(&mut map, ui);
-        self.fill_inbounds(&mut map, mixed_listen, mixed_port);
-        self.fill_outbounds(&mut map);
-        let tags = self.fill_route(&mut map);
+        self.sing_box_fill_log(&mut map);
+        self.sing_box_fill_experimental(&mut map, ui);
+        self.sing_box_fill_inbounds(&mut map, mixed_listen, mixed_port);
+        self.sing_box_fill_outbounds(&mut map);
+        let tags = self.sing_box_fill_route(&mut map);
         let tags_direct = tags.get(0).unwrap();
         let tags_proxy = tags.get(1).unwrap();
-        self.fill_dns(&mut map, tags_direct, tags_proxy);
+        self.sing_box_fill_dns(&mut map, tags_direct, tags_proxy);
 
         let json = json!(map);
         let json = to_string(&json)?;
         Ok(json)
     }
 
-    fn fill_log(&self, map: &mut HashMap<String, Value>) {
+    fn sing_box_fill_log(&self, map: &mut HashMap<String, Value>) {
         let mut log: HashMap<String, Value> = HashMap::new();
         log.insert(
             "level".to_string(),
@@ -59,7 +54,7 @@ impl KernelConfig {
         map.insert("log".to_string(), json!(log));
     }
 
-    fn fill_experimental(&self, map: &mut HashMap<String, Value>, ui: &str) {
+    fn sing_box_fill_experimental(&self, map: &mut HashMap<String, Value>, ui: &str) {
         let mut cache: HashMap<String, Value> = HashMap::new();
         cache.insert("enabled".to_string(), json!(true));
         cache.insert("store_rdrc".to_string(), json!(true));
@@ -84,17 +79,17 @@ impl KernelConfig {
         map.insert("experimental".to_string(), json!(experimental));
     }
 
-    fn fill_inbounds(&self, map: &mut HashMap<String, Value>, listen: &str, port: u16) {
+    fn sing_box_fill_inbounds(&self, map: &mut HashMap<String, Value>, listen: &str, port: u16) {
         let mut inbounds = Vec::new();
 
         if self.tun {
-            inbounds.push(self.build_tun());
+            inbounds.push(self.sing_box_build_tun());
         }
-        inbounds.push(self.build_mixed(listen, port));
+        inbounds.push(self.sing_box_build_mixed(listen, port));
         map.insert("inbounds".to_string(), json!(inbounds));
     }
 
-    fn build_tun(&self) -> Value {
+    fn sing_box_build_tun(&self) -> Value {
         let mut map: HashMap<String, Value> = HashMap::new();
 
         map.insert("type".to_string(), json!("tun"));
@@ -134,7 +129,7 @@ impl KernelConfig {
         json!(map)
     }
 
-    fn build_mixed(&self, listen: &str, port: u16) -> Value {
+    fn sing_box_build_mixed(&self, listen: &str, port: u16) -> Value {
         let mut map: HashMap<String, Value> = HashMap::new();
         map.insert("type".to_string(), json!("mixed"));
         map.insert("tag".to_string(), json!("mixed-in"));
@@ -147,25 +142,26 @@ impl KernelConfig {
         json!(map)
     }
 
-    fn fill_outbounds(&self, map: &mut HashMap<String, Value>) {
+    fn sing_box_fill_outbounds(&self, map: &mut HashMap<String, Value>) {
         // 全部节点的 国家自动切换节点
-        let auto_area = self.build_node_auto_area();
+        let auto_area = self.sing_box_build_node_auto_area();
         // 自动选择节点
         let mut auto_outbounds = Vec::new();
         auto_area.iter().for_each(|node| {
             let tag = node.get("tag").unwrap();
             auto_outbounds.push(tag.as_str().unwrap().to_string())
         });
-        let auto = self.build_node_auto("自动选择", auto_outbounds);
+        let auto = self.sing_box_build_node_auto(tag_auto, auto_outbounds);
 
-        let selector = self.build_node_selector(
+        let selector = self.sing_box_build_node_selector(
             tag_selector,
             auto_area.get(0).unwrap().get("tag").unwrap().clone(),
             &auto,
             &auto_area,
         );
 
-        let fallback = self.build_node_selector(tag_fallback, json!(key_direct), &auto, &auto_area);
+        let fallback =
+            self.sing_box_build_node_selector(tag_fallback, json!(key_direct), &auto, &auto_area);
 
         let mut outbounds = Vec::new();
         outbounds.push(selector);
@@ -177,7 +173,7 @@ impl KernelConfig {
         }
         self.nodes
             .iter()
-            .for_each(|node| outbounds.push(self.build_node(node)));
+            .for_each(|node| outbounds.push(self.sing_box_build_node(node)));
 
         let mut direct = HashMap::new();
         direct.insert("tag".to_string(), key_direct.to_string());
@@ -197,25 +193,8 @@ impl KernelConfig {
         map.insert("outbounds".to_string(), json!(outbounds));
     }
 
-    fn build_node_auto_area(&self) -> Vec<Value> {
-        let mut map: HashMap<String, Vec<&SubscribeNode>> = HashMap::new();
-        self.nodes.iter().for_each(|node| {
-            if node.area.is_none() {
-                return;
-            }
-
-            let area = node.area.unwrap();
-            let code = &area.code;
-
-            match map.get_mut(code) {
-                None => {
-                    map.insert(code.clone(), vec![node]);
-                }
-                Some(vec) => {
-                    vec.push(node);
-                }
-            }
-        });
+    fn sing_box_build_node_auto_area(&self) -> Vec<Value> {
+        let map = self.node_map_area();
 
         let mut vec = Vec::new();
 
@@ -228,14 +207,14 @@ impl KernelConfig {
                 .iter()
                 .for_each(|node| outbounds.push(node.name.to_string()));
 
-            let value = self.build_node_auto(&tag, outbounds);
+            let value = self.sing_box_build_node_auto(&tag, outbounds);
             vec.push(value)
         });
 
         vec
     }
 
-    fn build_node_auto(&self, tag: &str, outbounds: Vec<String>) -> Value {
+    fn sing_box_build_node_auto(&self, tag: &str, outbounds: Vec<String>) -> Value {
         let mut node = HashMap::new();
         node.insert("tag".to_string(), json!(tag));
         node.insert("type".to_string(), json!("urltest"));
@@ -248,7 +227,7 @@ impl KernelConfig {
         json!(node)
     }
 
-    fn build_node_selector(
+    fn sing_box_build_node_selector(
         &self,
         tag: &str,
         default: Value,
@@ -279,7 +258,7 @@ impl KernelConfig {
         json!(map)
     }
 
-    fn build_node(&self, node: &SubscribeNode) -> Value {
+    fn sing_box_build_node(&self, node: &SubscribeNode) -> Value {
         let mut map = HashMap::new();
 
         map.insert("tag".to_string(), json!(node.name.clone()));
@@ -290,24 +269,14 @@ impl KernelConfig {
 
         if node.node_type == "ss" || node.node_type == "shadowsocks" {
             map.insert("type".to_string(), json!("shadowsocks"));
-            map.insert(
-                "method".to_string(),
-                json!(node.attribute.get("cipher").cloned()),
-            );
+            if let Some(cipher) = node.attr_string("cipher") {
+                map.insert("method".to_string(), json!(cipher));
+            }
         } else if node.node_type == "trojan" {
             let mut tls_config = HashMap::new();
             tls_config.insert("enabled".to_string(), json!(true));
 
-            let insecure = node
-                .attribute
-                .get("skip-cert-verify")
-                .map(|v| v == "true")
-                .unwrap_or(false)
-                || node
-                    .attribute
-                    .get("allowInsecure")
-                    .map(|v| v == "true")
-                    .unwrap_or(false);
+            let insecure = node.disable_ssl();
 
             tls_config.insert("insecure".to_string(), json!(insecure));
 
@@ -323,7 +292,7 @@ impl KernelConfig {
         json!(map)
     }
 
-    fn fill_route(&self, map: &mut HashMap<String, Value>) -> Vec<Vec<String>> {
+    fn sing_box_fill_route(&self, map: &mut HashMap<String, Value>) -> Vec<Vec<String>> {
         let mut route: HashMap<String, Value> = HashMap::new();
         route.insert("final".to_string(), json!(tag_fallback));
         route.insert("auto_detect_interface".to_string(), json!(true));
@@ -332,7 +301,7 @@ impl KernelConfig {
         let mut rules_other: Vec<HashMap<String, String>> = Vec::new();
         let mut rules_ip: Vec<HashMap<String, String>> = Vec::new();
 
-        self.fill_rule(
+        self.sing_box_fill_rule(
             self.rules_reject.iter(),
             key_reject,
             &mut rules_process,
@@ -340,7 +309,7 @@ impl KernelConfig {
             &mut rules_ip,
         );
 
-        let tags_direct = self.fill_rule(
+        let tags_direct = self.sing_box_fill_rule(
             self.rules_direct.iter(),
             key_direct,
             &mut rules_process,
@@ -348,7 +317,7 @@ impl KernelConfig {
             &mut rules_ip,
         );
 
-        let tags_proxy = self.fill_rule(
+        let tags_proxy = self.sing_box_fill_rule(
             self.rules_proxy.iter(),
             key_proxy,
             &mut rules_process,
@@ -409,7 +378,7 @@ impl KernelConfig {
         vec![tags_direct, tags_proxy]
     }
 
-    fn fill_rule(
+    fn sing_box_fill_rule(
         &self,
         vec: Iter<Rule>,
         prefix: &str,
@@ -419,9 +388,9 @@ impl KernelConfig {
     ) -> Vec<String> {
         let mut tags = Vec::new();
 
-        if self.geo_cn_direct {
+        if self.geo_cn_direct && prefix.starts_with(key_direct) {
             let rule = Rule::from_remote(RuleType::Ip, geo_ip_cn.to_string());
-            let tag = format!("{}_i_geo", key_direct);
+            let tag = format!("{}_i_geo", prefix);
             rules_ip.push(rule.sing_box(&tag));
             tags.push(tag)
         }
@@ -447,7 +416,7 @@ impl KernelConfig {
         tags
     }
 
-    fn fill_dns(
+    fn sing_box_fill_dns(
         &self,
         map: &mut HashMap<String, Value>,
         tags_direct: &Vec<String>,
@@ -461,7 +430,7 @@ impl KernelConfig {
 
         dns.insert("strategy".to_string(), json!(self.ip_strategy()));
 
-        let servers = self.build_dns_servers();
+        let servers = self.sing_box_build_dns_servers();
         dns.insert("servers".to_string(), json!(servers));
 
         let mut rules = Vec::new();
@@ -517,7 +486,7 @@ impl KernelConfig {
         map.insert("dns".to_string(), json!(dns));
     }
 
-    fn build_dns_servers(&self) -> Vec<HashMap<String, String>> {
+    fn sing_box_build_dns_servers(&self) -> Vec<HashMap<String, String>> {
         let mut servers = Vec::new();
 
         let mut local = HashMap::new();

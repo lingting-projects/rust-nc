@@ -20,6 +20,6 @@ wasm-opt = false
 crate-type = ["cdylib"]
 
 [dependencies]
-library-nc = { path = "../library-nc", features = ["wrangler"] }
+library-nc = { path = "../library-nc" }
 worker = { workspace = true }
 console_error_panic_hook = { version = "0.1.7" }

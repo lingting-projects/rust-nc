@@ -1,6 +1,6 @@
 use crate::core::fast;
-use std::collections::HashMap;
 use crate::kernel::key_direct;
+use std::collections::HashMap;
 
 pub enum RuleType {
     // 针对ip的规则
@@ -61,5 +61,26 @@ impl Rule {
         map.into_iter()
             .map(|(k, v)| (k.to_string(), v.to_string()))
             .collect()
+    }
+
+    pub fn clash(&self, tag: &str) -> HashMap<String, String> {
+        let mut map = HashMap::new();
+
+        // name字段映射, 需要删除
+        map.insert("name".to_string(), tag.to_string());
+        map.insert("format".to_string(), "yaml".to_string());
+        map.insert("behavior".to_string(), "classical".to_string());
+
+        if self.remote {
+            map.insert("type".to_string(), "http".to_string());
+            map.insert("path".to_string(), format!("./rules/{}.yml", tag));
+            map.insert("interval".to_string(), "86400".to_string());
+            map.insert("url".to_string(), self.path.to_string());
+        } else {
+            map.insert("type".to_string(), "file".to_string());
+            map.insert("path".to_string(), self.path.to_string());
+        }
+
+        map
     }
 }

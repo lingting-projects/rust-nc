@@ -1,5 +1,5 @@
 use crate::core::http_get;
-use library_nc::core::AnyResult;
+use library_nc::core::{is_true, AnyResult};
 use library_nc::http::pick_host;
 use library_nc::kernel::{
     dns_default_cn, dns_default_proxy, exclude_default, include_main, KernelConfig, NodeContains,
@@ -26,33 +26,27 @@ impl ConvertParams {
     fn convert_bool(option: Option<&Vec<String>>) -> Option<bool> {
         let vec = option?;
         let first = vec.first()?;
-        let f = match first.to_lowercase().as_ref() {
-            "1" | "true" | "t" | "y" | "ok" => true,
-            _ => false,
-        };
-        Some(f)
+        Some(is_true(first))
+    }
+
+    fn get_all(source: &HashMap<String, Vec<String>>, key: &str) -> Vec<String> {
+        let mut r = Vec::new();
+
+        source.get(key).map(|vec| {
+            vec.iter().for_each(|s| {
+                let trim = s.trim();
+                if !trim.is_empty() {
+                    r.push(trim.to_string())
+                }
+            })
+        });
+
+        r
     }
 
     fn contains(prefix: &str, source: &HashMap<String, Vec<String>>) -> NodeContains {
-        let mut area = Vec::new();
-        let mut name_contains = Vec::new();
-
-        source.get(&format!("{}.area", prefix)).map(|vec| {
-            vec.iter().for_each(|s| {
-                let trim = s.trim();
-                if !trim.is_empty() {
-                    area.push(trim.to_string())
-                }
-            })
-        });
-        source.get(&format!("{}.name_contains", prefix)).map(|vec| {
-            vec.iter().for_each(|s| {
-                let trim = s.trim();
-                if !trim.is_empty() {
-                    name_contains.push(trim.to_string())
-                }
-            })
-        });
+        let area = Self::get_all(source, &format!("{}.area", prefix));
+        let name_contains = Self::get_all(source, &format!("{}.name_contains", prefix));
 
         NodeContains {
             area,
@@ -160,9 +154,6 @@ impl ConvertParams {
     }
 }
 
-const gist_prefix: &str =
-    "https://gist.githubusercontent.com/lingting/93a4a9ff5d1134aab8ca286bec969436/raw/";
-
 async fn subscribe(params: &ConvertParams) -> AnyResult<Subscribe> {
     console_debug!("从远程获取数据: {}", &params.remote);
     let mut response = http_get(&params.remote).await?;
@@ -179,17 +170,44 @@ async fn subscribe(params: &ConvertParams) -> AnyResult<Subscribe> {
     Subscribe::resolve(&remote, info)
 }
 
-pub async fn sing_box(req: Request) -> AnyResult<Response> {
+struct Remote {
+    pub host: String,
+    pub config: KernelConfig,
+    pub disposition: String,
+    pub info: Option<String>,
+}
+
+const gist_prefix: &str =
+    "https://gist.githubusercontent.com/lingting/93a4a9ff5d1134aab8ca286bec969436/raw/";
+
+async fn build_remote(
+    req: Request,
+    rules_direct: Vec<Rule>,
+    rules_proxy: Vec<Rule>,
+    rules_reject: Vec<Rule>,
+) -> AnyResult<Remote> {
     console_debug!("解析参数");
     let params = ConvertParams::from_fetch(req)?;
     console_debug!("解析远程地址: {}", &params.remote);
     let host = pick_host(&params.remote).expect_throw("invalid remote");
     console_debug!("远程域名: {}", &host);
     let subscribe = subscribe(&params).await?;
-    let infoOption = subscribe.info();
+    let info = subscribe.info();
     console_debug!("构造配置");
-    let config = params.build_config(
-        subscribe,
+    let config = params.build_config(subscribe, rules_direct, rules_proxy, rules_reject)?;
+
+    let disposition = format!("inline; filename={}.json", &host);
+    Ok(Remote {
+        host,
+        config,
+        disposition,
+        info,
+    })
+}
+
+pub async fn sing_box(req: Request) -> AnyResult<Response> {
+    let remote = build_remote(
+        req,
         vec![
             Rule::from_remote(RuleType::Process, format!("{}sing.direct.p", gist_prefix)),
             Rule::from_remote(RuleType::Other, format!("{}sing.direct.np", gist_prefix)),
@@ -203,19 +221,52 @@ pub async fn sing_box(req: Request) -> AnyResult<Response> {
             Rule::from_remote(RuleType::Process, format!("{}sing.reject", gist_prefix)),
             Rule::from_remote(RuleType::Ip, format!("{}sing.reject.ip", gist_prefix)),
         ],
-    )?;
-
+    )
+    .await?;
+    let config = remote.config;
+    let disposition = remote.disposition;
+    let info = remote.info;
     console_debug!("配置转换");
     let json = config.sing_box_default()?;
     console_debug!("返回配置");
 
-    let mut builder = Response::builder().with_header(
-        "Content-Disposition",
-        &format!("inline; filename={}.json", host),
-    )?;
+    let mut builder = Response::builder().with_header("Content-Disposition", &disposition)?;
 
-    if let Some(info) = infoOption {
-        builder = builder.with_header("Subscription-Userinfo", &info)?
+    if let Some(v) = info {
+        builder = builder.with_header("Subscription-Userinfo", &v)?
+    }
+
+    Ok(builder.ok(json)?)
+}
+
+pub async fn clash(req: Request) -> AnyResult<Response> {
+    let remote = build_remote(
+        req,
+        vec![
+            Rule::from_remote(RuleType::Other, format!("{}clash.direct", gist_prefix)),
+            Rule::from_remote(RuleType::Ip, format!("{}clash.direct.ip", gist_prefix)),
+        ],
+        vec![
+            Rule::from_remote(RuleType::Other, format!("{}clash.proxy", gist_prefix)),
+            Rule::from_remote(RuleType::Ip, format!("{}clash.proxy.ip", gist_prefix)),
+        ],
+        vec![
+            Rule::from_remote(RuleType::Process, format!("{}clash.reject", gist_prefix)),
+            Rule::from_remote(RuleType::Ip, format!("{}clash.reject.ip", gist_prefix)),
+        ],
+    )
+    .await?;
+    let config = remote.config;
+    let disposition = remote.disposition;
+    let info = remote.info;
+    console_debug!("配置转换");
+    let json = config.clash_default()?;
+    console_debug!("返回配置");
+
+    let mut builder = Response::builder().with_header("Content-Disposition", &disposition)?;
+
+    if let Some(v) = info {
+        builder = builder.with_header("Subscription-Userinfo", &v)?
     }
 
     Ok(builder.ok(json)?)

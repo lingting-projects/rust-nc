@@ -14,6 +14,7 @@ async fn main(req: Request, env: Env, ctx: Context) -> Result<Response> {
     console_error_panic_hook::set_once();
     let r = match req.path().to_lowercase().as_str() {
         "/sing-box" => convert::sing_box(req).await,
+        "/clash" => convert::clash(req).await,
         _ => default(req, env, ctx).await,
     };
     match r {

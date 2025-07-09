@@ -1,10 +1,12 @@
 use crate::area::Area;
-use crate::core::{base64_decode, AnyResult, NcError, PREFIX_EXPIRE, PREFIX_REMAIN_TRAFFIC};
+use crate::core::{
+    base64_decode, is_true, AnyResult, NcError, PREFIX_EXPIRE, PREFIX_REMAIN_TRAFFIC,
+};
 use crate::http::url_decode;
 use crate::{area, data_size};
 use byte_unit::rust_decimal::prelude::ToPrimitive;
-use std::collections::HashMap;
 use serde_json::Value;
+use std::collections::HashMap;
 use time::macros::format_description;
 use time::PrimitiveDateTime;
 use worker::{console_error, console_warn};
@@ -380,4 +382,36 @@ impl SubscribeNode {
 
         Ok(nodes)
     }
+
+    pub fn json_v_string(v: &Value) -> Option<String> {
+        match v {
+            Value::Null => None,
+            Value::String(v) => Some(v.clone()),
+            v => Some(v.to_string()),
+        }
+    }
+
+    pub fn attr_vec(&self, key: &str) -> Option<Vec<String>> {
+        let v = self.attribute.get(key)?;
+        let array = v.as_array()?;
+        array.iter().map(|i| Self::json_v_string(i)).collect()
+    }
+
+    pub fn attr_string(&self, key: &str) -> Option<String> {
+        let v = self.attribute.get(key)?;
+        Self::json_v_string(v)
+    }
+
+    pub fn attr_bool(&self, key: &str) -> Option<bool> {
+        self.attr_string(key).map(|s| is_true(&s))
+    }
+
+    pub fn disable_ssl(&self) -> bool {
+        let skip = self.attr_bool("skip-cert-verify").unwrap_or(false);
+        if skip {
+            return true;
+        }
+        self.attr_bool("allowInsecure").unwrap_or(false)
+    }
+
 }
