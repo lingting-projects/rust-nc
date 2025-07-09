@@ -18,6 +18,9 @@ const url_geosite: &str =
 const url_mmdb: &str =
     "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/country-lite.mmdb";
 
+const tag_direct: &str = "DIRECT";
+const tag_reject: &str = "REJECT";
+
 const fake_ip_filter: LazyLock<Vec<Value>> = LazyLock::new(|| {
     vec![
         Value::String("+.lan".to_string()),
@@ -326,7 +329,7 @@ impl KernelConfig {
 
         let fallback = self.clash_build_node_selector(
             tag_fallback,
-            Value::String(key_direct.to_string()),
+            Value::String(tag_direct.to_string()),
             &auto,
             &auto_area,
         );
@@ -432,8 +435,8 @@ impl KernelConfig {
 
         let mut proxies = Vec::new();
 
-        proxies.push(Value::String(key_direct.to_string()));
-        proxies.push(Value::String(key_reject.to_string()));
+        proxies.push(Value::String(tag_direct.to_string()));
+        proxies.push(Value::String(tag_direct.to_string()));
         proxies.push(auto.get("name").unwrap().clone());
 
         auto_area
@@ -500,14 +503,14 @@ impl KernelConfig {
                 n = "CN";
             }
             let o = if name.starts_with(key_direct) {
-                key_direct
+                tag_direct
             } else if name.starts_with(key_proxy) {
                 tag_selector
             } else {
-                key_reject
+                tag_reject
             };
 
-            rules.push(Value::String(format!("{}, {}, {}", t, n, o.to_uppercase())));
+            rules.push(Value::String(format!("{}, {}, {}", t, n, o)));
         }
         rules.push(Value::String(format!("MATCH, {}", tag_fallback)));
 
