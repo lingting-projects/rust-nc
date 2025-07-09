@@ -20,6 +20,12 @@ categories = ["network"]
 license = "Apache-2.0 OR MIT"
 description = ""
 
+[workspace.build]
+rustflags = [
+    "-A", "unused_variables",    # 忽略未使用变量警告
+    "-A", "non_upper_case_globals"  # 忽略静态常量未全大写的警告
+]
+
 [workspace.dependencies]
 # 日志
 log = "0.4"

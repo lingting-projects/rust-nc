@@ -49,10 +49,10 @@ impl KernelConfig {
         let mut map: HashMap<String, Value> = HashMap::new();
         self.clash_fill_basic(&mut map, ui, mixed_listen, mixed_port);
         self.clash_fill_tun(&mut map);
-        self.clash_fill_dns(&mut map);
+        let rule_names_proxy = self.clash_fill_rules(&mut map);
+        self.clash_fill_dns(&mut map, rule_names_proxy);
         self.clash_fill_proxies(&mut map);
         self.clash_fill_groups(&mut map);
-        self.clash_fill_rules(&mut map);
 
         let yml = to_string(&map)?;
         Ok(yml)
@@ -150,7 +150,7 @@ impl KernelConfig {
         map.insert("tun".to_string(), Value::Mapping(tun));
     }
 
-    fn clash_fill_dns(&self, map: &mut HashMap<String, Value>) {
+    fn clash_fill_dns(&self, map: &mut HashMap<String, Value>, rule_names_proxy: Vec<String>) {
         // 添加 DNS 配置
         let mut dns = Mapping::new();
         dns.insert(Value::String("enable".to_string()), Value::Bool(true));
@@ -212,12 +212,6 @@ impl KernelConfig {
         // 添加 dns 策略
         let mut nameserver_policy = Mapping::new();
 
-        // 添加 rule-set:direct 策略
-        nameserver_policy.insert(
-            Value::String("rule-set:direct".to_string()),
-            Value::Sequence(dns_cn.clone()),
-        );
-
         // 添加 rule-set:proxy 策略
         let dns_proxy = self
             .dns_proxy
@@ -225,10 +219,12 @@ impl KernelConfig {
             .map(|s| Value::String(s.to_string()))
             .collect::<Vec<_>>();
 
-        nameserver_policy.insert(
-            Value::String("rule-set:proxy".to_string()),
-            Value::Sequence(dns_proxy),
-        );
+        for name in rule_names_proxy {
+            nameserver_policy.insert(
+                Value::String(format!("rule-set:{}", name)),
+                Value::Sequence(dns_proxy.clone()),
+            );
+        }
 
         dns.insert(
             Value::String("nameserver-policy".to_string()),
@@ -276,7 +272,10 @@ impl KernelConfig {
                     Value::String("ss".to_string()),
                 );
             } else {
-                mapping.insert(Value::String("type".to_string()), Value::String(node.node_type.clone()));
+                mapping.insert(
+                    Value::String("type".to_string()),
+                    Value::String(node.node_type.clone()),
+                );
             }
 
             mapping.insert(
@@ -436,7 +435,7 @@ impl KernelConfig {
         let mut proxies = Vec::new();
 
         proxies.push(Value::String(tag_direct.to_string()));
-        proxies.push(Value::String(tag_direct.to_string()));
+        proxies.push(Value::String(tag_reject.to_string()));
         proxies.push(auto.get("name").unwrap().clone());
 
         auto_area
@@ -454,7 +453,7 @@ impl KernelConfig {
         Value::Mapping(node)
     }
 
-    fn clash_fill_rules(&self, map: &mut HashMap<String, Value>) {
+    fn clash_fill_rules(&self, map: &mut HashMap<String, Value>) -> Vec<String> {
         let mut rules_process: Vec<HashMap<String, String>> = Vec::new();
         let mut rules_other: Vec<HashMap<String, String>> = Vec::new();
         let mut rules_ip: Vec<HashMap<String, String>> = Vec::new();
@@ -492,6 +491,7 @@ impl KernelConfig {
         map.insert("rule-providers".to_string(), Value::Mapping(providers));
 
         let mut rules = Vec::new();
+        let mut rule_names_proxy = Vec::new();
 
         for name in names {
             let mut t = "rule-set";
@@ -505,6 +505,7 @@ impl KernelConfig {
             let o = if name.starts_with(key_direct) {
                 tag_direct
             } else if name.starts_with(key_proxy) {
+                rule_names_proxy.push(name.clone());
                 tag_selector
             } else {
                 tag_reject
@@ -515,6 +516,8 @@ impl KernelConfig {
         rules.push(Value::String(format!("MATCH, {}", tag_fallback)));
 
         map.insert("rules".to_string(), Value::Sequence(rules));
+
+        rule_names_proxy
     }
 
     fn clash_fill_rule(
