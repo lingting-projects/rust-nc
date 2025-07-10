@@ -3,8 +3,7 @@ use crate::kernel::{
     default_mixed_listen, default_mixed_port, default_ui, key_direct, key_proxy, key_reject,
     tag_auto, tag_fallback, tag_selector, test_url, KernelConfig,
 };
-use crate::rule::{Rule, RuleType};
-use crate::singbox::geo_ip_cn;
+use crate::rule::{ClashRule, Rule, RuleType};
 use crate::subscribe::SubscribeNode;
 use serde::Serialize;
 use serde_yaml::Value;
@@ -38,12 +37,8 @@ const FAKE_IP_FILTER_STR: &[&str] = &[
     "localhost.*.*.*.*",
 ];
 
-const FAKE_IP_FILTER: LazyLock<Vec<Value>> = LazyLock::new(|| {
-    FAKE_IP_FILTER_STR
-        .iter()
-        .map(|s| Value::String(s.to_string()))
-        .collect()
-});
+const FAKE_IP_FILTER: LazyLock<Vec<String>> =
+    LazyLock::new(|| FAKE_IP_FILTER_STR.iter().map(|s| s.to_string()).collect());
 
 #[derive(Serialize)]
 struct ClashConfig {
@@ -88,7 +83,7 @@ struct ClashConfig {
     #[serde(rename = "proxy-groups")]
     proxy_groups: Vec<ProxyGroup>,
     #[serde(rename = "rule-providers")]
-    rule_providers: HashMap<String, RuleProvider>,
+    rule_providers: HashMap<String, ClashRule>,
     #[serde(rename = "rules")]
     rules: Vec<String>,
 }
@@ -97,8 +92,8 @@ struct ClashConfig {
 struct ProfileConfig {
     #[serde(rename = "store-selected")]
     store_selected: bool,
-    #[serde(rename = "store-fake-ip", skip_serializing_if = "Option::is_none")]
-    store_fake_ip: Option<bool>,
+    #[serde(rename = "store-fake-ip")]
+    store_fake_ip: bool,
 }
 
 #[derive(Serialize)]
@@ -146,7 +141,7 @@ struct DnsConfig {
     #[serde(rename = "fake-ip-range")]
     fake_ip_range: String,
     #[serde(rename = "fake-ip-filter")]
-    fake_ip_filter: Vec<Value>,
+    fake_ip_filter: Vec<String>,
     #[serde(rename = "default-nameserver")]
     default_nameserver: Vec<String>,
     #[serde(rename = "nameserver")]
@@ -174,46 +169,21 @@ struct Proxy {
 }
 
 #[derive(Serialize)]
-#[serde(untagged)]
-enum ProxyGroup {
-    UrlTest {
-        #[serde(rename = "name")]
-        name: String,
-        #[serde(rename = "type")]
-        type_: String,
-        #[serde(rename = "url")]
-        url: String,
-        #[serde(rename = "interval")]
-        interval: u64,
-        #[serde(rename = "tolerance")]
-        tolerance: u64,
-        #[serde(rename = "proxies")]
-        proxies: Vec<String>,
-    },
-    Select {
-        #[serde(rename = "name")]
-        name: String,
-        #[serde(rename = "type")]
-        type_: String,
-        #[serde(rename = "default")]
-        default: String,
-        #[serde(rename = "url")]
-        url: String,
-        #[serde(rename = "interval")]
-        interval: u64,
-        #[serde(rename = "tolerance")]
-        tolerance: u64,
-        #[serde(rename = "proxies")]
-        proxies: Vec<String>,
-    },
-}
-
-#[derive(Serialize)]
-struct RuleProvider {
+struct ProxyGroup {
+    #[serde(rename = "name")]
+    pub name: String,
     #[serde(rename = "type")]
-    type_: String,
-    #[serde(rename = "rules")]
-    rules: Vec<String>,
+    pub type_: String,
+    #[serde(rename = "default", skip_serializing_if = "Option::is_none")]
+    pub default: Option<String>,
+    #[serde(rename = "url")]
+    pub url: String,
+    #[serde(rename = "interval")]
+    pub interval: u64,
+    #[serde(rename = "tolerance")]
+    pub tolerance: u64,
+    #[serde(rename = "proxies")]
+    pub proxies: Vec<String>,
 }
 
 impl KernelConfig {
@@ -223,46 +193,46 @@ impl KernelConfig {
 
     pub fn clash(&self, ui: &str, mixed_listen: &str, mixed_port: u16) -> AnyResult<String> {
         // 构建规则相关数据
-        let (rule_providers, rules, rule_names_proxy) = self.build_rules();
+        let (rule_providers, rules, rule_names) = self.clash_build_rules();
 
         // 构建DNS配置
-        let dns = self.build_dns(rule_names_proxy);
+        let dns = self.clash_build_dns(rule_names);
 
         // 构建代理列表
-        let proxies = self.build_proxies();
+        let proxies = self.clash_build_proxies();
 
         // 构建代理组
-        let proxy_groups = self.build_proxy_groups();
+        let proxy_groups = self.clash_build_proxy_groups();
 
         // 构建完整配置
         let config = ClashConfig {
             port: mixed_port,
             allow_lan: true,
-            bind_address: mixed_listen.to_string(),
-            mode: "rule".to_string(),
-            log_level: if self.debug { "debug" } else { "info" }.to_string(),
-            external_controller: ui.to_string(),
+            bind_address: mixed_listen.into(),
+            mode: "rule".into(),
+            log_level: if self.debug { "debug" } else { "info" }.into(),
+            external_controller: ui.into(),
             unified_delay: true,
             tcp_concurrent: false,
-            global_client_fingerprint: "chrome".to_string(),
+            global_client_fingerprint: "chrome".into(),
             profile: ProfileConfig {
                 store_selected: true,
-                store_fake_ip: self.fake_ip.then_some(true),
+                store_fake_ip: self.fake_ip,
             },
             geodata_mode: true,
-            geodata_loader: "standard".to_string(),
+            geodata_loader: "standard".into(),
             geo_auto_update: true,
             geo_update_interval: 24,
             geox_url: GeoxUrl {
-                geoip: URL_GEOIP.to_string(),
-                geosite: URL_GEOSITE.to_string(),
-                mmdb: URL_MMDB.to_string(),
+                geoip: URL_GEOIP.into(),
+                geosite: URL_GEOSITE.into(),
+                mmdb: URL_MMDB.into(),
             },
             ipv6: self.ipv6,
             tun: TunConfig {
                 enable: self.tun,
-                stack: "system".to_string(),
-                dns_hijack: vec!["any:53".to_string(), "tcp://any:53".to_string()],
+                stack: "system".into(),
+                dns_hijack: vec!["any:53".into(), "tcp://any:53".into()],
                 auto_route: true,
                 auto_detect_interface: true,
                 ipv6: self.ipv6,
@@ -278,27 +248,27 @@ impl KernelConfig {
         Ok(yml)
     }
 
-    fn build_rules(&self) -> (HashMap<String, RuleProvider>, Vec<String>, Vec<String>) {
+    fn clash_build_rules(&self) -> (HashMap<String, ClashRule>, Vec<String>, Vec<String>) {
         let mut rules_process = Vec::new();
         let mut rules_other = Vec::new();
         let mut rules_ip = Vec::new();
 
         // 分类处理规则
-        self.process_rules(
+        self.clash_process_rules(
             self.rules_reject.iter(),
             key_reject,
             &mut rules_process,
             &mut rules_other,
             &mut rules_ip,
         );
-        self.process_rules(
+        self.clash_process_rules(
             self.rules_direct.iter(),
             key_direct,
             &mut rules_process,
             &mut rules_other,
             &mut rules_ip,
         );
-        self.process_rules(
+        self.clash_process_rules(
             self.rules_proxy.iter(),
             key_proxy,
             &mut rules_process,
@@ -309,47 +279,42 @@ impl KernelConfig {
         // 构建规则提供者和规则列表
         let mut rule_providers = HashMap::new();
         let mut names: Vec<String> = Vec::new();
-        self.build_rule_providers(rules_process, &mut names, &mut rule_providers);
-        self.build_rule_providers(rules_other, &mut names, &mut rule_providers);
-        self.build_rule_providers(rules_ip, &mut names, &mut rule_providers);
+        self.clash_build_rule_providers(rules_process, &mut names, &mut rule_providers);
+        self.clash_build_rule_providers(rules_other, &mut names, &mut rule_providers);
+        self.clash_build_rule_providers(rules_ip, &mut names, &mut rule_providers);
 
-        // 生成最终规则
         let mut rules = Vec::new();
-        let mut rule_names_proxy = Vec::new();
+        let mut rule_names = Vec::new();
 
         for name in names {
             let (rule_type, target, outbound) = if name.ends_with("_i_geo") {
-                ("GEOIP", "CN", self.get_outbound_by_prefix(&name))
+                ("GEOIP", "CN", self.clash_outbound_by_prefix(&name))
             } else {
                 (
                     "rule-set",
                     name.as_str(),
-                    self.get_outbound_by_prefix(&name),
+                    self.clash_outbound_by_prefix(&name),
                 )
             };
-
-            if outbound == tag_selector {
-                rule_names_proxy.push(name.clone());
-            }
-
+            rule_names.push(name.clone());
             rules.push(format!("{}, {}, {}", rule_type, target, outbound));
         }
         rules.push(format!("MATCH, {}", tag_fallback));
 
-        (rule_providers, rules, rule_names_proxy)
+        (rule_providers, rules, rule_names)
     }
 
-    fn process_rules<'a>(
+    fn clash_process_rules<'a>(
         &self,
         rules: impl Iterator<Item = &'a Rule>,
         prefix: &str,
-        rules_process: &mut Vec<HashMap<String, String>>,
-        rules_other: &mut Vec<HashMap<String, String>>,
-        rules_ip: &mut Vec<HashMap<String, String>>,
+        rules_process: &mut Vec<ClashRule>,
+        rules_other: &mut Vec<ClashRule>,
+        rules_ip: &mut Vec<ClashRule>,
     ) {
         // 处理CN IP直连规则
         if self.geo_cn_direct && prefix == key_direct {
-            let rule = Rule::from_remote(RuleType::Ip, geo_ip_cn.to_string());
+            let rule = Rule::from_remote(RuleType::Ip, "".into());
             let tag = format!("{}_cn_i_geo", prefix);
             rules_ip.push(rule.clash(&tag));
         }
@@ -370,32 +335,20 @@ impl KernelConfig {
         }
     }
 
-    fn build_rule_providers(
+    fn clash_build_rule_providers(
         &self,
-        rules: Vec<HashMap<String, String>>,
+        rules: Vec<ClashRule>,
         names: &mut Vec<String>,
-        providers: &mut HashMap<String, RuleProvider>,
+        providers: &mut HashMap<String, ClashRule>,
     ) {
         for rule in rules {
-            let name = rule.get("name").unwrap().clone();
-            let rule_type = rule.get("type").unwrap().clone();
-            let rules_list = rule
-                .get("rules")
-                .map(|s| s.split(';').map(|r| r.to_string()).collect())
-                .unwrap_or_default();
-
-            providers.insert(
-                name.clone(),
-                RuleProvider {
-                    type_: rule_type,
-                    rules: rules_list,
-                },
-            );
+            let name = rule.name.clone();
+            providers.insert(name.clone(), rule);
             names.push(name);
         }
     }
 
-    fn get_outbound_by_prefix(&self, name: &str) -> &'static str {
+    fn clash_outbound_by_prefix(&self, name: &str) -> &'static str {
         if name.starts_with(key_direct) {
             TAG_DIRECT
         } else if name.starts_with(key_proxy) {
@@ -405,31 +358,38 @@ impl KernelConfig {
         }
     }
 
-    fn build_dns(&self, rule_names_proxy: Vec<String>) -> DnsConfig {
+    fn clash_build_dns(&self, rule_names: Vec<String>) -> DnsConfig {
         // 构建DNS服务器列表（避免克隆）
         let dns_cn: Vec<String> = self.dns_cn.iter().cloned().collect();
         let dns_proxy: Vec<String> = self.dns_proxy.iter().cloned().collect();
 
         // 构建DNS策略
         let mut nameserver_policy = HashMap::new();
-        for name in rule_names_proxy {
-            nameserver_policy.insert(format!("rule-set:{}", name), dns_proxy.clone());
+        for name in rule_names {
+            if name.contains("_i_") || name.ends_with("_geo") {
+                continue;
+            }
+            if name.starts_with(key_direct) {
+                nameserver_policy.insert(format!("rule-set:{}", name), dns_cn.clone());
+            } else if name.starts_with(key_proxy) {
+                nameserver_policy.insert(format!("rule-set:{}", name), dns_proxy.clone());
+            }
         }
 
         DnsConfig {
             enable: true,
-            listen: "0.0.0.0:1053".to_string(),
+            listen: "0.0.0.0:1053".into(),
             ipv6: self.ipv6,
             prefer_h3: false,
-            cache_algorithm: "arc".to_string(),
+            cache_algorithm: "arc".into(),
             use_system_hosts: false,
             enhanced_mode: if self.fake_ip {
                 "fake-ip"
             } else {
                 "redir-host"
             }
-            .to_string(),
-            fake_ip_range: "198.18.0.1/16".to_string(),
+            .into(),
+            fake_ip_range: "198.18.0.1/16".into(),
             fake_ip_filter: FAKE_IP_FILTER.clone(),
             default_nameserver: dns_cn.clone(),
             nameserver: dns_cn.clone(),
@@ -438,12 +398,15 @@ impl KernelConfig {
         }
     }
 
-    fn build_proxies(&self) -> Vec<Proxy> {
+    fn clash_build_proxies(&self) -> Vec<Proxy> {
         self.nodes
             .iter()
             .map(|node| {
                 let mut attributes = HashMap::new();
                 node.attribute.iter().for_each(|(k, v)| {
+                    if k == "type" || k == "allowInsecure" {
+                        return;
+                    }
                     let value = if v.is_array() {
                         Value::Sequence(
                             v.as_array()
@@ -460,15 +423,10 @@ impl KernelConfig {
                     attributes.insert(k.clone(), value);
                 });
 
-                // 移除不需要的字段
-                attributes.remove("allowInsecure");
-                // 移除可能得重复字段
-                attributes.remove("type");
-
                 Proxy {
                     name: node.name.clone(),
                     type_: if node.node_type == "ss" || node.node_type == "shadowsocks" {
-                        "ss".to_string()
+                        "ss".into()
                     } else {
                         node.node_type.clone()
                     },
@@ -482,40 +440,27 @@ impl KernelConfig {
             .collect()
     }
 
-    fn build_proxy_groups(&self) -> Vec<ProxyGroup> {
-        let auto_area = self.build_node_auto_area();
-        let auto_outbounds: Vec<String> = auto_area
+    fn clash_build_proxy_groups(&self) -> Vec<ProxyGroup> {
+        let auto_area = self.clash_build_node_auto_area();
+        let auto_proxies: Vec<String> = auto_area
             .iter()
-            .filter_map(|group| match group {
-                ProxyGroup::UrlTest { name, .. } => Some(name.clone()),
-                _ => None,
-            })
+            .map(|group| group.name.clone())
             .collect();
 
         // 构建自动选择组
-        let auto = ProxyGroup::UrlTest {
-            name: tag_auto.to_string(),
-            type_: "url-test".to_string(),
-            url: test_url.to_string(),
-            interval: 1800,
-            tolerance: 150,
-            proxies: auto_outbounds,
-        };
+        let auto = self.clash_build_node_auto(tag_auto.into(), auto_proxies);
 
         // 构建选择器组
         let default_selector = auto_area
             .first()
-            .and_then(|g| match g {
-                ProxyGroup::UrlTest { name, .. } => Some(name.clone()),
-                _ => None,
-            })
-            .unwrap_or_else(|| TAG_DIRECT.to_string());
+            .and_then(|g| Some(g.name.clone()))
+            .unwrap_or_else(|| TAG_DIRECT.into());
 
-        let selector = self.build_selector_group(tag_selector, default_selector, &auto, &auto_area);
+        // 节点选择
+        let selector = self.clash_build_selector_group(tag_selector, default_selector, &auto_area);
 
         // 构建fallback组
-        let fallback =
-            self.build_selector_group(tag_fallback, TAG_DIRECT.to_string(), &auto, &auto_area);
+        let fallback = self.clash_build_selector_group(tag_fallback, TAG_DIRECT.into(), &auto_area);
 
         // 合并所有代理组
         let mut groups = vec![selector, auto, fallback];
@@ -524,7 +469,7 @@ impl KernelConfig {
         groups
     }
 
-    fn build_node_auto_area(&self) -> Vec<ProxyGroup> {
+    fn clash_build_node_auto_area(&self) -> Vec<ProxyGroup> {
         let area_map = self.node_map_area();
         area_map
             .into_iter()
@@ -543,51 +488,42 @@ impl KernelConfig {
                     area_name
                 );
                 let proxies = nodes.iter().map(|n| n.name.clone()).collect();
-
-                ProxyGroup::UrlTest {
-                    name: group_name,
-                    type_: "url-test".to_string(),
-                    url: test_url.to_string(),
-                    interval: 1800,
-                    tolerance: 150,
-                    proxies,
-                }
+                self.clash_build_node_auto(group_name, proxies)
             })
             .collect()
     }
 
-    fn build_selector_group(
+    fn clash_build_node_auto(&self, tag: String, proxies: Vec<String>) -> ProxyGroup {
+        ProxyGroup {
+            name: tag,
+            type_: "url-test".into(),
+            default: None,
+            url: test_url.into(),
+            interval: 1800,
+            tolerance: 150,
+            proxies,
+        }
+    }
+
+    fn clash_build_selector_group(
         &self,
         name: &str,
         default: String,
-        auto_group: &ProxyGroup,
         auto_area: &[ProxyGroup],
     ) -> ProxyGroup {
-        let auto_name = match auto_group {
-            ProxyGroup::UrlTest { name, .. } => name,
-            _ => tag_auto,
-        };
-
-        let mut proxies = vec![
-            TAG_DIRECT.to_string(),
-            TAG_REJECT.to_string(),
-            auto_name.to_string(),
-        ];
+        let mut proxies = vec![TAG_DIRECT.into(), TAG_REJECT.into(), tag_auto.into()];
 
         // 添加地区自动组
-        proxies.extend(auto_area.iter().filter_map(|g| match g {
-            ProxyGroup::UrlTest { name, .. } => Some(name.clone()),
-            _ => None,
-        }));
+        proxies.extend(auto_area.iter().map(|g| g.name.clone()));
 
         // 添加原始节点
         proxies.extend(self.nodes.iter().map(|n| n.name.clone()));
 
-        ProxyGroup::Select {
-            name: name.to_string(),
-            type_: "select".to_string(),
-            default,
-            url: test_url.to_string(),
+        ProxyGroup {
+            name: name.into(),
+            type_: "select".into(),
+            default: Some(default),
+            url: test_url.into(),
             interval: 1800,
             tolerance: 150,
             proxies,

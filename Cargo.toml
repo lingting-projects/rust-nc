@@ -38,6 +38,7 @@ reqwest = "0.12"
 # 基础
 bytesize = "2.0"
 humantime = "2.2"
+indexmap = "2.10"
 # 序列化
 serde = "1.0"
 serde_json = "1.0"

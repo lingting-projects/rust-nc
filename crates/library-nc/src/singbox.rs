@@ -4,11 +4,8 @@ use crate::kernel::{
     inner_ipv4, inner_ipv6, key_direct, key_proxy, key_reject, route_ipv4, route_ipv6, tag_auto,
     tag_fallback, tag_selector, test_url, virtual_ipv4, virtual_ipv6, KernelConfig,
 };
-use crate::rule::{Rule, RuleType};
-use crate::subscribe::SubscribeNode;
-use serde_json::{json, to_string, Value};
-use std::collections::HashMap;
-use std::slice::Iter;
+use crate::rule::{Rule, RuleType, SingBoxRule};
+use serde::Serialize;
 
 pub const tag_dns_cn: &str = "dns-cn";
 pub const tag_dns_fake: &str = "dns-fake";
@@ -17,183 +14,301 @@ pub const tag_dns_proxy: &str = "dns-proxy";
 pub const geo_ip_cn: &str =
     "https://raw.githubusercontent.com/SagerNet/sing-geoip/rule-set/geoip-cn.srs";
 
+#[derive(Serialize)]
+struct LogConfig {
+    level: String,
+    timestamp: bool,
+}
+
+#[derive(Serialize)]
+struct ExperimentalConfig {
+    cache_file: ExperimentalCache,
+    clash_api: ExperimentalClash,
+}
+
+#[derive(Serialize)]
+struct ExperimentalCache {
+    enabled: bool,
+    store_rdrc: bool,
+    store_fakeip: bool,
+}
+
+#[derive(Serialize)]
+struct ExperimentalClash {
+    external_controller: String,
+    external_ui: String,
+    external_ui_download_url: String,
+    external_ui_download_detour: String,
+    default_mode: String,
+}
+
+#[derive(Serialize)]
+#[serde(untagged)]
+enum Inbound {
+    Tun {
+        #[serde(rename = "type")]
+        kind: String,
+        tag: String,
+        interface_name: String,
+        auto_route: bool,
+        strict_route: bool,
+        endpoint_independent_nat: bool,
+        udp_timeout: String,
+        stack: String,
+        sniff_override_destination: bool,
+        domain_strategy: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        address: Option<Vec<String>>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        route_address: Option<Vec<String>>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        route_exclude_address: Option<Vec<String>>,
+    },
+
+    Mixed {
+        #[serde(rename = "type")]
+        kind: String,
+        tag: String,
+        set_system_proxy: bool,
+        listen: String,
+        listen_port: u16,
+        tcp_fast_open: bool,
+        tcp_multi_path: bool,
+        udp_fragment: bool,
+    },
+}
+
+#[derive(Serialize)]
+struct Outbound {
+    tag: String,
+    #[serde(rename = "type")]
+    type_: String,
+    interrupt_exist_connections: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub default: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub interval: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tolerance: Option<u64>,
+    outbounds: Vec<String>,
+}
+
+#[derive(Serialize)]
+struct RouteConfig {
+    #[serde(rename = "final")]
+    final_: String,
+    auto_detect_interface: bool,
+    rule_set: Vec<SingBoxRule>,
+    rules: Vec<RouteRule>,
+}
+
+#[derive(Serialize)]
+#[serde(untagged)]
+enum RouteRule {
+    Action {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        rule_set: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        inbound: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        protocol: Option<String>,
+        action: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        strategy: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        timeout: Option<String>,
+    },
+    Outbound {
+        rule_set: String,
+        outbound: String,
+    },
+}
+
+#[derive(Serialize)]
+struct DnsConfig {
+    #[serde(rename = "final")]
+    final_: String,
+    disable_cache: bool,
+    disable_expire: bool,
+    independent_cache: bool,
+    strategy: String,
+    servers: Vec<DnsServer>,
+    rules: Vec<DnsRule>,
+    #[serde(rename = "fakeip")]
+    fake_ip: DnsFakeIp,
+}
+
+#[derive(Serialize)]
+struct DnsServer {
+    tag: String,
+    address: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    detour: Option<String>,
+    strategy: String,
+}
+
+#[derive(Serialize)]
+struct DnsFakeIp {
+    enabled: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    inet4_range: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    inet6_range: Option<String>,
+}
+
+#[derive(Serialize)]
+struct DnsRule {
+    server: String,
+    rule_set: String,
+}
+
+#[derive(Serialize)]
+struct SingBoxConfig {
+    log: LogConfig,
+    experimental: ExperimentalConfig,
+    inbounds: Vec<Inbound>,
+    outbounds: Vec<Outbound>,
+    route: RouteConfig,
+    dns: DnsConfig,
+}
+
 impl KernelConfig {
     pub fn sing_box_default(&self) -> AnyResult<String> {
         self.sing_box(default_ui, default_mixed_listen, default_mixed_port)
     }
 
     pub fn sing_box(&self, ui: &str, mixed_listen: &str, mixed_port: u16) -> AnyResult<String> {
-        let mut map: HashMap<String, Value> = HashMap::new();
+        let (route, dns) = self.sing_box_build_dns_route();
 
-        self.sing_box_fill_log(&mut map);
-        self.sing_box_fill_experimental(&mut map, ui);
-        self.sing_box_fill_inbounds(&mut map, mixed_listen, mixed_port);
-        self.sing_box_fill_outbounds(&mut map);
-        let tags = self.sing_box_fill_route(&mut map);
-        let tags_direct = tags.get(0).unwrap();
-        let tags_proxy = tags.get(1).unwrap();
-        self.sing_box_fill_dns(&mut map, tags_direct, tags_proxy);
-
-        let json = json!(map);
-        let json = to_string(&json)?;
-        Ok(json)
+        let config = SingBoxConfig {
+            log: self.sing_box_build_log(),
+            experimental: self.sing_box_build_experimental(ui),
+            inbounds: self.sing_box_build_inbounds(mixed_listen, mixed_port),
+            outbounds: self.sing_box_build_outbounds(),
+            route,
+            dns,
+        };
+        Ok(serde_json::to_string(&config)?)
     }
 
-    fn sing_box_fill_log(&self, map: &mut HashMap<String, Value>) {
-        let mut log: HashMap<String, Value> = HashMap::new();
-        log.insert(
-            "level".to_string(),
-            if self.debug {
-                json!("debug")
+    fn sing_box_build_log(&self) -> LogConfig {
+        LogConfig {
+            level: if self.debug {
+                "debug".into()
             } else {
-                json!("info")
+                "info".into()
             },
-        );
-        log.insert("timestamp".to_string(), json!(true));
-
-        map.insert("log".to_string(), json!(log));
-    }
-
-    fn sing_box_fill_experimental(&self, map: &mut HashMap<String, Value>, ui: &str) {
-        let mut cache: HashMap<String, Value> = HashMap::new();
-        cache.insert("enabled".to_string(), json!(true));
-        cache.insert("store_rdrc".to_string(), json!(true));
-        if self.fake_ip {
-            cache.insert("store_fakeip".to_string(), json!(true));
+            timestamp: true,
         }
-
-        let mut clash: HashMap<String, Value> = HashMap::new();
-        clash.insert("external_controller".to_string(), json!(ui));
-        clash.insert("external_ui".to_string(), json!("nc-sing"));
-        clash.insert(
-            "external_ui_download_url".to_string(),
-            json!(fast(clash_ui_url)),
-        );
-        clash.insert("external_ui_download_detour".to_string(), json!(key_direct));
-        clash.insert("default_mode".to_string(), json!("rule"));
-
-        let mut experimental: HashMap<String, Value> = HashMap::new();
-        experimental.insert("cache_file".to_string(), json!(cache));
-        experimental.insert("clash_api".to_string(), json!(clash));
-
-        map.insert("experimental".to_string(), json!(experimental));
     }
 
-    fn sing_box_fill_inbounds(&self, map: &mut HashMap<String, Value>, listen: &str, port: u16) {
-        let mut inbounds = Vec::new();
+    fn sing_box_build_experimental(&self, ui: &str) -> ExperimentalConfig {
+        let cache = ExperimentalCache {
+            enabled: true,
+            store_rdrc: true,
+            store_fakeip: self.fake_ip,
+        };
 
+        let clash = ExperimentalClash {
+            external_controller: ui.into(),
+            external_ui: "nc-sing".into(),
+            external_ui_download_url: fast(clash_ui_url),
+            external_ui_download_detour: key_direct.into(),
+            default_mode: "rule".into(),
+        };
+        ExperimentalConfig {
+            cache_file: cache,
+            clash_api: clash,
+        }
+    }
+
+    fn sing_box_build_inbounds(&self, listen: &str, port: u16) -> Vec<Inbound> {
+        let mut inbounds = Vec::new();
         if self.tun {
             inbounds.push(self.sing_box_build_tun());
         }
         inbounds.push(self.sing_box_build_mixed(listen, port));
-        map.insert("inbounds".to_string(), json!(inbounds));
+        inbounds
     }
 
-    fn sing_box_build_tun(&self) -> Value {
-        let mut map: HashMap<String, Value> = HashMap::new();
-
-        map.insert("type".to_string(), json!("tun"));
-        map.insert("tag".to_string(), json!("tun-in"));
-        map.insert("interface_name".to_string(), json!("NcRustTunBySingBox"));
-        map.insert("auto_route".to_string(), json!(true));
-        map.insert("strict_route".to_string(), json!(true));
-        map.insert("endpoint_independent_nat".to_string(), json!(false));
-        map.insert("udp_timeout".to_string(), json!("5m"));
-        map.insert("stack".to_string(), json!("system"));
-        map.insert("sniff_override_destination".to_string(), json!(false));
-        map.insert("domain_strategy".to_string(), json!(self.ip_strategy()));
-
-        if self.fake_ip {
-            let mut virtual_ips = vec![virtual_ipv4];
-            let mut fake_ips = vec![fake_ipv4];
+    fn sing_box_build_tun(&self) -> Inbound {
+        let (address, route_address, route_exclude_address) = if self.fake_ip {
+            let mut v_ip = vec![virtual_ipv4.into()];
+            let mut f_ip = vec![fake_ipv4.into()];
             if self.ipv6 {
-                virtual_ips.push(virtual_ipv6);
-                fake_ips.push(fake_ipv6);
+                v_ip.push(virtual_ipv6.into());
+                f_ip.push(fake_ipv6.into());
             }
-            map.insert("address".to_string(), json!(virtual_ips));
-            map.insert("route_address".to_string(), json!(fake_ips));
+            (Some(v_ip), Some(f_ip), None)
         } else {
-            let mut route_ips = vec![route_ipv4];
-            let mut exclude_ips = inner_ipv4.clone();
+            let mut r_ip = vec![route_ipv4.into()];
+            let mut ex_ip = inner_ipv4.clone();
             if self.ipv6 {
-                route_ips.push(route_ipv6);
-                inner_ipv6.iter().for_each(|ip| {
-                    exclude_ips.push(ip.clone());
-                });
+                r_ip.push(route_ipv6.into());
+                ex_ip.extend(inner_ipv6.iter().cloned());
             }
+            (Some(r_ip), None, Some(ex_ip))
+        };
 
-            map.insert("address".to_string(), json!(route_ips));
-            map.insert("route_exclude_address".to_string(), json!(exclude_ips));
+        Inbound::Tun {
+            kind: "tun".into(),
+            tag: "tun-in".into(),
+            interface_name: "NcRustTunBySingBox".into(),
+            auto_route: true,
+            strict_route: true,
+            endpoint_independent_nat: false,
+            udp_timeout: "5m".into(),
+            stack: "system".into(),
+            sniff_override_destination: false,
+            domain_strategy: self.ip_strategy(),
+            address,
+            route_address,
+            route_exclude_address,
         }
-
-        json!(map)
     }
 
-    fn sing_box_build_mixed(&self, listen: &str, port: u16) -> Value {
-        let mut map: HashMap<String, Value> = HashMap::new();
-        map.insert("type".to_string(), json!("mixed"));
-        map.insert("tag".to_string(), json!("mixed-in"));
-        map.insert("set_system_proxy".to_string(), json!(false));
-        map.insert("listen".to_string(), json!(listen));
-        map.insert("listen_port".to_string(), json!(port));
-        map.insert("tcp_fast_open".to_string(), json!(true));
-        map.insert("tcp_multi_path".to_string(), json!(true));
-        map.insert("udp_fragment".to_string(), json!(false));
-        json!(map)
+    fn sing_box_build_mixed(&self, listen: &str, port: u16) -> Inbound {
+        Inbound::Mixed {
+            kind: "mixed".into(),
+            tag: "mixed-in".into(),
+            set_system_proxy: false,
+            listen: listen.into(),
+            listen_port: port,
+            tcp_fast_open: true,
+            tcp_multi_path: true,
+            udp_fragment: false,
+        }
     }
 
-    fn sing_box_fill_outbounds(&self, map: &mut HashMap<String, Value>) {
-        // 全部节点的 国家自动切换节点
-        let auto_area = self.sing_box_build_node_auto_area();
-        // 自动选择节点
-        let mut auto_outbounds = Vec::new();
-        auto_area.iter().for_each(|node| {
-            let tag = node.get("tag").unwrap();
-            auto_outbounds.push(tag.as_str().unwrap().to_string())
-        });
-        let auto = self.sing_box_build_node_auto(tag_auto, auto_outbounds);
+    fn sing_box_build_outbounds(&self) -> Vec<Outbound> {
+        let auto_area = self.sing_box_build_outbound_auto_area();
+        let auto_outbounds: Vec<String> = auto_area.iter().map(|group| group.tag.clone()).collect();
+        // 自动选择
+        let auto = self.sing_box_build_outbound_auto(tag_auto, auto_outbounds);
 
-        let selector = self.sing_box_build_node_selector(
-            tag_selector,
-            auto_area.get(0).unwrap().get("tag").unwrap().clone(),
-            &auto,
-            &auto_area,
-        );
+        // 构建选择器组
+        let default_selector = auto_area
+            .first()
+            .and_then(|g| Some(g.tag.clone()))
+            .unwrap_or_else(|| key_direct.into());
 
+        // 节点选择
+        let selector =
+            self.sing_box_build_outbound_selector(tag_selector, default_selector, &auto_area);
+
+        // 构建fallback组
         let fallback =
-            self.sing_box_build_node_selector(tag_fallback, json!(key_direct), &auto, &auto_area);
+            self.sing_box_build_outbound_selector(tag_fallback, key_direct.into(), &auto_area);
 
-        let mut outbounds = Vec::new();
-        outbounds.push(selector);
-        outbounds.push(auto);
-        outbounds.push(fallback);
-
-        for node in auto_area {
-            outbounds.push(node)
-        }
-        self.nodes
-            .iter()
-            .for_each(|node| outbounds.push(self.sing_box_build_node(node)));
-
-        let mut direct = HashMap::new();
-        direct.insert("tag".to_string(), key_direct.to_string());
-        direct.insert("type".to_string(), key_direct.to_string());
-        outbounds.push(json!(direct));
-
-        let mut dns_out = HashMap::new();
-        dns_out.insert("tag".to_string(), "dns_out".to_string());
-        dns_out.insert("type".to_string(), "dns".to_string());
-        outbounds.push(json!(dns_out));
-
-        let mut reject = HashMap::new();
-        reject.insert("tag".to_string(), key_reject.to_string());
-        reject.insert("type".to_string(), "block".to_string());
-        outbounds.push(json!(reject));
-
-        map.insert("outbounds".to_string(), json!(outbounds));
+        // 合并所有代理组
+        let mut outbounds = vec![selector, auto, fallback];
+        outbounds.extend(auto_area);
+        outbounds
     }
 
-    fn sing_box_build_node_auto_area(&self) -> Vec<Value> {
+    fn sing_box_build_outbound_auto_area(&self) -> Vec<Outbound> {
         let map = self.node_map_area();
 
         let mut vec = Vec::new();
@@ -207,117 +322,85 @@ impl KernelConfig {
                 .iter()
                 .for_each(|node| outbounds.push(node.name.to_string()));
 
-            let value = self.sing_box_build_node_auto(&tag, outbounds);
+            let value = self.sing_box_build_outbound_auto(&tag, outbounds);
             vec.push(value)
         });
 
         vec
     }
 
-    fn sing_box_build_node_auto(&self, tag: &str, outbounds: Vec<String>) -> Value {
-        let mut node = HashMap::new();
-        node.insert("tag".to_string(), json!(tag));
-        node.insert("type".to_string(), json!("urltest"));
-        node.insert("interrupt_exist_connections".to_string(), json!(false));
-        node.insert("url".to_string(), json!(test_url));
-        node.insert("interval".to_string(), json!("30s"));
-        node.insert("tolerance".to_string(), json!(150));
-        node.insert("outbounds".to_string(), json!(outbounds));
-
-        json!(node)
+    fn sing_box_build_outbound_auto(&self, tag: &str, outbounds: Vec<String>) -> Outbound {
+        Outbound {
+            tag: tag.into(),
+            type_: "urltest".into(),
+            interrupt_exist_connections: false,
+            default: None,
+            url: Some(test_url.into()),
+            interval: Some("30s".into()),
+            tolerance: Some(150),
+            outbounds,
+        }
     }
 
-    fn sing_box_build_node_selector(
+    fn sing_box_build_outbound_selector(
         &self,
         tag: &str,
-        default: Value,
-        auto: &Value,
-        auto_area: &Vec<Value>,
-    ) -> Value {
-        let mut map = HashMap::new();
-        map.insert("tag".to_string(), json!(tag));
-        map.insert("type".to_string(), json!("selector"));
-        map.insert("interrupt_exist_connections".to_string(), json!(false));
-        map.insert("default".to_string(), default);
-
+        default: String,
+        auto_area: &Vec<Outbound>,
+    ) -> Outbound {
         let mut outbounds = Vec::new();
-        outbounds.push(json!(key_direct));
-        outbounds.push(json!(key_reject));
-        outbounds.push(auto.get("tag").unwrap().clone());
+        outbounds.push(key_direct.into());
+        outbounds.push(key_reject.into());
+        outbounds.push(tag_auto.into());
 
         auto_area
             .iter()
-            .for_each(|node| outbounds.push(node.get("tag").unwrap().clone()));
+            .for_each(|outbound| outbounds.push(outbound.tag.clone()));
 
         self.nodes
             .iter()
-            .for_each(|node| outbounds.push(json!(node.name)));
+            .for_each(|node| outbounds.push(node.name.clone()));
 
-        map.insert("outbounds".to_string(), json!(outbounds));
-
-        json!(map)
-    }
-
-    fn sing_box_build_node(&self, node: &SubscribeNode) -> Value {
-        let mut map = HashMap::new();
-
-        map.insert("tag".to_string(), json!(node.name.clone()));
-        map.insert("type".to_string(), json!(node.node_type.clone()));
-        map.insert("server".to_string(), json!(node.server.clone()));
-        map.insert("server_port".to_string(), json!(node.port.unwrap_or(443)));
-        map.insert("password".to_string(), json!(node.password.clone()));
-
-        if node.node_type == "ss" || node.node_type == "shadowsocks" {
-            map.insert("type".to_string(), json!("shadowsocks"));
-            if let Some(cipher) = node.attr_string("cipher") {
-                map.insert("method".to_string(), json!(cipher));
-            }
-        } else if node.node_type == "trojan" {
-            let mut tls_config = HashMap::new();
-            tls_config.insert("enabled".to_string(), json!(true));
-
-            let insecure = node.disable_ssl();
-
-            tls_config.insert("insecure".to_string(), json!(insecure));
-
-            if let Some(alpn) = node.attribute.get("alpn") {
-                tls_config.insert("alpn".to_string(), alpn.clone());
-            }
-
-            map.insert("tls".to_string(), json!(tls_config));
-        } else {
-            map.insert("type".to_string(), json!(node.node_type.clone()));
+        Outbound {
+            tag: tag.into(),
+            type_: "selector".into(),
+            interrupt_exist_connections: false,
+            default: Some(default),
+            url: None,
+            interval: None,
+            tolerance: None,
+            outbounds,
         }
-
-        json!(map)
     }
 
-    fn sing_box_fill_route(&self, map: &mut HashMap<String, Value>) -> Vec<Vec<String>> {
-        let mut route: HashMap<String, Value> = HashMap::new();
-        route.insert("final".to_string(), json!(tag_fallback));
-        route.insert("auto_detect_interface".to_string(), json!(true));
+    fn sing_box_build_dns_route(&self) -> (RouteConfig, DnsConfig) {
+        let route = self.sing_box_build_route();
+        let dns = self.sing_box_build_dns(&route);
 
-        let mut rules_process: Vec<HashMap<String, String>> = Vec::new();
-        let mut rules_other: Vec<HashMap<String, String>> = Vec::new();
-        let mut rules_ip: Vec<HashMap<String, String>> = Vec::new();
+        (route, dns)
+    }
 
-        self.sing_box_fill_rule(
+    fn sing_box_build_route(&self) -> RouteConfig {
+        let mut rules_process = Vec::new();
+        let mut rules_other = Vec::new();
+        let mut rules_ip = Vec::new();
+
+        // 分类处理规则
+        self.sing_box_process_rules(
             self.rules_reject.iter(),
             key_reject,
             &mut rules_process,
             &mut rules_other,
             &mut rules_ip,
         );
-
-        let tags_direct = self.sing_box_fill_rule(
+        self.sing_box_process_rules(
             self.rules_direct.iter(),
             key_direct,
             &mut rules_process,
             &mut rules_other,
             &mut rules_ip,
         );
-
-        let tags_proxy = self.sing_box_fill_rule(
+        self.sing_box_process_rules(
             self.rules_proxy.iter(),
             key_proxy,
             &mut rules_process,
@@ -326,201 +409,180 @@ impl KernelConfig {
         );
 
         let mut rule_set = Vec::new();
-        for rule in rules_process {
-            rule_set.push(rule)
-        }
-        for rule in rules_other {
-            rule_set.push(rule)
-        }
-        for rule in rules_ip {
-            rule_set.push(rule)
-        }
+        rule_set.extend(rules_process);
+        rule_set.extend(rules_other);
+        rule_set.extend(rules_ip);
 
-        route.insert("rule_set".to_string(), json!(rule_set));
-
-        let mut rules = Vec::new();
-
-        let mut sniff = HashMap::new();
-        sniff.insert("action".to_string(), "sniff".to_string());
-        sniff.insert("timeout".to_string(), "1s".to_string());
-        rules.push(sniff);
-
-        let mut dns = HashMap::new();
-        dns.insert("protocol".to_string(), "dns".to_string());
-        dns.insert("action".to_string(), "hijack-dns".to_string());
-        rules.push(dns);
-
-        let mut mixed = HashMap::new();
-        mixed.insert("inbound".to_string(), "mixed-in".to_string());
-        mixed.insert("action".to_string(), "resolve".to_string());
-        mixed.insert("strategy".to_string(), self.ip_strategy());
-        rules.push(mixed);
+        let mut rules = vec![
+            RouteRule::Action {
+                rule_set: None,
+                inbound: None,
+                protocol: None,
+                action: "sniff".into(),
+                strategy: None,
+                timeout: Some("1s".into()),
+            },
+            RouteRule::Action {
+                rule_set: None,
+                inbound: None,
+                protocol: Some("dns".into()),
+                action: "hijack-dns".into(),
+                strategy: None,
+                timeout: None,
+            },
+            RouteRule::Action {
+                rule_set: None,
+                inbound: Some("mixed-in".into()),
+                protocol: None,
+                action: "resolve".into(),
+                strategy: Some(self.ip_strategy()),
+                timeout: None,
+            },
+        ];
 
         rule_set.iter().for_each(|rule| {
-            let mut set = HashMap::new();
-            let tag = rule.get("tag").map(|v| v.clone()).unwrap_or("".to_string());
-
-            if tag.starts_with(key_direct) {
-                set.insert("outbound".to_string(), key_direct.to_string());
-            } else if tag.starts_with(key_proxy) {
-                set.insert("outbound".to_string(), tag_selector.to_string());
+            let rr = if rule.tag.starts_with(key_reject) {
+                RouteRule::Action {
+                    rule_set: Some(rule.tag.clone()),
+                    inbound: None,
+                    protocol: None,
+                    action: "reject".into(),
+                    strategy: Some(self.ip_strategy()),
+                    timeout: None,
+                }
             } else {
-                set.insert("action".to_string(), "reject".to_string());
-            }
+                RouteRule::Outbound {
+                    rule_set: rule.tag.clone(),
+                    outbound: if rule.tag.starts_with(key_proxy) {
+                        tag_selector
+                    } else {
+                        key_direct
+                    }
+                    .into(),
+                }
+            };
 
-            set.insert("rule_set".to_string(), tag);
-            rules.push(set);
+            rules.push(rr)
         });
 
-        route.insert("rules".to_string(), json!(rules));
-
-        map.insert("route".to_string(), json!(route));
-        vec![tags_direct, tags_proxy]
+        RouteConfig {
+            final_: tag_fallback.into(),
+            auto_detect_interface: true,
+            rule_set,
+            rules,
+        }
     }
 
-    fn sing_box_fill_rule(
+    fn sing_box_process_rules<'a>(
         &self,
-        vec: Iter<Rule>,
+        rules: impl Iterator<Item = &'a Rule>,
         prefix: &str,
-        rules_process: &mut Vec<HashMap<String, String>>,
-        rules_other: &mut Vec<HashMap<String, String>>,
-        rules_ip: &mut Vec<HashMap<String, String>>,
-    ) -> Vec<String> {
-        let mut tags = Vec::new();
-
-        if self.geo_cn_direct && prefix.starts_with(key_direct) {
-            let rule = Rule::from_remote(RuleType::Ip, geo_ip_cn.to_string());
-            let tag = format!("{}_i_geo", prefix);
+        rules_process: &mut Vec<SingBoxRule>,
+        rules_other: &mut Vec<SingBoxRule>,
+        rules_ip: &mut Vec<SingBoxRule>,
+    ) {
+        // 处理CN IP直连规则
+        if self.geo_cn_direct && prefix == key_direct {
+            let rule = Rule::from_remote(RuleType::Ip, geo_ip_cn.into());
+            let tag = format!("{}_cn_i_geo", prefix);
             rules_ip.push(rule.sing_box(&tag));
-            tags.push(tag)
         }
 
-        vec.for_each(|rule| match rule.rule_type {
-            RuleType::Ip => {
-                let rule = rule.sing_box(&format!("{}_i_{}", prefix, rules_ip.len()));
-                tags.push(rule.get("tag").unwrap().clone());
-                rules_ip.push(rule);
-            }
-            RuleType::Process => {
-                let rule = rule.sing_box(&format!("{}_p_{}", prefix, rules_process.len()));
-                tags.push(rule.get("tag").unwrap().clone());
-                rules_process.push(rule);
-            }
-            RuleType::Other => {
-                let rule = rule.sing_box(&format!("{}_o_{}", prefix, rules_other.len()));
-                tags.push(rule.get("tag").unwrap().clone());
-                rules_other.push(rule);
-            }
-        });
+        // 分类处理规则
+        for rule in rules {
+            let tag = match rule.rule_type {
+                RuleType::Process => format!("{}_p_{}", prefix, rules_process.len()),
+                RuleType::Ip => format!("{}_i_{}", prefix, rules_ip.len()),
+                RuleType::Other => format!("{}_o_{}", prefix, rules_other.len()),
+            };
 
-        tags
+            match rule.rule_type {
+                RuleType::Process => rules_process.push(rule.sing_box(&tag)),
+                RuleType::Ip => rules_ip.push(rule.sing_box(&tag)),
+                RuleType::Other => rules_other.push(rule.sing_box(&tag)),
+            }
+        }
     }
 
-    fn sing_box_fill_dns(
-        &self,
-        map: &mut HashMap<String, Value>,
-        tags_direct: &Vec<String>,
-        tags_proxy: &Vec<String>,
-    ) {
-        let mut dns: HashMap<String, Value> = HashMap::new();
-        dns.insert("final".to_string(), json!(tag_dns_cn));
-        dns.insert("disable_cache".to_string(), json!(false));
-        dns.insert("disable_expire".to_string(), json!(false));
-        dns.insert("independent_cache".to_string(), json!(true));
-
-        dns.insert("strategy".to_string(), json!(self.ip_strategy()));
-
-        let servers = self.sing_box_build_dns_servers();
-        dns.insert("servers".to_string(), json!(servers));
-
-        let mut rules = Vec::new();
-
-        for tag in tags_direct {
-            // 直连 只设置 other 规则的dns
-            if !tag.contains("_o_") {
-                continue;
-            }
-            let mut rule = HashMap::new();
-            rule.insert("rule_set".to_string(), tag.clone());
-            rule.insert("server".to_string(), tag_dns_cn.to_string());
-
-            rules.push(rule);
-        }
-
-        // 代理 除了 ip 规则, 都要设置dns
-        let rules_proxy_tags: Vec<_> = tags_proxy
-            .iter()
-            .filter(|tag| !tag.contains("_i_"))
-            .collect();
+    fn sing_box_build_dns(&self, route: &RouteConfig) -> DnsConfig {
+        let mut servers = vec![
+            DnsServer {
+                tag: "dns-local".into(),
+                address: "local".into(),
+                detour: Some(key_direct.into()),
+                strategy: self.ip_strategy(),
+            },
+            DnsServer {
+                tag: tag_dns_cn.into(),
+                address: self.dns_cn.get(0).unwrap().clone(),
+                detour: Some(key_direct.into()),
+                strategy: self.ip_strategy(),
+            },
+            DnsServer {
+                tag: tag_dns_proxy.into(),
+                address: self.dns_proxy.get(0).unwrap().clone(),
+                detour: Some(tag_selector.into()),
+                strategy: self.ip_strategy(),
+            },
+        ];
 
         if self.fake_ip {
-            rules_proxy_tags.iter().for_each(|tag| {
-                let mut rule = HashMap::new();
-                rule.insert("rule_set".to_string(), (*tag).clone());
-                rule.insert("server".to_string(), tag_dns_fake.to_string());
-
-                rules.push(rule);
+            servers.push(DnsServer {
+                tag: tag_dns_fake.into(),
+                address: "fakeip".into(),
+                detour: None,
+                strategy: self.ip_strategy(),
             })
         }
 
-        for tag in rules_proxy_tags {
-            let mut rule = HashMap::new();
-            rule.insert("server".to_string(), tag_dns_proxy.to_string());
-            rule.insert("rule_set".to_string(), tag.clone());
+        let rules = route
+            .rule_set
+            .iter()
+            .filter_map(|r| {
+                let tag = r.tag.as_str();
 
-            rules.push(rule);
+                if tag.starts_with(key_reject) || tag.contains("_i_") {
+                    None
+                } else {
+                    let mut vec = vec![];
+
+                    if tag.starts_with(key_proxy) {
+                        if self.fake_ip {
+                            vec.push(DnsRule {
+                                server: tag_dns_fake.into(),
+                                rule_set: tag.into(),
+                            })
+                        }
+                        vec.push(DnsRule {
+                            server: tag_dns_proxy.into(),
+                            rule_set: tag.into(),
+                        })
+                    } else {
+                        vec.push(DnsRule {
+                            server: tag_dns_cn.into(),
+                            rule_set: tag.into(),
+                        })
+                    }
+
+                    Some(vec)
+                }
+            })
+            .flatten()
+            .collect();
+
+        DnsConfig {
+            final_: tag_dns_cn.into(),
+            disable_cache: false,
+            disable_expire: false,
+            independent_cache: true,
+            strategy: self.ip_strategy(),
+            servers,
+            rules,
+            fake_ip: DnsFakeIp {
+                enabled: self.fake_ip,
+                inet4_range: self.fake_ip.then(|| fake_ipv4.into()),
+                inet6_range: (self.fake_ip && self.ipv6).then(|| fake_ipv6.into()),
+            },
         }
-
-        dns.insert("rules".to_string(), json!(rules));
-
-        let mut fake = HashMap::new();
-        fake.insert("enabled".to_string(), json!(self.fake_ip));
-        if self.fake_ip {
-            fake.insert("inet4_range".to_string(), json!(fake_ipv4));
-            if self.ipv6 {
-                fake.insert("inet6_range".to_string(), json!(fake_ipv6));
-            }
-        }
-        dns.insert("fakeip".to_string(), json!(fake));
-
-        map.insert("dns".to_string(), json!(dns));
-    }
-
-    fn sing_box_build_dns_servers(&self) -> Vec<HashMap<String, String>> {
-        let mut servers = Vec::new();
-
-        let mut local = HashMap::new();
-        local.insert("tag".to_string(), "dns-local".to_string());
-        local.insert("address".to_string(), "local".to_string());
-        local.insert("detour".to_string(), key_direct.to_string());
-        local.insert("strategy".to_string(), self.ip_strategy());
-        servers.push(local);
-
-        let mut cn = HashMap::new();
-        cn.insert("tag".to_string(), tag_dns_cn.to_string());
-        cn.insert("address".to_string(), self.dns_cn.get(0).unwrap().clone());
-        cn.insert("detour".to_string(), key_direct.to_string());
-        cn.insert("strategy".to_string(), self.ip_strategy());
-        servers.push(cn);
-
-        let mut proxy = HashMap::new();
-        proxy.insert("tag".to_string(), tag_dns_proxy.to_string());
-        proxy.insert(
-            "address".to_string(),
-            self.dns_proxy.get(0).unwrap().clone(),
-        );
-        proxy.insert("detour".to_string(), tag_selector.to_string());
-        proxy.insert("strategy".to_string(), self.ip_strategy());
-        servers.push(proxy);
-
-        if self.fake_ip {
-            let mut fakeip = HashMap::new();
-            fakeip.insert("tag".to_string(), tag_dns_fake.to_string());
-            fakeip.insert("address".to_string(), "fakeip".to_string());
-            fakeip.insert("strategy".to_string(), self.ip_strategy());
-            servers.push(fakeip);
-        }
-
-        servers
     }
 }

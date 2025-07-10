@@ -1,6 +1,6 @@
 use crate::core::fast;
 use crate::kernel::key_direct;
-use std::collections::HashMap;
+use serde::Serialize;
 
 pub enum RuleType {
     // 针对ip的规则
@@ -35,52 +35,94 @@ impl Rule {
         }
     }
 
-    pub fn sing_box(&self, tag: &str) -> HashMap<String, String> {
-        let mut map = HashMap::new();
-        map.insert("tag", tag);
+    pub fn sing_box(&self, tag: &str) -> SingBoxRule {
+        let tag = tag.into();
+        let format = if self.path.ends_with("srs") {
+            "binary"
+        } else {
+            "source"
+        }
+        .into();
 
         if self.remote {
-            map.insert("url", &self.path);
-            map.insert("type", "remote");
-            map.insert("download_detour", key_direct);
-            map.insert("update_interval", "1d");
+            SingBoxRule {
+                tag,
+                type_: "remote".into(),
+                format,
+                url: Some(self.path.to_string()),
+                path: None,
+                download_detour: Some(key_direct.into()),
+                update_interval: Some("1d".into()),
+            }
         } else {
-            map.insert("path", &self.path);
-            map.insert("type", "local");
+            SingBoxRule {
+                tag,
+                type_: "local".into(),
+                format,
+                url: None,
+                path: Some(self.path.to_string()),
+                download_detour: Some(key_direct.into()),
+                update_interval: Some("1d".into()),
+            }
         }
-
-        map.insert(
-            "format",
-            if self.path.ends_with("srs") {
-                "binary"
-            } else {
-                "source"
-            },
-        );
-
-        map.into_iter()
-            .map(|(k, v)| (k.to_string(), v.to_string()))
-            .collect()
     }
 
-    pub fn clash(&self, tag: &str) -> HashMap<String, String> {
-        let mut map = HashMap::new();
-
-        // name字段映射, 需要删除
-        map.insert("name".to_string(), tag.to_string());
-        map.insert("format".to_string(), "yaml".to_string());
-        map.insert("behavior".to_string(), "classical".to_string());
+    pub fn clash(&self, tag: &str) -> ClashRule {
+        let name = tag.into();
+        let format = "yaml".into();
+        let behavior = "classical".into();
 
         if self.remote {
-            map.insert("type".to_string(), "http".to_string());
-            map.insert("path".to_string(), format!("./rules/{}.yml", tag));
-            map.insert("interval".to_string(), "86400".to_string());
-            map.insert("url".to_string(), self.path.to_string());
+            ClashRule {
+                name,
+                format,
+                behavior,
+                type_: "http".into(),
+                url: Some(self.path.to_string()),
+                path: format!("./rules/{}.yml", tag),
+                interval: Some(86400),
+            }
         } else {
-            map.insert("type".to_string(), "file".to_string());
-            map.insert("path".to_string(), self.path.to_string());
+            ClashRule {
+                name,
+                format,
+                behavior,
+                type_: "file".into(),
+                url: None,
+                path: self.path.to_string(),
+                interval: None,
+            }
         }
-
-        map
     }
+}
+
+#[derive(Serialize)]
+pub struct SingBoxRule {
+    pub tag: String,
+    #[serde(rename = "type")]
+    pub type_: String,
+    pub format: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub path: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub download_detour: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub update_interval: Option<String>,
+}
+
+#[derive(Serialize)]
+pub struct ClashRule {
+    #[serde(skip)]
+    pub name: String,
+    pub format: String,
+    pub behavior: String,
+    #[serde(rename = "type")]
+    pub type_: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
+    pub path: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub interval: Option<u32>,
 }

@@ -1,11 +1,9 @@
 use crate::http::pick_host;
-use crate::kernel::include_main;
 use base64::prelude::BASE64_STANDARD;
 use base64::Engine;
 use std::clone::Clone;
 use std::error::Error;
 use std::iter::Iterator;
-use std::string::ToString;
 use std::sync::LazyLock;
 
 pub type AnyResult<T> = Result<T, Box<dyn Error>>;
@@ -20,8 +18,6 @@ pub enum NcError {
     #[error("不支持的来源")]
     UnsupportedSource,
 }
-
-pub static PRIORITY_CODES: LazyLock<Vec<String>> = LazyLock::new(|| include_main.area.clone());
 
 pub static PREFIX_REMAIN_TRAFFIC: LazyLock<Vec<String>> =
     LazyLock::new(|| vec!["剩余流量：".to_string()]);
@@ -53,8 +49,8 @@ pub fn fast(url: &str) -> String {
 }
 
 pub fn is_true(s: &str) -> bool {
-    if s.is_empty() { 
-        return false
+    if s.is_empty() {
+        return false;
     }
 
     match s.to_lowercase().as_ref() {

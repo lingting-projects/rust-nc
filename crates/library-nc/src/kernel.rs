@@ -1,8 +1,7 @@
-use std::collections::HashMap;
-use crate::core::PRIORITY_CODES;
 use crate::rule::Rule;
 use crate::subscribe::SubscribeNode;
-use std::string::ToString;
+use indexmap::IndexMap;
+use std::cmp::Ordering;
 use std::sync::LazyLock;
 use worker::console_debug;
 
@@ -23,19 +22,51 @@ pub struct KernelConfig {
 
 impl KernelConfig {
     pub fn with_sort(mut self) -> Self {
-        self.nodes.sort_by_key(|node| match node.area {
-            None => "0".to_string(),
-            Some(area) => {
-                if PRIORITY_CODES.contains(&area.code) {
-                    PRIORITY_CODES
-                        .iter()
-                        .position(|code| code == &area.code)
-                        .unwrap_or(0)
-                        .to_string()
-                } else {
-                    area.code.to_string()
-                }
+        let main = &include_main.area;
+        self.nodes.sort_by(|n1, n2| {
+            // 没区域的在最前面
+            if n1.area.is_none() {
+                return Ordering::Less;
             }
+            if n2.area.is_none() {
+                return Ordering::Greater;
+            }
+            let n1c = &n1.area.unwrap().code;
+            let n2c = &n2.area.unwrap().code;
+
+            let n1i = main.contains(n1c);
+            let n2i = main.contains(n2c);
+
+            // 主区域的在非主区域签名
+            if n1i && !n2i {
+                return Ordering::Less;
+            }
+
+            if n2i && !n1i {
+                return Ordering::Greater;
+            }
+
+            // 都是主区域 按照索引排序
+            if n1i && n2i {
+                let n1p = main.iter().position(|c| c == n1c).unwrap_or(main.len());
+                let n2p = main.iter().position(|c| c == n2c).unwrap_or(main.len());
+
+                if n1p == n2p {
+                    return Ordering::Equal;
+                }
+                if n1p > n2p {
+                    return Ordering::Greater;
+                }
+                return Ordering::Less;
+            }
+            // 都不是. 按照国家码排序
+            if n1c == n2c {
+                return Ordering::Equal;
+            }
+            if n1c > n2c {
+                return Ordering::Greater;
+            }
+            return Ordering::Less;
         });
 
         self
@@ -88,8 +119,8 @@ impl KernelConfig {
         .to_string()
     }
 
-    pub fn node_map_area(&self)-> HashMap<String, Vec<&SubscribeNode>>{
-        let mut map: HashMap<String, Vec<&SubscribeNode>> = HashMap::new();
+    pub fn node_map_area(&self) -> IndexMap<String, Vec<&SubscribeNode>> {
+        let mut map = IndexMap::new();
         self.nodes.iter().for_each(|node| {
             if node.area.is_none() {
                 return;
