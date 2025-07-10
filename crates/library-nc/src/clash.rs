@@ -406,7 +406,7 @@ impl KernelConfig {
             .map(|node| {
                 let mut attributes = IndexMap::new();
                 node.attribute.iter().for_each(|(k, v)| {
-                    if k == "type" || k == "allowInsecure" {
+                    if k == "type" || k == "allowInsecure" || k == "skip-cert-verify" {
                         return;
                     }
                     let value = if v.is_array() {
