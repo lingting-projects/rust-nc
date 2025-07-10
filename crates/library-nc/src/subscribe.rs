@@ -1,12 +1,13 @@
 use crate::area::Area;
 use crate::core::{
-    base64_decode, is_true, AnyResult, NcError, PREFIX_EXPIRE, PREFIX_REMAIN_TRAFFIC,
+    base64_decode, is_true, AnyResult, NcError, PREFIX_EXPIRE,
+    PREFIX_REMAIN_TRAFFIC,
 };
 use crate::http::url_decode;
 use crate::{area, data_size};
 use byte_unit::rust_decimal::prelude::ToPrimitive;
+use indexmap::IndexMap;
 use serde_json::Value;
-use std::collections::HashMap;
 use time::macros::format_description;
 use time::PrimitiveDateTime;
 use worker::{console_error, console_warn};
@@ -77,7 +78,7 @@ impl Subscribe {
                 })
             }
             Some(info) => {
-                let map: HashMap<_, _> = info
+                let map: IndexMap<_, _> = info
                     .split("; ")
                     .filter_map(|item| {
                         let parts: Vec<_> = item.splitn(2, '=').collect();
@@ -146,13 +147,13 @@ pub struct SubscribeNode {
     pub port: Option<u16>,
     pub password: Option<String>,
     pub area: Option<&'static Area>,
-    pub attribute: HashMap<String, Value>,
+    pub attribute: IndexMap<String, Value>,
 }
 
 impl SubscribeNode {
     // 从YAML字符串解析多个节点
     pub fn from_yaml(yaml_str: &str) -> AnyResult<Vec<Self>> {
-        let load: HashMap<String, Value> = serde_yaml::from_str(yaml_str)?;
+        let load: IndexMap<String, Value> = serde_yaml::from_str(yaml_str)?;
         let proxies = load
             .get("proxies")
             .and_then(Value::as_array)
@@ -168,7 +169,7 @@ impl SubscribeNode {
                 let mut server = String::new();
                 let mut port: Option<u16> = None;
                 let mut password: Option<String> = None;
-                let mut attribute = HashMap::new();
+                let mut attribute = IndexMap::new();
                 let mut area: Option<&'static Area> = None;
 
                 for (key, value) in proxy_map {
@@ -277,7 +278,7 @@ impl SubscribeNode {
         let name = url_decode(name_encoded)?;
         let area = area::find_match(&name);
 
-        let mut attribute = HashMap::new();
+        let mut attribute = IndexMap::new();
         attribute.insert("cipher".to_string(), Value::String(cipher.to_string()));
         attribute.insert("udp".to_string(), Value::Bool(false));
 
@@ -329,7 +330,7 @@ impl SubscribeNode {
             ("", rest_part)
         };
 
-        let mut attribute = HashMap::new();
+        let mut attribute = IndexMap::new();
 
         for param in param_part.split('&') {
             if param.is_empty() {
@@ -413,5 +414,4 @@ impl SubscribeNode {
         }
         self.attr_bool("allowInsecure").unwrap_or(false)
     }
-
 }

@@ -24,5 +24,5 @@ log = ["library-nc/wrangler"]
 
 [dependencies]
 library-nc = { path = "../library-nc" }
-worker = { workspace = true }
+worker = { workspace = true, features = [] }
 console_error_panic_hook = { version = "0.1.7" }

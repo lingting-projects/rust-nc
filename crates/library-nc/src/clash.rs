@@ -5,9 +5,9 @@ use crate::kernel::{
 };
 use crate::rule::{ClashRule, Rule, RuleType};
 use crate::subscribe::SubscribeNode;
+use indexmap::IndexMap;
 use serde::Serialize;
 use serde_yaml::Value;
-use std::collections::HashMap;
 use std::sync::LazyLock;
 
 const URL_GEOIP: &str =
@@ -83,7 +83,7 @@ struct ClashConfig {
     #[serde(rename = "proxy-groups")]
     proxy_groups: Vec<ProxyGroup>,
     #[serde(rename = "rule-providers")]
-    rule_providers: HashMap<String, ClashRule>,
+    rule_providers: IndexMap<String, ClashRule>,
     #[serde(rename = "rules")]
     rules: Vec<String>,
 }
@@ -149,7 +149,7 @@ struct DnsConfig {
     #[serde(rename = "proxy-server-nameserver")]
     proxy_server_nameserver: Vec<String>,
     #[serde(rename = "nameserver-policy")]
-    nameserver_policy: HashMap<String, Vec<String>>,
+    nameserver_policy: IndexMap<String, Vec<String>>,
 }
 
 #[derive(Serialize)]
@@ -159,7 +159,7 @@ struct Proxy {
     #[serde(rename = "type")]
     type_: String,
     #[serde(flatten)]
-    attributes: HashMap<String, Value>,
+    attributes: IndexMap<String, Value>,
     #[serde(rename = "skip-cert-verify")]
     skip_cert_verify: bool,
     server: String,
@@ -248,7 +248,7 @@ impl KernelConfig {
         Ok(yml)
     }
 
-    fn clash_build_rules(&self) -> (HashMap<String, ClashRule>, Vec<String>, Vec<String>) {
+    fn clash_build_rules(&self) -> (IndexMap<String, ClashRule>, Vec<String>, Vec<String>) {
         let mut rules_process = Vec::new();
         let mut rules_other = Vec::new();
         let mut rules_ip = Vec::new();
@@ -277,7 +277,7 @@ impl KernelConfig {
         );
 
         // 构建规则提供者和规则列表
-        let mut rule_providers = HashMap::new();
+        let mut rule_providers = IndexMap::new();
         let mut names: Vec<String> = Vec::new();
         self.clash_build_rule_providers(rules_process, &mut names, &mut rule_providers);
         self.clash_build_rule_providers(rules_other, &mut names, &mut rule_providers);
@@ -339,12 +339,14 @@ impl KernelConfig {
         &self,
         rules: Vec<ClashRule>,
         names: &mut Vec<String>,
-        providers: &mut HashMap<String, ClashRule>,
+        providers: &mut IndexMap<String, ClashRule>,
     ) {
         for rule in rules {
             let name = rule.name.clone();
-            providers.insert(name.clone(), rule);
-            names.push(name);
+            names.push(name.clone());
+            if !rule.name.ends_with("_geo") {
+                providers.insert(name, rule);
+            }
         }
     }
 
@@ -364,7 +366,7 @@ impl KernelConfig {
         let dns_proxy: Vec<String> = self.dns_proxy.iter().cloned().collect();
 
         // 构建DNS策略
-        let mut nameserver_policy = HashMap::new();
+        let mut nameserver_policy = IndexMap::new();
         for name in rule_names {
             if name.contains("_i_") || name.ends_with("_geo") {
                 continue;
@@ -402,7 +404,7 @@ impl KernelConfig {
         self.nodes
             .iter()
             .map(|node| {
-                let mut attributes = HashMap::new();
+                let mut attributes = IndexMap::new();
                 node.attribute.iter().for_each(|(k, v)| {
                     if k == "type" || k == "allowInsecure" {
                         return;
@@ -442,10 +444,7 @@ impl KernelConfig {
 
     fn clash_build_proxy_groups(&self) -> Vec<ProxyGroup> {
         let auto_area = self.clash_build_node_auto_area();
-        let auto_proxies: Vec<String> = auto_area
-            .iter()
-            .map(|group| group.name.clone())
-            .collect();
+        let auto_proxies: Vec<String> = auto_area.iter().map(|group| group.name.clone()).collect();
 
         // 构建自动选择组
         let auto = self.clash_build_node_auto(tag_auto.into(), auto_proxies);

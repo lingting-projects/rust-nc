@@ -27,4 +27,4 @@ base64 = { workspace = true }
 regex = { workspace = true }
 time = { workspace = true, features = ["macros", "parsing"] }
 worker = { workspace = true }
-indexmap = { workspace = true }
+indexmap = { workspace = true ,features = ["serde"]}
