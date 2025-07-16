@@ -1,6 +1,7 @@
 use crate::init::FIRST;
 use library_core::app::APP;
 use library_core::core::{AnyResult, Exit};
+use library_web::webserver;
 use std::process::exit;
 use std::sync::{
     mpsc::{channel, Receiver, Sender},
@@ -75,10 +76,10 @@ impl WindowManager {
         // 创建webview
         let builder = WebViewBuilder::new()
             .with_html(html)
-            .with_on_page_load_handler(move |_, _| match library_web::webserver::SERVER.get() {
+            .with_on_page_load_handler(move |_, _| match webserver::port() {
                 None => {}
-                Some(server) => {
-                    let api = format!("http://localhost:{}", server.port);
+                Some(port) => {
+                    let api = format!("http://localhost:{}", port);
                     let js = format!(
                         r#"
         try {{

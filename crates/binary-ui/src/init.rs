@@ -1,12 +1,15 @@
 use crate::window::dispatch;
 use library_core::app::APP;
-use library_core::core::{AnyResult, Exit};
+use library_core::core::{AnyResult, BizError, Exit};
 use library_web::webserver;
-use std::panic;
+use library_web::webserver::{WebServer, SERVER};
 use std::process::exit;
+use std::sync::{Mutex, OnceLock};
+use std::{panic, thread};
 use tao::dpi::PhysicalSize;
 use tao::platform::windows::IconExtWindows;
-use tao::window::Icon;
+use tao::window::{Icon, Window};
+use wry::WebView;
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum LoadingState {
@@ -17,18 +20,20 @@ pub enum LoadingState {
     LoadingAssets,
     Completed,
     UiError,
+    ServerError,
 }
 
 impl LoadingState {
     pub const fn progress(self) -> u8 {
         match self {
-            LoadingState::InitSystem => 0,
+            LoadingState::InitSystem => 5,
             LoadingState::InitDb => 25,
             LoadingState::CheckUpdate => 50,
             LoadingState::Updating => 65,
             LoadingState::LoadingAssets => 75,
             LoadingState::Completed => 100,
             LoadingState::UiError => 0,
+            LoadingState::ServerError => 0,
         }
     }
 
@@ -41,6 +46,7 @@ impl LoadingState {
             LoadingState::LoadingAssets => "正在加载资源",
             LoadingState::Completed => "系统初始化完成",
             LoadingState::UiError => "UI加载异常",
+            LoadingState::ServerError => "服务启动异常",
         }
     }
 
@@ -53,6 +59,7 @@ impl LoadingState {
             LoadingState::LoadingAssets => "正在加载资源",
             LoadingState::Completed => "正在进入系统",
             LoadingState::UiError => "Ui加载异常, 请尝试重启程序",
+            LoadingState::ServerError => "服务启动异常, 请尝试重启程序",
         }
     }
 
@@ -66,16 +73,21 @@ impl LoadingState {
             LoadingState::LoadingAssets => "nc-正在加载资源",
             LoadingState::Completed => "nc-系统初始化完成",
             LoadingState::UiError => "nc-Ui加载异常",
+            LoadingState::ServerError => "nc-服务启动异常",
         }
     }
 }
 
 pub const FIRST: LoadingState = LoadingState::InitSystem;
 
-fn emit(state: LoadingState) -> AnyResult<()> {
-    log::debug!("[初始化] {}", state.title());
+static INIT_ERROR: OnceLock<bool> = OnceLock::new();
 
-    dispatch(move |w, wv| {
+fn emit(state: LoadingState) {
+    if state.progress() <= 0 {
+        INIT_ERROR.get_or_init(|| false);
+    }
+    log::debug!("[初始化] 提交事件: {}", state.title());
+    let closure = move |w: &Window, wv: &WebView| {
         w.set_title(state.window_title());
 
         let js_code = format!(
@@ -92,7 +104,12 @@ fn emit(state: LoadingState) -> AnyResult<()> {
                 exit(Exit::WebViewEvaluateJsError.code())
             }
         }
-    })
+    };
+
+    if let Err(e) = dispatch(closure) {
+        log::error!("前端加载事件提交异常! state: {}; {}", state.title(), e);
+        exit(Exit::UiEmitError.code())
+    }
 }
 
 pub fn start_init() {
@@ -128,20 +145,35 @@ pub fn start_init() {
 }
 
 fn _init() -> AnyResult<()> {
-    emit(LoadingState::InitSystem)?;
+    emit(LoadingState::InitSystem);
     init_system()?;
-    emit(LoadingState::InitDb)?;
+    if INIT_ERROR.get().is_some() {
+        return Err(Box::new(BizError::Init));
+    }
+    emit(LoadingState::InitDb);
     init_db();
-    emit(LoadingState::CheckUpdate)?;
+    if INIT_ERROR.get().is_some() {
+        return Err(Box::new(BizError::Init));
+    }
+    emit(LoadingState::CheckUpdate);
     let option = check_update();
     if option.is_some() {
-        emit(LoadingState::Updating)?;
-        update(option.unwrap())
+        emit(LoadingState::Updating);
+        update(option.unwrap());
+        if INIT_ERROR.get().is_some() {
+            return Err(Box::new(BizError::Init));
+        }
     }
-    emit(LoadingState::LoadingAssets)?;
+    emit(LoadingState::LoadingAssets);
     assets();
-    emit(LoadingState::Completed)?;
+    if INIT_ERROR.get().is_some() {
+        return Err(Box::new(BizError::Init));
+    }
+    emit(LoadingState::Completed);
     completed();
+    if INIT_ERROR.get().is_some() {
+        return Err(Box::new(BizError::Init));
+    }
     Ok(())
 }
 
@@ -156,7 +188,54 @@ fn init_system() -> AnyResult<()> {
         w.set_window_icon(Some(icon));
     })?;
 
-    webserver::start()?;
+    start_web()?;
+    Ok(())
+}
+
+fn start_web() -> AnyResult<()> {
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .enable_io()
+        .build()?;
+
+    let f = runtime.block_on(async {
+        match webserver::build().await {
+            Ok((port, server)) => {
+                let web_server = WebServer {
+                    port,
+                    runtime: None,
+                };
+                if let Err(_) = SERVER.set(Mutex::new(web_server)) {
+                    log::error!("Web全局缓存设置异常");
+                    emit(LoadingState::ServerError);
+                    return false;
+                }
+
+                tokio::spawn(async {
+                    log::debug!("启动服务!");
+                    if let Err(e) = server.await {
+                        log::error!("服务启动异常! {}", e);
+                        emit(LoadingState::ServerError);
+                    }
+                    log::debug!("服务已关闭!");
+                });
+
+                true
+            }
+            Err(e) => {
+                log::error!("服务构建异常! {}", e);
+                emit(LoadingState::ServerError);
+                false
+            }
+        }
+    });
+
+    // 全局存储 runtime
+    if f {
+        let x = SERVER.get().unwrap();
+        let mut guard = x.lock().unwrap();
+        guard.runtime = Some(runtime)
+    }
+
     Ok(())
 }
 
@@ -184,7 +263,7 @@ fn completed() {
         }
         match wv.load_url(&url) {
             Ok(_) => {}
-            Err(_) => emit(LoadingState::UiError).unwrap(),
+            Err(_) => emit(LoadingState::UiError),
         }
     })
     .unwrap()

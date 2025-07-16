@@ -10,6 +10,8 @@ pub enum BizError {
     WebUnstart,
     #[error("Web全局变量设置异常")]
     WebUnset,
+    #[error("初始化异常")]
+    Init,
 }
 
 pub enum Exit {
@@ -20,6 +22,7 @@ pub enum Exit {
     InitPanicError,
     WebServerError,
     WebServerPanicError,
+    UiEmitError,
 }
 
 impl Exit {
@@ -32,6 +35,7 @@ impl Exit {
             Exit::InitPanicError => 5,
             Exit::WebServerError => 6,
             Exit::WebServerPanicError => 7,
+            Exit::UiEmitError => 8,
         }
     }
 }

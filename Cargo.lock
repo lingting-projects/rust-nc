@@ -180,7 +180,10 @@ dependencies = [
 name = "binary-web"
 version = "0.0.0"
 dependencies = [
+ "library-core",
  "library-web",
+ "log",
+ "tokio",
 ]
 
 [[package]]
