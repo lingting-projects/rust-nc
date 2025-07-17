@@ -10,8 +10,10 @@ pub enum BizError {
     WebUnstart,
     #[error("Web全局变量设置异常")]
     WebUnset,
-    #[error("初始化异常")]
-    Init,
+    #[error("Ui初始化异常")]
+    UiInit,
+    #[error("数据库初始化异常")]
+    SqliteInit,
 }
 
 pub enum Exit {

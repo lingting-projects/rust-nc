@@ -8,7 +8,7 @@ use std::{
 };
 
 #[derive(Debug)]
-pub struct ApplicationInner {
+pub struct Application {
     // 常量属性
     pub id: &'static str,
     pub ua: &'static str,
@@ -36,7 +36,7 @@ pub struct ApplicationInner {
     pub run_on_minimize: bool,
 }
 
-impl ApplicationInner {
+impl Application {
     // 公开构造函数
     pub fn new() -> Self {
         // 常量属性
@@ -146,20 +146,32 @@ fn create_sub_dir(parent: &PathBuf, name: &str) -> PathBuf {
     path
 }
 
-pub static APP: OnceLock<ApplicationInner> = OnceLock::new();
+pub static APP: OnceLock<Application> = OnceLock::new();
 
+use crate::core::AnyResult;
+use crate::sqlite;
 use simple_logger::SimpleLogger;
 use time::{format_description::FormatItem, macros::format_description};
 
 const TIMESTAMP_FORMAT: &[FormatItem] =
     format_description!("[year]-[month]-[day] [hour]:[minute]:[second].[subsecond digits:3]");
 
-pub fn init() {
-    APP.get_or_init(ApplicationInner::new);
+pub fn init() -> AnyResult<()> {
+    #[cfg(not(feature = "debug"))]
+    let level = LevelFilter::Info;
+    #[cfg(feature = "debug")]
+    let level = LevelFilter::Debug;
 
     let logger = SimpleLogger::new()
         .with_local_timestamps()
         .with_timestamp_format(TIMESTAMP_FORMAT)
-        .with_level(LevelFilter::Debug);
+        .with_level(level);
     logger.init().unwrap();
+    log::debug!("初始化应用程序基础数据");
+    APP.get_or_init(Application::new);
+    log::debug!("初始化数据库");
+    sqlite::init()?;
+    log::debug!("初始化完成");
+
+    Ok(())
 }

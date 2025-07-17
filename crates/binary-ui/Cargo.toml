@@ -11,8 +11,8 @@ description.workspace = true
 
 [features]
 default = ['dev']
-dev = []
-uat = ['local-ui']
+dev = ["library-core/debug"]
+uat = ['local-ui', "library-core/debug"]
 prod = ['local-ui']
 
 local-ui = []

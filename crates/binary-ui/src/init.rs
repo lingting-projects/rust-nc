@@ -148,12 +148,12 @@ fn _init() -> AnyResult<()> {
     emit(LoadingState::InitSystem);
     init_system()?;
     if INIT_ERROR.get().is_some() {
-        return Err(Box::new(BizError::Init));
+        return Err(Box::new(BizError::UiInit));
     }
     emit(LoadingState::InitDb);
     init_db();
     if INIT_ERROR.get().is_some() {
-        return Err(Box::new(BizError::Init));
+        return Err(Box::new(BizError::UiInit));
     }
     emit(LoadingState::CheckUpdate);
     let option = check_update();
@@ -161,18 +161,18 @@ fn _init() -> AnyResult<()> {
         emit(LoadingState::Updating);
         update(option.unwrap());
         if INIT_ERROR.get().is_some() {
-            return Err(Box::new(BizError::Init));
+            return Err(Box::new(BizError::UiInit));
         }
     }
     emit(LoadingState::LoadingAssets);
     assets();
     if INIT_ERROR.get().is_some() {
-        return Err(Box::new(BizError::Init));
+        return Err(Box::new(BizError::UiInit));
     }
     emit(LoadingState::Completed);
     completed();
     if INIT_ERROR.get().is_some() {
-        return Err(Box::new(BizError::Init));
+        return Err(Box::new(BizError::UiInit));
     }
     Ok(())
 }

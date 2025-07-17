@@ -1,4 +1,5 @@
 use crate::window::WindowManager;
+use library_core::core::AnyResult;
 use std::thread;
 use std::time::Duration;
 use tao::event_loop::{ControlFlow, EventLoop};
@@ -7,8 +8,8 @@ mod init;
 mod window;
 
 #[tokio::main]
-async fn main() {
-    library_core::app::init();
+async fn main() -> AnyResult<()> {
+    library_core::app::init()?;
     let event_loop = EventLoop::new();
     let mut manager = WindowManager::new(&event_loop);
 
