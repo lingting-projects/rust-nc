@@ -1,10 +1,10 @@
 use crate::{route_global, route_setting};
-use axum::serve::Serve;
 use axum::Router;
+use axum::serve::Serve;
 use library_core::core::{AnyResult, BizError, Exit};
 use std::pin::Pin;
 use std::process::exit;
-use std::sync::{mpsc, Arc, Mutex, OnceLock};
+use std::sync::{Arc, Mutex, OnceLock, mpsc};
 use std::task::{Context, Poll};
 use tokio::net::TcpListener;
 use tokio::runtime::Runtime;
@@ -35,7 +35,7 @@ pub async fn build_port(port: u16) -> AnyResult<(u16, Serve<TcpListener, Router,
     // 这个必须最后设置
     router = route_global::fill(router);
 
-    let target = "127.0.0.1:0";
+    let target = format!("127.0.0.1:{}", port);
     log::debug!("[Web] 绑定 {}", target);
     let bind = TcpListener::bind(target).await?;
     let addr = bind.local_addr()?;

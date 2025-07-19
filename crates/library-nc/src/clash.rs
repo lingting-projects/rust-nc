@@ -312,8 +312,9 @@ impl KernelConfig {
         rules_other: &mut Vec<ClashRule>,
         rules_ip: &mut Vec<ClashRule>,
     ) {
-        // 处理CN IP直连规则
+        // 处理CN
         if self.geo_cn_direct && prefix == key_direct {
+            // IP直连规则
             let rule = Rule::from_remote(RuleType::Ip, "".into());
             let tag = format!("{}_cn_i_geo", prefix);
             rules_ip.push(rule.clash(&tag));

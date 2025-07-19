@@ -1,5 +1,5 @@
-use axum::routing::get;
 use axum::Router;
+use axum::routing::get;
 
 async fn hello() -> String {
     String::from("hello")

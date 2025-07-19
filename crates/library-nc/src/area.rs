@@ -1,11 +1,12 @@
-use std::collections::HashMap;
 use regex::Regex;
-use serde::{Deserialize, Serialize};
+use serde::de::Visitor;
+use serde::{Deserialize, Deserializer, Serialize, Serializer, de};
+use std::collections::HashMap;
 use std::fmt;
-use std::sync::OnceLock;
+use std::sync::{Arc, OnceLock};
 use worker::{console_debug, console_error};
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Area {
     pub code: String,
     pub name_cn: String,
@@ -19,7 +20,44 @@ impl fmt::Display for Area {
     }
 }
 
-// 修正类型定义：使用HashMap而非Map
+impl Serialize for Area {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.code)
+    }
+}
+
+struct AreaVisitor;
+
+impl<'de> Visitor<'de> for AreaVisitor {
+    type Value = Area;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("a string representing an Area code")
+    }
+
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        match find(v) {
+            Some(area) => Ok(area.clone()),
+            None => Err(E::custom(format!("unknown area code: {}", v))),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for Area {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_str(AreaVisitor)
+    }
+}
+
 static ALL: OnceLock<Vec<Area>> = OnceLock::new();
 static MAP_CODE: OnceLock<HashMap<String, &Area>> = OnceLock::new();
 

@@ -1,14 +1,18 @@
-use crate::area::Area;
+use crate::area::{Area, find};
 use crate::core::{
-    base64_decode, is_true, AnyResult, NcError, PREFIX_EXPIRE, PREFIX_REMAIN_TRAFFIC,
+    AnyResult, NcError, PREFIX_EXPIRE, PREFIX_REMAIN_TRAFFIC, base64_decode, is_true,
 };
 use crate::http::url_decode;
 use crate::{area, data_size};
 use byte_unit::rust_decimal::prelude::ToPrimitive;
 use indexmap::IndexMap;
+use serde::de::{Error, MapAccess, Visitor};
+use serde::ser::SerializeStruct;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value;
-use time::macros::format_description;
+use std::fmt;
 use time::PrimitiveDateTime;
+use time::macros::format_description;
 use worker::{console_error, console_warn};
 
 pub struct Subscribe {
@@ -412,5 +416,132 @@ impl SubscribeNode {
             return true;
         }
         self.attr_bool("allowInsecure").unwrap_or(false)
+    }
+}
+
+// 实现 SubscribeNode 的序列化
+impl Serialize for SubscribeNode {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        // 计算需要序列化的字段数量（排除为 None 的 Option 字段）
+        let mut field_count = 3; // 必选字段: node_type, name, server
+        if self.port.is_some() {
+            field_count += 1;
+        }
+        if self.password.is_some() {
+            field_count += 1;
+        }
+        if self.area.is_some() {
+            field_count += 1;
+        }
+        if !self.attribute.is_empty() {
+            field_count += 1;
+        }
+
+        let mut state = serializer.serialize_struct("SubscribeNode", field_count)?;
+        state.serialize_field("node_type", &self.node_type)?;
+        state.serialize_field("name", &self.name)?;
+        state.serialize_field("server", &self.server)?;
+
+        if let Some(port) = &self.port {
+            state.serialize_field("port", port)?;
+        }
+
+        if let Some(password) = &self.password {
+            state.serialize_field("password", password)?;
+        }
+
+        // 特殊处理 area 字段，只序列化 code
+        if let Some(area) = &self.area {
+            state.serialize_field("area", &area.code)?;
+        }
+
+        if !self.attribute.is_empty() {
+            state.serialize_field("attribute", &self.attribute)?;
+        }
+
+        state.end()
+    }
+}
+
+// 实现 SubscribeNode 的反序列化
+struct SubscribeNodeVisitor;
+
+impl<'de> Visitor<'de> for SubscribeNodeVisitor {
+    type Value = SubscribeNode;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("struct SubscribeNode")
+    }
+
+    fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+    where
+        A: MapAccess<'de>,
+    {
+        let mut node_type = None;
+        let mut name = None;
+        let mut server = None;
+        let mut port = None;
+        let mut password = None;
+        let mut area_code: Option<&str> = None; // 存储 area 的 code 字符串
+        let mut attribute = IndexMap::new();
+
+        // 处理所有键值对
+        while let Some(key) = map.next_key::<String>()? {
+            match key.as_str() {
+                "node_type" => node_type = Some(map.next_value()?),
+                "name" => name = Some(map.next_value()?),
+                "server" => server = Some(map.next_value()?),
+                "port" => port = Some(map.next_value()?),
+                "password" => password = Some(map.next_value()?),
+                "area" => area_code = Some(map.next_value()?), // 存储 code 字符串
+                "attribute" => attribute = map.next_value()?,
+                _ => { /* 忽略未知字段 */ }
+            }
+        }
+
+        // 验证必需字段
+        let node_type = node_type.ok_or_else(|| Error::missing_field("node_type"))?;
+        let name = name.ok_or_else(|| Error::missing_field("name"))?;
+        let server = server.ok_or_else(|| Error::missing_field("server"))?;
+
+        // 通过 code 查找 area
+        let area = match area_code {
+            Some(code) => find(&code),
+            None => None,
+        };
+
+        Ok(SubscribeNode {
+            node_type,
+            name,
+            server,
+            port,
+            password,
+            area,
+            attribute,
+        })
+    }
+}
+
+impl<'de> Deserialize<'de> for SubscribeNode {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_struct(
+            "SubscribeNode",
+            &[
+                "node_type",
+                "name",
+                "server",
+                "port",
+                "password",
+                "area",
+                "attribute",
+            ],
+            SubscribeNodeVisitor,
+        )
     }
 }

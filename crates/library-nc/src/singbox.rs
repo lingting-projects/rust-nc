@@ -481,8 +481,9 @@ impl KernelConfig {
         rules_other: &mut Vec<SingBoxRule>,
         rules_ip: &mut Vec<SingBoxRule>,
     ) {
-        // 处理CN IP直连规则
+        // 处理CN
         if self.geo_cn_direct && prefix == key_direct {
+            // IP直连规则
             let rule = Rule::from_remote(RuleType::Ip, geo_ip_cn.into());
             let tag = format!("{}_cn_i_geo", prefix);
             rules_ip.push(rule.sing_box(&tag));

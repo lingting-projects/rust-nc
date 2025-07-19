@@ -14,6 +14,8 @@ pub enum BizError {
     UiInit,
     #[error("数据库初始化异常")]
     SqliteInit,
+    #[error("雪花算法初始化异常! {0}")]
+    SnowflakeInit(String),
 }
 
 pub enum Exit {
