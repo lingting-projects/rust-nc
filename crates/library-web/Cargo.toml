@@ -17,3 +17,7 @@ axum = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread"] }
 tower-http = { workspace = true, features = ["cors"] }
 reqwest = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true, features = [] }
+sqlite = { workspace = true }
+futures = { workspace = true }

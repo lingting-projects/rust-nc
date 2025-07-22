@@ -1,3 +1,4 @@
+use crate::app_config::AppConfig;
 use crate::core::AnyResult;
 use sqlite::ConnectionThreadSafe;
 
@@ -17,17 +18,17 @@ CREATE TABLE tbl_subscribe
     -- 更新间隔, 单位: 毫秒
     interval INTEGER,
     -- 更新时间: 毫秒级别时间戳
-    update_time: INTEGER,
+    update_time INTEGER,
     -- 创建时间: 毫秒级别时间戳
-    create_time: INTEGER,
+    create_time INTEGER,
     -- 下载流量, 单位: Bytes
-    download: INTEGER,
+    download INTEGER,
     -- 上传流量, 单位: Bytes
-    upload: INTEGER,
+    upload INTEGER,
     -- 最大可用流量, 单位: Bytes
-    max: INTEGER,
+    max INTEGER,
     -- 过期时间: 毫秒级别时间戳
-    expire_time: INTEGER
+    expire_time INTEGER
 );
 
 CREATE TABLE tbl_rule
@@ -41,17 +42,17 @@ CREATE TABLE tbl_rule
     -- 更新间隔, 单位: 毫秒
     interval INTEGER,
     -- 更新时间: 毫秒级别时间戳
-    update_time: INTEGER,
+    update_time INTEGER,
     -- 创建时间: 毫秒级别时间戳
-    create_time: INTEGER,
+    create_time INTEGER,
     -- 可用规则数量
-    count: INTEGER,
+    count INTEGER,
     -- 进程规则数量
-    count_process: INTEGER,
+    count_process INTEGER,
     -- IP规则数量
-    count_ip: INTEGER,
+    count_ip INTEGER,
     -- 其他规则数量
-    count_other: INTEGER
+    count_other INTEGER
 );
 
 -- 内核使用的配置
@@ -82,12 +83,12 @@ CREATE TABLE tbl_config
     -- 排除名称中存在关键的 json字符串
     exclude_name_contains TEXT,
     -- 更新时间: 毫秒级别时间戳
-    update_time: INTEGER,
+    update_time INTEGER,
     -- 创建时间: 毫秒级别时间戳
-    create_time: INTEGER
+    create_time INTEGER
 );
         ",
     )?;
 
-    Ok(())
+    AppConfig::version_set(20250718)
 }
