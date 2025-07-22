@@ -188,6 +188,7 @@ fn init_system() -> AnyResult<()> {
         w.set_window_icon(Some(icon));
     })?;
 
+    webserver::timer_wake()?;
     start_web()?;
     Ok(())
 }

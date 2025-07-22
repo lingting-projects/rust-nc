@@ -1,6 +1,6 @@
-use crate::area::{Area, find};
+use crate::area::{find, Area};
 use crate::core::{
-    AnyResult, NcError, PREFIX_EXPIRE, PREFIX_REMAIN_TRAFFIC, base64_decode, is_true,
+    base64_decode, is_true, AnyResult, NcError, PREFIX_EXPIRE, PREFIX_REMAIN_TRAFFIC,
 };
 use crate::http::url_decode;
 use crate::{area, data_size};
@@ -11,10 +11,11 @@ use serde::ser::SerializeStruct;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value;
 use std::fmt;
-use time::PrimitiveDateTime;
 use time::macros::format_description;
+use time::PrimitiveDateTime;
 use worker::{console_error, console_warn};
 
+#[derive(Debug, Default)]
 pub struct Subscribe {
     // 已使用下行流量. 单位: bytes
     pub download: Option<u64>,
@@ -142,7 +143,7 @@ impl Subscribe {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct SubscribeNode {
     pub node_type: String,
     pub name: String,
@@ -545,3 +546,5 @@ impl<'de> Deserialize<'de> for SubscribeNode {
         )
     }
 }
+
+pub const HEADER_INFO: &str = "Subscription-Userinfo";

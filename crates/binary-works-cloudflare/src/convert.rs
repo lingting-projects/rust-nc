@@ -5,7 +5,7 @@ use library_nc::kernel::{
     dns_default_cn, dns_default_proxy, exclude_default, include_main, KernelConfig, NodeContains,
 };
 use library_nc::rule::{Rule, RuleType};
-use library_nc::subscribe::Subscribe;
+use library_nc::subscribe::{Subscribe, HEADER_INFO};
 use std::collections::HashMap;
 use worker::wasm_bindgen::UnwrapThrowExt;
 use worker::Error::RustError;
@@ -164,14 +164,13 @@ async fn subscribe(params: &ConvertParams) -> AnyResult<Subscribe> {
         ))));
     }
     let headers = response.headers();
-    let info = headers.get("Subscription-Userinfo")?;
+    let info = headers.get(HEADER_INFO)?;
     let remote = response.text().await?;
     console_debug!("解析远程数据: {}", &params.remote);
     Subscribe::resolve(&remote, info)
 }
 
 struct Remote {
-    pub host: String,
     pub config: KernelConfig,
     pub disposition: String,
     pub info: Option<String>,
@@ -198,7 +197,6 @@ async fn build_remote(
 
     let disposition = format!("inline; filename={}.json", &host);
     Ok(Remote {
-        host,
         config,
         disposition,
         info,

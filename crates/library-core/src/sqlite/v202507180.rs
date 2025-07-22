@@ -21,6 +21,8 @@ CREATE TABLE tbl_subscribe
     update_time INTEGER,
     -- 创建时间: 毫秒级别时间戳
     create_time INTEGER,
+    -- 刷新时间: 毫秒级别时间戳
+    refresh_time INTEGER,
     -- 下载流量, 单位: Bytes
     download INTEGER,
     -- 上传流量, 单位: Bytes

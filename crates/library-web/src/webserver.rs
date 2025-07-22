@@ -1,10 +1,11 @@
+use crate::route_subscribe::TIMER_SUBSCRIBE;
 use crate::{route_global, route_setting, route_subscribe};
 use axum::serve::Serve;
 use axum::Router;
 use library_core::core::{AnyResult, BizError, Exit};
 use std::pin::Pin;
 use std::process::exit;
-use std::sync::{mpsc, Arc, Mutex, OnceLock};
+use std::sync::{mpsc, Arc, LazyLock, Mutex, OnceLock};
 use std::task::{Context, Poll};
 use tokio::net::TcpListener;
 use tokio::runtime::Runtime;
@@ -44,4 +45,22 @@ pub async fn build_port(port: u16) -> AnyResult<(u16, Serve<TcpListener, Router,
     log::debug!("[Web] 获取当前绑定的端口 {}", port);
     let server = axum::serve(bind, router);
     Ok((port, server))
+}
+
+static _TIMER_RUNTIME: OnceLock<Runtime> = OnceLock::new();
+
+pub fn timer_wake() -> AnyResult<()> {
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .enable_io()
+        .enable_time()
+        .build()?;
+    _TIMER_RUNTIME.get_or_init(move || {
+        runtime.block_on(async {
+            log::debug!("[Web] 唤醒定时器");
+            TIMER_SUBSCRIBE.wake();
+        });
+        runtime
+    });
+
+    Ok(())
 }

@@ -1,7 +1,11 @@
 use axum::response::Response;
 use axum::{response::IntoResponse, Json, Router};
 use library_core::core::AnyResult;
-use serde::Serialize;
+use log::log;
+use serde::{Deserialize, Serialize};
+use sqlite::Value;
+use std::error::Error;
+use std::time::{SystemTime, UNIX_EPOCH};
 use tower_http::cors::{AllowHeaders, AllowMethods, Any, CorsLayer, ExposeHeaders};
 
 pub fn fill(router: Router) -> Router {
@@ -16,13 +20,22 @@ pub fn fill(router: Router) -> Router {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct R<T> {
-    code: i32,
-    message: String,
-    data: Option<T>,
+    pub code: i32,
+    pub message: String,
+    pub data: Option<T>,
 }
 
 pub static ok_code: i32 = 200;
 pub static ok_msg: &str = "success";
+
+pub fn from_err_box<T>(b: Box<dyn Error>) -> R<T> {
+    log::error!("请求处理异常! {}", b);
+    R {
+        code: 500,
+        message: b.to_string(),
+        data: None,
+    }
+}
 
 impl<T> From<Result<T, String>> for R<T> {
     fn from(result: Result<T, String>) -> Self {
@@ -32,11 +45,14 @@ impl<T> From<Result<T, String>> for R<T> {
                 message: ok_msg.to_string(),
                 data: Some(data),
             },
-            Err(err) => Self {
-                code: 1,
-                message: err,
-                data: None,
-            },
+            Err(err) => {
+                log::error!("请求处理异常! {}", err);
+                Self {
+                    code: 500,
+                    message: err,
+                    data: None,
+                }
+            }
         }
     }
 }
@@ -49,11 +65,14 @@ impl<T> From<AnyResult<T>> for R<T> {
                 message: ok_msg.to_string(),
                 data: Some(data),
             },
-            Err(err) => Self {
-                code: 1,
-                message: err.to_string(),
-                data: None,
-            },
+            Err(err) => {
+                log::error!("请求处理异常! {}", err);
+                Self {
+                    code: 500,
+                    message: err.to_string(),
+                    data: None,
+                }
+            }
         }
     }
 }
@@ -75,4 +94,19 @@ where
     fn into_response(self) -> Response {
         Json(self).into_response()
     }
+}
+
+pub fn current_millis() -> Value {
+    let millis = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("get time err")
+        .as_millis();
+    let time: Value = millis.to_string().into();
+    time
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IdPo {
+    pub id: Option<String>,
 }
