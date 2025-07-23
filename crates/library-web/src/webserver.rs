@@ -1,3 +1,4 @@
+use crate::route_rule::TIMER_RULE;
 use crate::route_subscribe::TIMER_SUBSCRIBE;
 use crate::{route_global, route_rule, route_setting, route_subscribe};
 use axum::serve::Serve;
@@ -60,6 +61,7 @@ pub fn wake() -> AnyResult<()> {
         runtime.block_on(async {
             log::debug!("[Web] 唤醒定时器");
             TIMER_SUBSCRIBE.wake();
+            TIMER_RULE.wake()
         });
         runtime
     });

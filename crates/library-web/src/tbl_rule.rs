@@ -38,7 +38,7 @@ impl TblRule {
     pub const table_name: &'static str = "tbl_rule";
 
     pub const sql_field_content: &'static str =
-        "CASE WHEN `url` LIKE 'http%' THEN '' ELSE `content`";
+        "CASE WHEN `url` LIKE 'http%' THEN '' ELSE `content` END AS content";
 
     pub fn from_db(stmt: &Statement) -> Self {
         Self {
@@ -93,7 +93,7 @@ impl TblRuleRefreshDTO {
 
     pub const sql_where_before: LazyLock<String> = LazyLock::new(|| {
         format!(
-            "SELECT `id`,`name`,`url`,{} END AS content FROM {}",
+            "SELECT `id`,`name`,`url`,{} FROM {}",
             TblRule::sql_field_content,
             TblRule::table_name
         )

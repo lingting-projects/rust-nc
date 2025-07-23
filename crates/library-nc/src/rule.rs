@@ -163,29 +163,26 @@ impl SinBoxJsonRule {
                 continue;
             }
 
-            let _type = match _raw_type.to_lowercase().as_str() {
-                "dst-port" => "port".into(),
-                _r => _r.replace("-", "_"),
-            };
+            let _m = _raw_type.to_lowercase();
 
-            match _raw_type.to_lowercase().as_str() {
-                "ip_cidr" => ip.push(_value),
-                "process" => process.push(_value),
-                _r => {
-                    let _type = if _r == "dst-port" {
-                        "port".to_string()
-                    } else {
-                        _r.replace("-", "_")
-                    };
+            if _m.starts_with("ip-cidr") {
+                ip.push(_value)
+            } else if _m == "process-name" {
+                process.push(_value)
+            } else {
+                let _type = if _m == "dst-port" {
+                    "port".to_string()
+                } else {
+                    _m.replace("-", "_")
+                };
 
-                    match other.get_mut(&_type) {
-                        None => {
-                            let vec = vec![_value];
-                            other.insert(_type, vec.to_owned());
-                        }
-                        Some(vec) => {
-                            vec.push(_value);
-                        }
+                match other.get_mut(&_type) {
+                    None => {
+                        let vec = vec![_value];
+                        other.insert(_type, vec.to_owned());
+                    }
+                    Some(vec) => {
+                        vec.push(_value);
                     }
                 }
             }
@@ -210,7 +207,7 @@ impl SinBoxJsonRule {
         }
 
         if !process.is_empty() {
-            let _type = "process";
+            let _type = "process_name";
             if with_process {
                 let mut _process = Map::new();
                 _process.insert(

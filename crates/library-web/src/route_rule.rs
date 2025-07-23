@@ -1,4 +1,4 @@
-use crate::route_global::{current_millis, IdPo, R};
+use crate::route_global::{current_millis, from_err_box, IdPo, R};
 use crate::route_setting::key_config_selected;
 use crate::tbl_rule::{TblRule, TblRuleRefreshDTO, TblRuleUpsertDTO};
 use crate::{http, kernel};
@@ -11,11 +11,13 @@ use library_core::file;
 use library_core::snowflake::next_str;
 use library_core::sqlite::{execute, query};
 use library_core::timer::Timer;
+use library_nc::core::fast;
 use library_nc::rule::{RuleType, SinBoxJsonRule};
 use library_nc::subscribe::{Subscribe, HEADER_INFO};
 use sqlite::Value;
 use std::sync::{Arc, LazyLock};
 use std::time::Duration;
+use tokio::task::id;
 
 async fn _refresh_id(option: Option<String>) -> AnyResult<()> {
     if let Some(id) = option {
@@ -41,7 +43,8 @@ async fn _refresh(s: TblRuleRefreshDTO) -> AnyResult<()> {
         content = None;
         sing_box = SinBoxJsonRule::json_classical_process(s.content.as_str())?
     } else {
-        let response = http::get(&s.url).await?;
+        let url_fast = fast(&s.url);
+        let response = http::get(&url_fast).await?;
         let body = response.text().await?;
         sing_box = SinBoxJsonRule::json_classical_process(body.as_str())?;
         content = Some(body);
@@ -80,7 +83,7 @@ async fn _refresh(s: TblRuleRefreshDTO) -> AnyResult<()> {
         file::delete(path_json.clone())?;
         file::delete(path_srs.clone())?;
 
-        file::write_to(path_json.clone(), &r.json)?;
+        file::write(path_json.clone(), &r.json)?;
         kernel::sing_box::json_srs(path_json, path_srs)?;
     }
 
@@ -125,7 +128,7 @@ pub static TIMER_RULE: LazyLock<Arc<Timer>> = LazyLock::new(|| {
 async fn list() -> R<Vec<TblRule>> {
     let sql = format!(
         "
-select `id`,`name`,`url`, {}, `interval`,`update_time`,`create_time`,`refresh_time`,`download`,`upload`,`max`,`expire_time`
+select `id`,`name`,`url`, {}, `interval`,`update_time`,`create_time`,`refresh_time`,`count`,`count_process`,`count_ip`,`count_other`
 from {}",
         TblRule::sql_field_content,
         TblRule::table_name
@@ -133,7 +136,7 @@ from {}",
     query(&sql, vec![], |stmt| TblRule::from_db(stmt)).into()
 }
 
-async fn upsert(Json(entity): Json<TblRuleUpsertDTO>) -> R<i32> {
+async fn upsert(Json(entity): Json<TblRuleUpsertDTO>) -> R<()> {
     let sql: String;
     let args: Vec<Value>;
 
@@ -162,7 +165,7 @@ VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
             TblRule::table_name
         );
         args = vec![
-            id.into(),
+            id.clone().into(),
             entity.name.into(),
             entity.url.into(),
             content,
@@ -186,31 +189,34 @@ VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
             content,
             interval,
             time,
-            id.into(),
+            id.clone().into(),
         ];
     }
+    _upsert(sql, args, id).await.into()
+}
 
-    let r = execute(&sql, args).into();
-    TIMER_RULE.wake();
-    r
+async fn _upsert(sql: String, args: Vec<Value>, id: String) -> AnyResult<()> {
+    execute(&sql, args)?;
+    _refresh_id(Some(id)).await
 }
 
 async fn refresh(Json(po): Json<IdPo>) -> R<()> {
     _refresh_id(po.id).await.into()
 }
 
-async fn delete(Json(po): Json<IdPo>) -> R<i32> {
+async fn delete(Json(po): Json<IdPo>) -> R<()> {
     if let Some(id) = po.id {
-        let sql = format!(
-            "delete from {} where `id` = ? and `id` not in ( select ac.`value` from {} ac where ac.`key`=? )",
-            TblRule::table_name,
-            AppConfig::table_name
-        );
-        let args = vec![id.into(), key_config_selected.into()];
-        return execute(&sql, args).into();
-    }
+        let sql = format!("delete from {} where `id` = ? ", TblRule::table_name, );
+        let args = vec![id.clone().into()];
 
-    R::from(0)
+        match execute(&sql, args) {
+            Ok(_) => {
+                let _ = file::delete_dir(TblRule::dir_data(id));
+            }
+            Err(e) => return from_err_box(e),
+        }
+    }
+    R::from(())
 }
 
 pub fn fill(router: Router) -> Router {

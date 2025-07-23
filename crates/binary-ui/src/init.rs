@@ -196,6 +196,7 @@ fn init_system() -> AnyResult<()> {
 fn start_web() -> AnyResult<()> {
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_io()
+        .enable_time()
         .build()?;
 
     let f = runtime.block_on(async {

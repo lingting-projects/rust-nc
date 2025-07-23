@@ -7,6 +7,7 @@ use library_core::core::AnyResult;
 use library_core::snowflake::next_str;
 use library_core::sqlite::{execute, query};
 use library_core::timer::Timer;
+use library_nc::core::fast;
 use library_nc::subscribe::{Subscribe, HEADER_INFO};
 use sqlite::Value;
 use std::convert::Into;
@@ -38,7 +39,8 @@ async fn _refresh(s: TblSubscribeRefreshDTO) -> AnyResult<()> {
         content = None;
         subscribe = Subscribe::resolve(&s.content, None)?;
     } else {
-        let response = http::get(&s.url).await?;
+        let url_fast = fast(&s.url);
+        let response = http::get(&url_fast).await?;
         let info = response
             .headers()
             .get(HEADER_INFO)
@@ -112,7 +114,7 @@ from {}",
     query(&sql, vec![], |stmt| TblSubscribe::from_db(stmt)).into()
 }
 
-async fn upsert(Json(entity): Json<TblSubscribeUpsertDTO>) -> R<i32> {
+async fn upsert(Json(entity): Json<TblSubscribeUpsertDTO>) -> R<()> {
     let sql: String;
     let args: Vec<Value>;
 
@@ -141,7 +143,7 @@ VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)
             TblSubscribe::table_name
         );
         args = vec![
-            id.into(),
+            id.clone().into(),
             entity.name.into(),
             entity.url.into(),
             content,
@@ -166,13 +168,16 @@ VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)
             content,
             interval,
             time,
-            id.into(),
+            id.clone().into(),
         ];
     }
 
-    let r = execute(&sql, args).into();
-    TIMER_SUBSCRIBE.wake();
-    r
+    _upsert(sql, args, id).await.into()
+}
+
+async fn _upsert(sql: String, args: Vec<Value>, id: String) -> AnyResult<()> {
+    execute(&sql, args)?;
+    _refresh_id(Some(id)).await
 }
 
 async fn refresh(Json(po): Json<IdPo>) -> R<()> {

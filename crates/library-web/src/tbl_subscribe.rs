@@ -36,10 +36,10 @@ pub struct TblSubscribe {
 }
 
 impl TblSubscribe {
-
     pub const table_name: &'static str = "tbl_subscribe";
 
-    pub const sql_field_content: &'static str = "CASE WHEN `url` LIKE 'http%' THEN '' ELSE `content`";
+    pub const sql_field_content: &'static str =
+        "CASE WHEN `url` LIKE 'http%' THEN '' ELSE `content` END AS content";
 
     pub fn from_db(stmt: &Statement) -> Self {
         Self {
@@ -89,10 +89,9 @@ impl TblSubscribeRefreshDTO {
         }
     }
 
-
     pub const sql_where_before: LazyLock<String> = LazyLock::new(|| {
         format!(
-            "SELECT `id`,`name`,`url`,{} END AS content FROM {}",
+            "SELECT `id`,`name`,`url`,{} FROM {}",
             TblSubscribe::sql_field_content,
             TblSubscribe::table_name
         )
