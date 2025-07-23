@@ -1,5 +1,6 @@
 use crate::core::http_get;
-use library_nc::core::{is_true, AnyResult};
+use library_core::boolean::is_true;
+use library_core::core::AnyResult;
 use library_nc::http::pick_host;
 use library_nc::kernel::{
     dns_default_cn, dns_default_proxy, exclude_default, include_main, KernelConfig, NodeContains,

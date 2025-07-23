@@ -1,4 +1,4 @@
-use crate::core::AnyResult;
+use library_core::core::AnyResult;
 use regex::Regex;
 use std::sync::LazyLock;
 

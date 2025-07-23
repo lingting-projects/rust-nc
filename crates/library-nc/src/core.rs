@@ -1,18 +1,17 @@
 use crate::http::pick_host;
 use base64::prelude::BASE64_STANDARD;
 use base64::Engine;
+use library_core::core::AnyResult;
 use std::clone::Clone;
-use std::error::Error;
 use std::iter::Iterator;
 use std::sync::LazyLock;
-
-pub type AnyResult<T> = Result<T, Box<dyn Error>>;
 
 pub fn base64_decode(source: &str) -> AnyResult<String> {
     let vec = BASE64_STANDARD.decode(source)?;
     let string = String::from_utf8(vec)?;
     Ok(string)
 }
+
 #[derive(thiserror::Error, Debug)]
 pub enum NcError {
     #[error("不支持的来源")]
@@ -48,13 +47,3 @@ pub fn fast(url: &str) -> String {
     }
 }
 
-pub fn is_true(s: &str) -> bool {
-    if s.is_empty() {
-        return false;
-    }
-
-    match s.to_lowercase().as_ref() {
-        "1" | "true" | "t" | "y" | "ok" => true,
-        _ => false,
-    }
-}

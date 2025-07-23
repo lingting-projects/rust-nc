@@ -1,10 +1,11 @@
-use crate::core::{fast, AnyResult};
+use crate::core::fast;
 use crate::kernel::{
     clash_ui_url, default_mixed_listen, default_mixed_port, default_ui, fake_ipv4, fake_ipv6,
     inner_ipv4, inner_ipv6, key_direct, key_proxy, key_reject, route_ipv4, route_ipv6, tag_auto,
     tag_fallback, tag_selector, test_url, virtual_ipv4, virtual_ipv6, KernelConfig,
 };
 use crate::rule::{Rule, RuleType, SingBoxRule};
+use library_core::core::AnyResult;
 use serde::Serialize;
 
 pub const tag_dns_cn: &str = "dns-cn";

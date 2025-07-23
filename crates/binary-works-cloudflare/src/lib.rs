@@ -1,7 +1,7 @@
 mod convert;
 mod core;
 
-use library_nc::core::AnyResult;
+use library_core::core::AnyResult;
 use worker::Error::RustError;
 use worker::*;
 

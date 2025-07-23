@@ -204,6 +204,7 @@ name = "binary-works-cloudflare"
 version = "0.0.0"
 dependencies = [
  "console_error_panic_hook",
+ "library-core",
  "library-nc",
  "worker",
 ]
@@ -1619,6 +1620,7 @@ dependencies = [
  "base64",
  "byte-unit",
  "indexmap",
+ "library-core",
  "log",
  "percent-encoding",
  "regex",

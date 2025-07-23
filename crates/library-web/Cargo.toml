@@ -11,7 +11,7 @@ description.workspace = true
 
 [dependencies]
 library-nc = { path = "../library-nc", features = ["binary"] }
-library-core = { path = "../library-core", features = ["timer"] }
+library-core = { path = "../library-core", features = ["full"] }
 log = { workspace = true }
 axum = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread"] }

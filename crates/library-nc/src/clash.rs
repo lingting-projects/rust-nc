@@ -1,4 +1,3 @@
-use crate::core::AnyResult;
 use crate::kernel::{
     default_mixed_listen, default_mixed_port, default_ui, key_direct, key_proxy, key_reject,
     tag_auto, tag_fallback, tag_selector, test_url, KernelConfig,
@@ -6,6 +5,7 @@ use crate::kernel::{
 use crate::rule::{ClashRule, Rule, RuleType};
 use crate::subscribe::SubscribeNode;
 use indexmap::IndexMap;
+use library_core::core::AnyResult;
 use serde::Serialize;
 use serde_yaml::Value;
 use std::sync::LazyLock;

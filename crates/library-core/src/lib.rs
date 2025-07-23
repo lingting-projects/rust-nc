@@ -1,9 +1,14 @@
-pub mod app;
-pub mod core;
-pub mod sqlite;
-pub mod app_config;
-pub mod snowflake;
 pub mod boolean;
+pub mod core;
+pub mod snowflake;
+
+#[cfg(feature = "app")]
+pub mod app;
+#[cfg(feature = "app")]
+pub mod app_config;
+#[cfg(feature = "file")]
+pub mod file;
+#[cfg(feature = "sqlite")]
+pub mod sqlite;
 #[cfg(feature = "timer")]
 pub mod timer;
-pub mod file;

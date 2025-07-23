@@ -12,12 +12,16 @@ description.workspace = true
 [features]
 debug = []
 timer = ["tokio/sync", "tokio/time", "tokio/rt", "tokio/macros"]
+app = []
+file = []
+sqlite = []
+full = ["timer", "app", "file", "sqlite"]
 
 [dependencies]
 log = { workspace = true, features = [] }
 thiserror = { workspace = true }
-time = { workspace = true }
 simple_logger = { workspace = true, features = [] }
-sqlite = { workspace = true }
-tokio = { workspace = true, features = [] }
 futures = { workspace = true }
+tokio = { workspace = true, features = [] }
+time = { workspace = true }
+sqlite = { workspace = true }

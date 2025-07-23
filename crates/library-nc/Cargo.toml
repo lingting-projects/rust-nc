@@ -16,6 +16,7 @@ wrangler = ["log"]
 binary = ["log"]
 
 [dependencies]
+library-core = { path = "../library-core", features = [] }
 log = { workspace = true }
 thiserror = { workspace = true }
 byte-unit = { workspace = true }
