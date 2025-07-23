@@ -15,7 +15,7 @@ CREATE TABLE tbl_subscribe
     content TEXT,
     -- 订阅解析后的所有节点
     nodes TEXT,
-    -- 更新间隔, 单位: 毫秒
+    -- 刷新间隔, 单位: 毫秒
     interval INTEGER,
     -- 更新时间: 毫秒级别时间戳
     update_time INTEGER,
@@ -41,12 +41,14 @@ CREATE TABLE tbl_rule
     url TEXT,
     -- 订阅完整内容(url返回或者本地编辑的)
     content TEXT,
-    -- 更新间隔, 单位: 毫秒
+    -- 刷新间隔, 单位: 毫秒
     interval INTEGER,
     -- 更新时间: 毫秒级别时间戳
     update_time INTEGER,
     -- 创建时间: 毫秒级别时间戳
     create_time INTEGER,
+    -- 刷新时间: 毫秒级别时间戳
+    refresh_time INTEGER,
     -- 可用规则数量
     count INTEGER,
     -- 进程规则数量
@@ -84,6 +86,10 @@ CREATE TABLE tbl_config
     exclude_area TEXT,
     -- 排除名称中存在关键的 json字符串
     exclude_name_contains TEXT,
+    -- 刷新间隔, 单位: 毫秒
+    interval INTEGER,
+    -- 刷新时间: 毫秒级别时间戳
+    refresh_time INTEGER,
     -- 更新时间: 毫秒级别时间戳
     update_time INTEGER,
     -- 创建时间: 毫秒级别时间戳

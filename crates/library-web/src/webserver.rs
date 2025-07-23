@@ -1,5 +1,5 @@
 use crate::route_subscribe::TIMER_SUBSCRIBE;
-use crate::{route_global, route_setting, route_subscribe};
+use crate::{route_global, route_rule, route_setting, route_subscribe};
 use axum::serve::Serve;
 use axum::Router;
 use library_core::core::{AnyResult, BizError, Exit};
@@ -33,6 +33,7 @@ pub async fn build_port(port: u16) -> AnyResult<(u16, Serve<TcpListener, Router,
     let mut router = Router::new();
     router = route_setting::fill(router);
     router = route_subscribe::fill(router);
+    router = route_rule::fill(router);
 
     // 这个必须最后设置
     router = route_global::fill(router);
@@ -49,12 +50,13 @@ pub async fn build_port(port: u16) -> AnyResult<(u16, Serve<TcpListener, Router,
 
 static _TIMER_RUNTIME: OnceLock<Runtime> = OnceLock::new();
 
-pub fn timer_wake() -> AnyResult<()> {
+pub fn wake() -> AnyResult<()> {
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_io()
         .enable_time()
         .build()?;
     _TIMER_RUNTIME.get_or_init(move || {
+        log::debug!("[Web] 根据设置进行内核唤醒");
         runtime.block_on(async {
             log::debug!("[Web] 唤醒定时器");
             TIMER_SUBSCRIBE.wake();

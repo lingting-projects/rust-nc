@@ -4,6 +4,7 @@ use library_core::sqlite::{query, StatementExt};
 use serde::{Deserialize, Serialize};
 use sqlite::Statement;
 use std::convert::Into;
+use std::sync::LazyLock;
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -16,7 +17,7 @@ pub struct TblSubscribe {
     pub content: String,
     /// 订阅解析后的所有节点
     pub nodes: String,
-    /// 更新间隔, 单位: 毫秒
+    /// 刷新间隔, 单位: 毫秒
     pub interval: u32,
     /// 更新时间: 毫秒级别时间戳
     pub update_time: u128,
@@ -35,7 +36,10 @@ pub struct TblSubscribe {
 }
 
 impl TblSubscribe {
+
     pub const table_name: &'static str = "tbl_subscribe";
+
+    pub const sql_field_content: &'static str = "CASE WHEN `url` LIKE 'http%' THEN '' ELSE `content`";
 
     pub fn from_db(stmt: &Statement) -> Self {
         Self {
@@ -48,9 +52,9 @@ impl TblSubscribe {
             update_time: stmt.read_u128("update_time").unwrap_or(0),
             create_time: stmt.read_u128("create_time").unwrap_or(0),
             refresh_time: stmt.read_u128("refresh_time").unwrap_or(0),
-            download: stmt.read_u64("download").unwrap_or(0u64),
-            upload: stmt.read_u64("upload").unwrap_or(0u64),
-            max: stmt.read_u64("max").unwrap_or(0u64),
+            download: stmt.read_u64("download").unwrap_or(0),
+            upload: stmt.read_u64("upload").unwrap_or(0),
+            max: stmt.read_u64("max").unwrap_or(0),
             expire_time: stmt.read_u128("expire_time").unwrap_or(0),
         }
     }
@@ -66,6 +70,8 @@ pub struct TblSubscribeUpsertDTO {
     pub interval: u32,
 }
 
+#[derive(Debug, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TblSubscribeRefreshDTO {
     pub id: String,
     pub name: String,
@@ -83,10 +89,17 @@ impl TblSubscribeRefreshDTO {
         }
     }
 
-    pub const sql_where_befo: &'static str = "SELECT `id`,`name`,`url`,CASE WHEN url LIKE 'http%' THEN '' ELSE `content` END AS content FROM ";
+
+    pub const sql_where_before: LazyLock<String> = LazyLock::new(|| {
+        format!(
+            "SELECT `id`,`name`,`url`,{} END AS content FROM {}",
+            TblSubscribe::sql_field_content,
+            TblSubscribe::table_name
+        )
+    });
 
     pub fn all() -> AnyResult<Vec<Self>> {
-        let sql = format!("{} {}", Self::sql_where_befo, TblSubscribe::table_name);
+        let sql = Self::sql_where_before.clone();
         let args = vec![];
 
         query(&sql, args, |stmt| Self::from_db(stmt))
@@ -95,9 +108,8 @@ impl TblSubscribeRefreshDTO {
     pub fn need_refresh() -> AnyResult<Vec<Self>> {
         let millis = current_millis();
         let sql = format!(
-            "{} {} where `refresh_time`+`interval` <= cast(? as INTEGER)",
-            Self::sql_where_befo,
-            TblSubscribe::table_name
+            "{} where `refresh_time`+`interval` <= cast(? as INTEGER)",
+            Self::sql_where_before.clone(),
         );
         let args = vec![millis];
 
@@ -105,11 +117,7 @@ impl TblSubscribeRefreshDTO {
     }
 
     pub fn find(id: &str) -> AnyResult<Option<Self>> {
-        let sql = format!(
-            "{} {} where `id` = ?",
-            Self::sql_where_befo,
-            TblSubscribe::table_name
-        );
+        let sql = format!("{} where `id` = ?", Self::sql_where_before.clone());
         let args = vec![id.into()];
 
         let vec = query(&sql, args, |stmt| Self::from_db(stmt))?;

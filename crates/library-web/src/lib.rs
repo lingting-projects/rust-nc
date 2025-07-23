@@ -6,3 +6,5 @@ mod tbl_rule;
 mod tbl_config;
 mod route_subscribe;
 mod http;
+mod route_rule;
+mod kernel;

@@ -11,6 +11,8 @@ pub struct AppConfig {
 }
 
 impl AppConfig {
+    pub const table_name: &'static str = "app_config";
+
     pub fn version() -> i32 {
         Self::get("version")
             .ok()

@@ -1,6 +1,6 @@
 use regex::Regex;
 use serde::de::Visitor;
-use serde::{Deserialize, Deserializer, Serialize, Serializer, de};
+use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::{Arc, OnceLock};
@@ -118,7 +118,7 @@ pub fn find_match(source: &str) -> Option<&'static Area> {
                 let m_r = regex.is_match(&upper);
                 if m_r {
                     #[cfg(feature = "binary")]
-                    log::debug!("[{}] 正则匹配成功! code: {}", source, area.code);
+                    log::trace!("[{}] 正则匹配成功! code: {}", source, area.code);
                     #[cfg(feature = "wrangler")]
                     console_debug!("[{}] 正则匹配成功! code: {}", source, area.code);
                     return true;
@@ -126,7 +126,7 @@ pub fn find_match(source: &str) -> Option<&'static Area> {
                 let m_cn = source.contains(&area.name_cn);
                 if m_cn {
                     #[cfg(feature = "binary")]
-                    log::debug!(
+                    log::trace!(
                         "[{}] 名称[cn]匹配成功! code: {}; name: {}",
                         source,
                         area.code,

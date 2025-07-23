@@ -1,5 +1,7 @@
-use axum::Router;
 use axum::routing::get;
+use axum::Router;
+
+pub static key_config_selected: &str = "config_selected";
 
 async fn hello() -> String {
     String::from("hello")

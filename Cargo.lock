@@ -49,11 +49,11 @@ version = "0.4.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ddb939d66e4ae03cee6091612804ba446b12878410cfa17f785f4dd67d4014e8"
 dependencies = [
-    "flate2",
-    "futures-core",
-    "memchr",
-    "pin-project-lite",
-    "tokio",
+ "flate2",
+ "futures-core",
+ "memchr",
+ "pin-project-lite",
+ "tokio",
 ]
 
 [[package]]
@@ -509,7 +509,7 @@ version = "1.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a97769d94ddab943e4510d138150169a2758b5ef3eb191a9ee688de3e23ef7b3"
 dependencies = [
-    "cfg-if",
+ "cfg-if",
 ]
 
 [[package]]
@@ -720,8 +720,8 @@ version = "1.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4a3d7db9596fecd151c5f638c0ee5d5bd487b6e0ea232e5dc96d5250f6f94b1d"
 dependencies = [
-    "crc32fast",
-    "miniz_oxide",
+ "crc32fast",
+ "miniz_oxide",
 ]
 
 [[package]]
@@ -1603,13 +1603,13 @@ checksum = "1171693293099992e19cddea4e8b849964e9846f4acee11b3948bcc337be8776"
 name = "library-core"
 version = "0.0.0"
 dependencies = [
-    "futures",
+ "futures",
  "log",
  "simple_logger",
  "sqlite",
  "thiserror 2.0.12",
  "time",
-    "tokio",
+ "tokio",
 ]
 
 [[package]]
@@ -2495,12 +2495,12 @@ version = "0.12.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cbc931937e6ca3a06e3b6c0aa7841849b160a90351d6ab467a8b9b9959767531"
 dependencies = [
-    "async-compression",
+ "async-compression",
  "base64",
  "bytes",
  "encoding_rs",
  "futures-core",
-    "futures-util",
+ "futures-util",
  "h2",
  "http",
  "http-body",
@@ -2522,7 +2522,7 @@ dependencies = [
  "sync_wrapper",
  "tokio",
  "tokio-native-tls",
-    "tokio-util",
+ "tokio-util",
  "tower",
  "tower-http",
  "tower-service",
@@ -3406,7 +3406,7 @@ dependencies = [
  "http-body",
  "iri-string",
  "pin-project-lite",
-    "tokio",
+ "tokio",
  "tower",
  "tower-layer",
  "tower-service",

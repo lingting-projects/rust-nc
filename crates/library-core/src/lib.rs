@@ -6,3 +6,4 @@ pub mod snowflake;
 pub mod boolean;
 #[cfg(feature = "timer")]
 pub mod timer;
+pub mod file;

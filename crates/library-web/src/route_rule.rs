@@ -1,28 +1,31 @@
-use crate::http;
-use crate::route_global::{current_millis, from_err_box, IdPo, R};
-use crate::tbl_subscribe::{TblSubscribe, TblSubscribeRefreshDTO, TblSubscribeUpsertDTO};
+use crate::route_global::{current_millis, IdPo, R};
+use crate::route_setting::key_config_selected;
+use crate::tbl_rule::{TblRule, TblRuleRefreshDTO, TblRuleUpsertDTO};
+use crate::{http, kernel};
 use axum::routing::{get, patch, post};
 use axum::{Json, Router};
+use library_core::app::APP;
+use library_core::app_config::AppConfig;
 use library_core::core::AnyResult;
+use library_core::file;
 use library_core::snowflake::next_str;
 use library_core::sqlite::{execute, query};
 use library_core::timer::Timer;
+use library_nc::rule::{RuleType, SinBoxJsonRule};
 use library_nc::subscribe::{Subscribe, HEADER_INFO};
 use sqlite::Value;
-use std::convert::Into;
-use std::ops::Deref;
 use std::sync::{Arc, LazyLock};
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::Duration;
 
 async fn _refresh_id(option: Option<String>) -> AnyResult<()> {
     if let Some(id) = option {
-        let o = TblSubscribeRefreshDTO::find(&id)?;
+        let o = TblRuleRefreshDTO::find(&id)?;
         match o {
             None => Ok(()),
             Some(dto) => _refresh(dto).await,
         }
     } else {
-        let vec = TblSubscribeRefreshDTO::all()?;
+        let vec = TblRuleRefreshDTO::all()?;
         for s in vec {
             _refresh(s).await?
         }
@@ -30,22 +33,17 @@ async fn _refresh_id(option: Option<String>) -> AnyResult<()> {
     }
 }
 
-async fn _refresh(s: TblSubscribeRefreshDTO) -> AnyResult<()> {
-    log::info!("[订阅] 刷新资源: {}", s.name);
+async fn _refresh(s: TblRuleRefreshDTO) -> AnyResult<()> {
+    log::info!("[规则] 刷新资源: {}", s.name);
     let content: Option<String>;
-    let subscribe: Subscribe;
+    let sing_box: Vec<SinBoxJsonRule>;
     if s.url.is_empty() {
         content = None;
-        subscribe = Subscribe::resolve(&s.content, None)?;
+        sing_box = SinBoxJsonRule::json_classical_process(s.content.as_str())?
     } else {
         let response = http::get(&s.url).await?;
-        let info = response
-            .headers()
-            .get(HEADER_INFO)
-            .map(|v| v.to_str().unwrap_or(""))
-            .map(|o| o.to_string());
         let body = response.text().await?;
-        subscribe = Subscribe::resolve(&body, info)?;
+        sing_box = SinBoxJsonRule::json_classical_process(body.as_str())?;
         content = Some(body);
     }
     if let Some(c) = content.clone() {
@@ -53,7 +51,7 @@ async fn _refresh(s: TblSubscribeRefreshDTO) -> AnyResult<()> {
             let time = current_millis();
             let sql = format!(
                 "update {} set `refresh_time`=? where `id`=?",
-                TblSubscribe::table_name
+                TblRule::table_name
             );
             let args = vec![time, s.id.into()];
             execute(&sql, args)?;
@@ -61,39 +59,62 @@ async fn _refresh(s: TblSubscribeRefreshDTO) -> AnyResult<()> {
         }
     }
 
-    let json_nodes = serde_json::to_string(&subscribe.nodes)?;
+    let root = s.dir_data();
+    let mut count: u64 = 0;
+    let mut count_process: u64 = 0;
+    let mut count_ip: u64 = 0;
+    let mut count_other: u64 = 0;
+
+    for r in sing_box {
+        count += r.count;
+
+        match r.type_ {
+            RuleType::Ip => count_ip += r.count,
+            RuleType::Process => count_process += r.count,
+            RuleType::Other => count_other += r.count,
+        }
+
+        let name = r.type_.name();
+        let path_json = root.join(format!("{}.json", name));
+        let path_srs = root.join(format!("{}.srs", name));
+        file::delete(path_json.clone())?;
+        file::delete(path_srs.clone())?;
+
+        file::write_to(path_json.clone(), &r.json)?;
+        kernel::sing_box::json_srs(path_json, path_srs)?;
+    }
+
     let time = current_millis();
 
     let sql = format!(
-        "update {} set {}`nodes`=?,`refresh_time`=?,`download`=?,`upload`=?,`max`=?,`expire_time`=? where `id`=?",
-        TblSubscribe::table_name,
+        "update {} set {}`refresh_time`=?,`count`=?,`count_process`=?,`count_ip`=?,`count_other`=? where `id`=?",
+        TblRule::table_name,
         content.clone().map_or("", |v| "`content`=?,")
     );
     let mut args: Vec<Value> = vec![];
     if content.is_some() {
         args.push(content.unwrap().into());
     }
-    args.push(json_nodes.into());
     args.push(time.into());
-    args.push(subscribe.download.unwrap_or(0).to_string().into());
-    args.push(subscribe.upload.unwrap_or(0).to_string().into());
-    args.push(subscribe.max.unwrap_or(0).to_string().into());
-    args.push(subscribe.expire.unwrap_or(0).to_string().into());
+    args.push(count.to_string().into());
+    args.push(count_process.to_string().into());
+    args.push(count_ip.to_string().into());
+    args.push(count_other.to_string().into());
     args.push(s.id.into());
 
     execute(&sql, args)?;
     Ok(())
 }
 
-pub static TIMER_SUBSCRIBE: LazyLock<Arc<Timer>> = LazyLock::new(|| {
-    Timer::new("Subscribe".into(), Duration::from_secs(60), || async {
-        let vec = TblSubscribeRefreshDTO::need_refresh()?;
+pub static TIMER_RULE: LazyLock<Arc<Timer>> = LazyLock::new(|| {
+    Timer::new("Rule".into(), Duration::from_secs(60), || async {
+        let vec = TblRuleRefreshDTO::need_refresh()?;
         for s in vec {
             let name = &s.name.clone();
             match _refresh(s).await {
                 Ok(_) => {}
                 Err(e) => {
-                    log::error!("[订阅] [{}] 刷新异常! {}", name, e)
+                    log::error!("[规则] [{}] 刷新异常! {}", name, e)
                 }
             }
         }
@@ -101,18 +122,18 @@ pub static TIMER_SUBSCRIBE: LazyLock<Arc<Timer>> = LazyLock::new(|| {
     })
 });
 
-async fn list() -> R<Vec<TblSubscribe>> {
+async fn list() -> R<Vec<TblRule>> {
     let sql = format!(
         "
 select `id`,`name`,`url`, {}, `interval`,`update_time`,`create_time`,`refresh_time`,`download`,`upload`,`max`,`expire_time`
 from {}",
-        TblSubscribe::sql_field_content,
-        TblSubscribe::table_name
+        TblRule::sql_field_content,
+        TblRule::table_name
     );
-    query(&sql, vec![], |stmt| TblSubscribe::from_db(stmt)).into()
+    query(&sql, vec![], |stmt| TblRule::from_db(stmt)).into()
 }
 
-async fn upsert(Json(entity): Json<TblSubscribeUpsertDTO>) -> R<i32> {
+async fn upsert(Json(entity): Json<TblRuleUpsertDTO>) -> R<i32> {
     let sql: String;
     let args: Vec<Value>;
 
@@ -133,19 +154,18 @@ async fn upsert(Json(entity): Json<TblSubscribeUpsertDTO>) -> R<i32> {
         sql = format!(
             "
             insert into {}(`id`,`name`
-            ,`url`,`content`,`nodes`
+            ,`url`,`content`
             ,`interval`,`update_time`,`create_time`
-            ,`refresh_time`,`download`,`upload`,`max`,`expire_time`)
-VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)
+            ,`refresh_time`,`count`,`count_process`,`count_ip`,`count_other`)
+VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
         ",
-            TblSubscribe::table_name
+            TblRule::table_name
         );
         args = vec![
             id.into(),
             entity.name.into(),
             entity.url.into(),
             content,
-            "".into(),
             interval,
             time.clone(),
             time,
@@ -158,7 +178,7 @@ VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)
     } else {
         sql = format!(
             "update {} set `name`=?,`url`=?,`content`=?,`interval`=?,`update_time`=? where `id`=?",
-            TblSubscribe::table_name
+            TblRule::table_name
         );
         args = vec![
             entity.name.into(),
@@ -171,7 +191,7 @@ VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)
     }
 
     let r = execute(&sql, args).into();
-    TIMER_SUBSCRIBE.wake();
+    TIMER_RULE.wake();
     r
 }
 
@@ -181,8 +201,12 @@ async fn refresh(Json(po): Json<IdPo>) -> R<()> {
 
 async fn delete(Json(po): Json<IdPo>) -> R<i32> {
     if let Some(id) = po.id {
-        let sql = format!("delete from {} where id = ?", TblSubscribe::table_name);
-        let args = vec![id.into()];
+        let sql = format!(
+            "delete from {} where `id` = ? and `id` not in ( select ac.`value` from {} ac where ac.`key`=? )",
+            TblRule::table_name,
+            AppConfig::table_name
+        );
+        let args = vec![id.into(), key_config_selected.into()];
         return execute(&sql, args).into();
     }
 
@@ -191,8 +215,8 @@ async fn delete(Json(po): Json<IdPo>) -> R<i32> {
 
 pub fn fill(router: Router) -> Router {
     router
-        .route("/subscribe/list", get(list))
-        .route("/subscribe/upsert", post(upsert))
-        .route("/subscribe/refresh", patch(refresh))
-        .route("/subscribe/delete", post(delete))
+        .route("/rule/list", get(list))
+        .route("/rule/upsert", post(upsert))
+        .route("/rule/refresh", patch(refresh))
+        .route("/rule/delete", post(delete))
 }
