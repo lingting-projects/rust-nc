@@ -6,24 +6,44 @@ use serde::Serialize;
 use serde_json::{Map, Value};
 use std::collections::BTreeMap;
 
-pub enum RuleType {
-    // 针对ip的规则
-    Ip,
-    // 针对进程的规则
-    Process,
-    // 其他规则
-    Other,
+macro_rules! enum_with_iter {
+    (
+        pub enum $name:ident {
+            $($variant:ident $(= $value:expr)? => $str:expr),* $(,)?
+        }
+    ) => {
+        pub enum $name {
+            $($variant $(= $value)?),*
+        }
+
+        impl $name {
+            pub const fn name(self) -> &'static str {
+                match self {
+                    $($name::$variant => $str),*
+                }
+            }
+
+            pub const fn all() -> &'static [$name] {
+                &[$($name::$variant),*]
+            }
+        }
+
+        impl Copy for $name {}
+        impl Clone for $name {
+            fn clone(&self) -> Self {
+                *self
+            }
+        }
+    };
 }
 
-impl RuleType {
-    pub const fn name(self) -> &'static str {
-        match self {
-            RuleType::Ip => "ip",
-            RuleType::Process => "process",
-            RuleType::Other => "other",
-        }
+enum_with_iter!(
+    pub enum RuleType {
+        Ip => "ip",
+        Process => "process",
+        Other => "other",
     }
-}
+);
 
 pub struct Rule {
     pub path: String,

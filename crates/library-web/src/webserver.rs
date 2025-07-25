@@ -1,6 +1,7 @@
+use crate::route_config::TIMER_CONFIG;
 use crate::route_rule::TIMER_RULE;
 use crate::route_subscribe::TIMER_SUBSCRIBE;
-use crate::{route_global, route_rule, route_setting, route_subscribe};
+use crate::{route_config, route_global, route_rule, route_setting, route_subscribe};
 use axum::serve::Serve;
 use axum::Router;
 use library_core::core::{AnyResult, BizError, Exit};
@@ -35,6 +36,7 @@ pub async fn build_port(port: u16) -> AnyResult<(u16, Serve<TcpListener, Router,
     router = route_setting::fill(router);
     router = route_subscribe::fill(router);
     router = route_rule::fill(router);
+    router = route_config::fill(router);
 
     // 这个必须最后设置
     router = route_global::fill(router);
@@ -61,7 +63,8 @@ pub fn wake() -> AnyResult<()> {
         runtime.block_on(async {
             log::debug!("[Web] 唤醒定时器");
             TIMER_SUBSCRIBE.wake();
-            TIMER_RULE.wake()
+            TIMER_RULE.wake();
+            TIMER_CONFIG.wake();
         });
         runtime
     });

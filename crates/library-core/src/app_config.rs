@@ -1,6 +1,7 @@
 use crate::core::AnyResult;
 use crate::sqlite::{execute, query, StatementExt};
-use sqlite::ConnectionThreadSafe;
+use sqlite::{ConnectionThreadSafe, Value};
+use std::collections::HashMap;
 
 // app_config
 #[derive(Debug, Eq, PartialEq)]
@@ -64,6 +65,24 @@ impl AppConfig {
         let sql = "replace into app_config(`key`,`value`) VALUES (?,?)";
         let args = vec![key.into(), v.into()];
         execute(sql, args).map(|_| ())
+    }
+
+    pub fn keys(keys: Vec<&str>) -> AnyResult<HashMap<String, String>> {
+        let placeholders = keys.iter().map(|_| "?").collect::<Vec<_>>().join(",");
+
+        let sql = format!("select * from app_config where `key` in ({})", placeholders);
+        let args = keys.iter().map(|k| Value::from(*k)).collect();
+        let vec = query(&sql, args, |r| {
+            let key = r.read_string("key").expect("read key error");
+            let value = r.read_string("value").expect("read value error");
+            AppConfig { key, value }
+        })?;
+
+        let mut map = HashMap::with_capacity(keys.len());
+        for v in vec {
+            map.insert(v.key, v.value);
+        }
+        Ok(map)
     }
 
     pub(crate) fn init(conn: &ConnectionThreadSafe) -> AnyResult<()> {

@@ -31,6 +31,10 @@ pub trait StatementExt {
     fn read_bool<U>(&self, col: U) -> Option<bool>
     where
         U: ColumnIndex;
+    #[cfg(feature = "json")]
+    fn read_json_array<U>(&self, col: U) -> Option<Vec<serde_json::Value>>
+    where
+        U: ColumnIndex;
 }
 
 // 扩展 trait 实现
@@ -39,13 +43,10 @@ impl StatementExt for Statement<'_> {
     where
         U: ColumnIndex,
     {
-        let v = match self.read::<Value, _>(col) {
-            Ok(Value::String(s)) => s,
-            Ok(Value::Integer(i)) => i.to_string(),
-            Ok(Value::Float(f)) => f.to_string(),
-            _ => return None,
-        };
-        Some(v)
+        match self.read::<Value, _>(col) {
+            Ok(_v) => _v.string(),
+            _ => None,
+        }
     }
 
     fn read_i32<U>(&self, col: U) -> Option<i32>
@@ -113,6 +114,39 @@ impl StatementExt for Statement<'_> {
             Ok(Value::Integer(i)) => Some(i > 0),
             Ok(Value::Float(f)) => Some(f > 0.0),
             _ => None,
+        }
+    }
+
+    #[cfg(feature = "json")]
+    fn read_json_array<U>(&self, col: U) -> Option<Vec<serde_json::Value>>
+    where
+        U: ColumnIndex,
+    {
+        match self.read::<Value, _>(col) {
+            Ok(Value::String(v)) => {
+                if v.trim().is_empty() || !v.starts_with("[") || !v.ends_with("]") {
+                    None
+                } else {
+                    serde_json::from_str(&v).ok()
+                }
+            }
+            _ => None,
+        }
+    }
+}
+
+pub trait SqliteValueExt {
+    fn string(self) -> Option<String>;
+}
+
+impl SqliteValueExt for Value {
+    fn string(self) -> Option<String> {
+        match self {
+            Value::Binary(v) => None,
+            Value::Float(v) => Some(v.to_string()),
+            Value::Integer(v) => Some(v.to_string()),
+            Value::String(v) => Some(v),
+            Value::Null => None,
         }
     }
 }

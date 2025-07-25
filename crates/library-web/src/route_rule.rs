@@ -36,21 +36,25 @@ async fn _refresh_id(option: Option<String>) -> AnyResult<()> {
 }
 
 async fn _refresh(s: TblRuleRefreshDTO) -> AnyResult<()> {
-    log::info!("[规则] 刷新资源: {}", s.name);
+    log::info!("[规则] [{}] 刷新资源", s.name);
     let content: Option<String>;
     let sing_box: Vec<SinBoxJsonRule>;
     if s.url.is_empty() {
+        log::info!("[规则] [{}] 本地规则", s.name);
         content = None;
         sing_box = SinBoxJsonRule::json_classical_process(s.content.as_str())?
     } else {
+        log::info!("[规则] [{}] 远端规则", s.name);
         let url_fast = fast(&s.url);
         let response = http::get(&url_fast).await?;
         let body = response.text().await?;
+        log::debug!("[规则] [{}] 获取到远端数据", s.name);
         sing_box = SinBoxJsonRule::json_classical_process(body.as_str())?;
         content = Some(body);
     }
     if let Some(c) = content.clone() {
         if c == s.content {
+            log::info!("[规则] [{}] 规则内容未变更, 结束", s.name);
             let time = current_millis();
             let sql = format!(
                 "update {} set `refresh_time`=? where `id`=?",
@@ -68,6 +72,7 @@ async fn _refresh(s: TblRuleRefreshDTO) -> AnyResult<()> {
     let mut count_ip: u64 = 0;
     let mut count_other: u64 = 0;
 
+    log::debug!("[规则] [{}] 数据处理", s.name);
     for r in sing_box {
         count += r.count;
 
@@ -78,17 +83,21 @@ async fn _refresh(s: TblRuleRefreshDTO) -> AnyResult<()> {
         }
 
         let name = r.type_.name();
+        log::debug!("[规则] [{}] SingBox 规则处理: {}", s.name, name);
         let path_json = root.join(format!("{}.json", name));
         let path_srs = root.join(format!("{}.srs", name));
+        log::debug!("[规则] [{}] SingBox 清理旧数据文件: {}", s.name, name);
         file::delete(path_json.clone())?;
         file::delete(path_srs.clone())?;
 
+        log::debug!("[规则] [{}] SingBox 写入json: {}", s.name, name);
         file::write(path_json.clone(), &r.json)?;
+        log::debug!("[规则] [{}] SingBox 尝试转换为srs: {}", s.name, name);
         kernel::sing_box::json_srs(path_json, path_srs)?;
     }
 
+    log::debug!("[规则] [{}] 数据保存", s.name);
     let time = current_millis();
-
     let sql = format!(
         "update {} set {}`refresh_time`=?,`count`=?,`count_process`=?,`count_ip`=?,`count_other`=? where `id`=?",
         TblRule::table_name,
@@ -106,6 +115,7 @@ async fn _refresh(s: TblRuleRefreshDTO) -> AnyResult<()> {
     args.push(s.id.into());
 
     execute(&sql, args)?;
+    log::info!("[规则] [{}] 刷新完成", s.name);
     Ok(())
 }
 
@@ -211,7 +221,7 @@ async fn delete(Json(po): Json<IdPo>) -> R<()> {
 
         match execute(&sql, args) {
             Ok(_) => {
-                let _ = file::delete_dir(TblRule::dir_data(id));
+                let _ = file::delete_dir(TblRule::dir_data(&id));
             }
             Err(e) => return from_err_box(e),
         }

@@ -45,13 +45,19 @@ impl ConvertParams {
         r
     }
 
-    fn contains(prefix: &str, source: &HashMap<String, Vec<String>>) -> NodeContains {
+    fn contains(
+        prefix: &str,
+        source: &HashMap<String, Vec<String>>,
+        default: &NodeContains,
+    ) -> NodeContains {
         let area = Self::get_all(source, &format!("{}.area", prefix));
         let name_contains = Self::get_all(source, &format!("{}.name_contains", prefix));
 
         NodeContains {
             area,
             name_contains,
+            non_area: default.non_area,
+            non_name: default.non_name,
         }
     }
 
@@ -108,10 +114,10 @@ impl ConvertParams {
         let include: NodeContains = if only_main {
             include_main.clone()
         } else {
-            Self::contains("include", &source)
+            Self::contains("include", &source, &include_main)
         };
 
-        let mut exclude = Self::contains("exclude", &source);
+        let mut exclude = Self::contains("exclude", &source, &exclude_default);
         if exclude.is_empty() {
             exclude = exclude_default.clone()
         }
@@ -148,9 +154,8 @@ impl ConvertParams {
             dns_cn: dns_default_cn.clone(),
             dns_proxy: dns_default_proxy.clone(),
         }
-        .with_include(&self.include, true)
-        .with_exclude(&self.exclude, false)
-        .with_sort();
+            .with_default(&self.include, &self.exclude);
+
         Ok(config)
     }
 }

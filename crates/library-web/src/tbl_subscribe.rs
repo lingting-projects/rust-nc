@@ -1,6 +1,7 @@
 use crate::route_global::current_millis;
 use library_core::core::AnyResult;
 use library_core::sqlite::{query, StatementExt};
+use library_nc::subscribe::SubscribeNode;
 use serde::{Deserialize, Serialize};
 use sqlite::Statement;
 use std::convert::Into;
@@ -57,6 +58,27 @@ impl TblSubscribe {
             max: stmt.read_u64("max").unwrap_or(0),
             expire_time: stmt.read_u128("expire_time").unwrap_or(0),
         }
+    }
+
+    pub fn find_nodes(id: &String) -> AnyResult<Vec<SubscribeNode>> {
+        let sql = format!(
+            "select `nodes` from {} where `id` = ? limit 1",
+            Self::table_name
+        );
+        let args = vec![id.to_string().into()];
+
+        let _vec = query(&sql, args, |s| s.read_string("nodes"))?;
+        for x in _vec {
+            if let Some(json) = x {
+                let vec = serde_json::from_str::<Vec<SubscribeNode>>(&json)?;
+
+                if !vec.is_empty() {
+                    return Ok(vec);
+                }
+            }
+        }
+
+        Ok(vec![])
     }
 }
 

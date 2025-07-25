@@ -110,6 +110,17 @@ impl KernelConfig {
         self
     }
 
+    pub fn with_default(self, include: &NodeContains, exclude: &NodeContains) -> Self {
+        if include.size() > exclude.size() {
+            self.with_include(include, true)
+                .with_exclude(exclude, false)
+        } else {
+            self.with_exclude(exclude, false)
+                .with_include(include, true)
+        }
+            .with_sort()
+    }
+
     pub fn ip_strategy(&self) -> String {
         if self.ipv6 {
             "prefer_ipv6"
@@ -147,9 +158,17 @@ impl KernelConfig {
 pub struct NodeContains {
     pub area: Vec<String>,
     pub name_contains: Vec<String>,
+    /// 是否匹配无区域
+    pub non_area: bool,
+    /// 是否匹配无名称
+    pub non_name: bool,
 }
 
 impl NodeContains {
+    pub fn size(&self) -> usize {
+        self.area.len() + self.name_contains.len()
+    }
+
     pub fn is_empty(&self) -> bool {
         self.area.is_empty() && self.name_contains.is_empty()
     }
@@ -157,7 +176,7 @@ impl NodeContains {
     fn match_area(&self, node: &SubscribeNode) -> bool {
         if self.area.is_empty() {
             #[cfg(feature = "binary")]
-            log::debug!("[{}] 区域未设置, 区域匹配成功", node.name);
+            log::trace!("[{}] 区域未设置, 区域匹配成功", node.name);
             #[cfg(feature = "wrangler")]
             console_debug!("[{}] 区域未设置, 区域匹配成功", node.name);
             return true;
@@ -166,16 +185,16 @@ impl NodeContains {
         let option = node.area;
         if option.is_none() {
             #[cfg(feature = "binary")]
-            log::debug!("[{}] 节点无区域, 区域匹配失败", node.name);
+            log::trace!("[{}] 节点无区域, 区域匹配: {}", node.name, self.non_area);
             #[cfg(feature = "wrangler")]
-            console_debug!("[{}] 节点无区域, 区域匹配失败", node.name);
-            return false;
+            console_debug!("[{}] 节点无区域, 区域匹配: {}", node.name, self.non_area);
+            return self.non_area;
         }
 
         let area = option.unwrap();
         let m = self.area.contains(&area.code);
         #[cfg(feature = "binary")]
-        log::debug!("[{}] 节点区域: {}, 匹配结果: {}", node.name, &area.code, m);
+        log::trace!("[{}] 节点区域: {}, 匹配结果: {}", node.name, &area.code, m);
         #[cfg(feature = "wrangler")]
         console_debug!("[{}] 节点区域: {}, 匹配结果: {}", node.name, &area.code, m);
         m
@@ -183,10 +202,10 @@ impl NodeContains {
 
     fn match_name_contains(&self, node: &SubscribeNode) -> bool {
         if self.name_contains.is_empty() {
-            log::debug!("[{}] 名称未设置, 名称匹配成功", node.name);
+            log::trace!("[{}] 名称未设置, 名称匹配: {}", node.name, self.non_area);
             #[cfg(feature = "wrangler")]
-            console_debug!("[{}] 名称未设置, 名称匹配成功", node.name);
-            return true;
+            console_debug!("[{}] 名称未设置, 名称匹配: {}", node.name, self.non_area);
+            return self.non_area;
         }
 
         let name = &node.name;
@@ -197,14 +216,14 @@ impl NodeContains {
         match option {
             None => {
                 #[cfg(feature = "binary")]
-                log::debug!("[{}] 节点名称匹配失败", node.name);
+                log::trace!("[{}] 节点名称匹配失败", node.name);
                 #[cfg(feature = "wrangler")]
                 console_debug!("[{}] 节点名称匹配失败", node.name);
                 false
             }
             Some(key) => {
                 #[cfg(feature = "binary")]
-                log::debug!("[{}] 节点名称匹配成功, 关键字: {}", node.name, key);
+                log::trace!("[{}] 节点名称匹配成功, 关键字: {}", node.name, key);
                 #[cfg(feature = "wrangler")]
                 console_debug!("[{}] 节点名称匹配成功, 关键字: {}", node.name, key);
                 true
@@ -256,23 +275,26 @@ pub const inner_ipv6: LazyLock<Vec<String>> =
     LazyLock::new(|| vec!["fd00::/7".to_string(), "fc00::/7".to_string()]);
 
 pub const exclude_default: LazyLock<NodeContains> = LazyLock::new(|| NodeContains {
-    area: vec![
-        "CN".to_string(),
-        "HK".to_string(),
-        "MO".to_string(),
-        "TW".to_string(),
-    ],
+    // 排除时, 保留无区域
+    non_area: false,
+    // 排除时, 移除无名称
+    non_name: true,
+    area: vec!["CN".into(), "HK".into(), "MO".into(), "TW".into()],
     name_contains: vec![
-        "IEPL".to_string(),
-        "IPLC".to_string(),
-        "境外".to_string(),
-        "回国".to_string(),
-        "专线".to_string(),
+        "IEPL".into(),
+        "IPLC".into(),
+        "境外".into(),
+        "回国".into(),
+        "专线".into(),
     ],
 });
 
 pub const include_main: LazyLock<NodeContains> = LazyLock::new(|| NodeContains {
-    area: vec!["SG".to_string(), "US".to_string(), "JP".to_string()],
+    // 包含时, 保留无区域
+    non_area: true,
+    // 包含时, 移除无名称
+    non_name: false,
+    area: vec!["SG".into(), "US".into(), "JP".into()],
     name_contains: vec![],
 });
 

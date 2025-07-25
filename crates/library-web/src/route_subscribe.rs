@@ -32,13 +32,15 @@ async fn _refresh_id(option: Option<String>) -> AnyResult<()> {
 }
 
 async fn _refresh(s: TblSubscribeRefreshDTO) -> AnyResult<()> {
-    log::info!("[订阅] 刷新资源: {}", s.name);
+    log::info!("[订阅] [{}] 刷新资源", s.name);
     let content: Option<String>;
     let subscribe: Subscribe;
     if s.url.is_empty() {
+        log::debug!("[订阅] [{}] 本地数据", s.name);
         content = None;
         subscribe = Subscribe::resolve(&s.content, None)?;
     } else {
+        log::debug!("[订阅] [{}] 远程数据", s.name);
         let url_fast = fast(&s.url);
         let response = http::get(&url_fast).await?;
         let info = response
@@ -47,11 +49,13 @@ async fn _refresh(s: TblSubscribeRefreshDTO) -> AnyResult<()> {
             .map(|v| v.to_str().unwrap_or(""))
             .map(|o| o.to_string());
         let body = response.text().await?;
+        log::debug!("[订阅] [{}] 获取到远程数据", s.name);
         subscribe = Subscribe::resolve(&body, info)?;
         content = Some(body);
     }
     if let Some(c) = content.clone() {
         if c == s.content {
+            log::info!("[订阅] [{}] 订阅内容未变更, 结束", s.name);
             let time = current_millis();
             let sql = format!(
                 "update {} set `refresh_time`=? where `id`=?",
@@ -63,6 +67,7 @@ async fn _refresh(s: TblSubscribeRefreshDTO) -> AnyResult<()> {
         }
     }
 
+    log::debug!("[订阅] [{}] 序列化节点", s.name);
     let json_nodes = serde_json::to_string(&subscribe.nodes)?;
     let time = current_millis();
 
@@ -83,7 +88,9 @@ async fn _refresh(s: TblSubscribeRefreshDTO) -> AnyResult<()> {
     args.push(subscribe.expire.unwrap_or(0).to_string().into());
     args.push(s.id.into());
 
+    log::debug!("[订阅] [{}] 保存数据", s.name);
     execute(&sql, args)?;
+    log::info!("[订阅] [{}] 刷新完成", s.name);
     Ok(())
 }
 

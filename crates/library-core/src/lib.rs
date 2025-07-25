@@ -12,3 +12,5 @@ pub mod file;
 pub mod sqlite;
 #[cfg(feature = "timer")]
 pub mod timer;
+#[cfg(feature = "json")]
+pub mod json;

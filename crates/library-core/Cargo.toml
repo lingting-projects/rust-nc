@@ -14,8 +14,9 @@ debug = []
 timer = ["tokio/sync", "tokio/time", "tokio/rt", "tokio/macros"]
 app = []
 file = []
+json = []
 sqlite = []
-full = ["timer", "app", "file", "sqlite"]
+full = ["timer", "app", "file", "sqlite", "json"]
 
 [dependencies]
 log = { workspace = true, features = [] }
@@ -25,3 +26,4 @@ futures = { workspace = true }
 tokio = { workspace = true, features = [] }
 time = { workspace = true }
 sqlite = { workspace = true }
+serde_json = { workspace = true }

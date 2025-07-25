@@ -57,8 +57,8 @@ impl TblRule {
         }
     }
 
-    pub fn dir_data(id: String) -> PathBuf {
-        APP.get().unwrap().data_dir.join("rule").join(id)
+    pub fn dir_data(id: &str) -> PathBuf {
+        APP.get().unwrap().data_dir.join("rule").join(id.to_string().as_str())
     }
 }
 
@@ -127,6 +127,7 @@ impl TblRuleRefreshDTO {
     }
 
     pub fn dir_data(&self) -> PathBuf {
-        TblRule::dir_data(self.id.clone())
+        let id = &self.id;
+        TblRule::dir_data(id)
     }
 }

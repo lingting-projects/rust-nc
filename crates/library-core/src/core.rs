@@ -1,4 +1,5 @@
 use std::error::Error;
+use std::path::PathBuf;
 
 pub type AnyResult<T> = Result<T, Box<dyn Error>>;
 
@@ -16,6 +17,18 @@ pub enum BizError {
     SqliteInit,
     #[error("雪花算法初始化异常! {0}")]
     SnowflakeInit(String),
+    #[error("未找到订阅")]
+    SubscribeNotFound,
+    #[error("未找到规则")]
+    RuleNotFound,
+    #[error("未找到配置")]
+    ConfigNotFound,
+    #[error("未找到文件! {0}")]
+    PathNotFound(PathBuf),
+    #[error("未找到文件! {0}")]
+    FileNotFound(String),
+    #[error("没有可用节点! {0}")]
+    NodesEmpty(String),
 }
 
 pub enum Exit {

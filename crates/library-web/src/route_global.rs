@@ -3,6 +3,7 @@ use axum::{response::IntoResponse, Json, Router};
 use library_core::core::AnyResult;
 use log::log;
 use serde::{Deserialize, Serialize};
+use serde_json::map::Entry::Vacant;
 use sqlite::Value;
 use std::error::Error;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -110,3 +111,11 @@ pub fn current_millis() -> Value {
 pub struct IdPo {
     pub id: Option<String>,
 }
+
+// region value 扩展
+
+pub fn to_value(f: bool) -> Value {
+    if f { Value::from(1) } else { Value::from(0) }
+}
+
+// endregion

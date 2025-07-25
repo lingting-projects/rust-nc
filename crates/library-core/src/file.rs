@@ -4,12 +4,23 @@ use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 
-pub fn create<P: AsRef<Path>>(path: P) -> AnyResult<File> {
+pub fn create_dir<P: AsRef<Path>>(path: P) -> AnyResult<()> {
+    let p = path.as_ref();
+    if !p.exists() {
+        fs::create_dir_all(p)?;
+    }
+    Ok(())
+}
+
+pub fn create_parent<P: AsRef<Path>>(path: P) -> AnyResult<()> {
     let p = path.as_ref();
     let parent = p.parent().unwrap();
-    if !parent.exists() {
-        fs::create_dir_all(parent)?;
-    }
+    create_dir(parent)
+}
+
+pub fn create<P: AsRef<Path>>(path: P) -> AnyResult<File> {
+    let p = path.as_ref();
+    create_parent(p)?;
     let f = if p.exists() {
         File::open(p)?
     } else {
@@ -22,6 +33,19 @@ pub fn create<P: AsRef<Path>>(path: P) -> AnyResult<File> {
 pub fn write<P: AsRef<Path>>(path: P, content: &str) -> AnyResult<()> {
     let mut file = create(path)?;
     file.write_all(content.as_bytes())?;
+    Ok(())
+}
+
+pub fn copy<P: AsRef<Path>>(source: P, target: P) -> AnyResult<()> {
+    let t = target.as_ref();
+    if t.exists() {
+        return Ok(());
+    }
+    copy_force(source, target)
+}
+pub fn copy_force<P: AsRef<Path>>(source: P, target: P) -> AnyResult<()> {
+    create_parent(target.as_ref())?;
+    fs::copy(source, target)?;
     Ok(())
 }
 
