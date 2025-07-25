@@ -1,7 +1,6 @@
 use crate::area::{find, Area};
-use crate::core::{
-    base64_decode, NcError, PREFIX_EXPIRE, PREFIX_REMAIN_TRAFFIC,
-};
+use crate::core::{base64_decode, NcError, PREFIX_EXPIRE, PREFIX_REMAIN_TRAFFIC};
+use crate::data_size::DataSize;
 use crate::http::url_decode;
 use crate::{area, data_size};
 use byte_unit::rust_decimal::prelude::ToPrimitive;
@@ -133,12 +132,14 @@ impl Subscribe {
         let download = self.download.unwrap_or(0);
         let upload = self.upload.unwrap_or(0);
         let max = self.max.unwrap_or(0);
+        let used = DataSize::of_bytes(download + upload);
         let expire = self.expire.unwrap_or(0);
         let expire_str = &expire.to_string();
         Some(format!(
-            "download={}; upload={}; total={}; expire={};",
+            "download={}; upload={}; used={}; total={}; expire={}",
             download,
             upload,
+            used,
             max,
             if expire < 1 { "0" } else { expire_str }
         ))

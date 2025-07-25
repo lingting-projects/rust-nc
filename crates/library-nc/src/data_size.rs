@@ -1,4 +1,6 @@
 use byte_unit::rust_decimal::prelude::ToPrimitive;
+use std::fmt::{Display, Formatter};
+use std::sync::LazyLock;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -22,6 +24,17 @@ pub enum DataSizeUnit {
 }
 
 impl DataSizeUnit {
+    pub const units: LazyLock<Vec<DataSizeUnit>> = LazyLock::new(|| {
+        vec![
+            DataSizeUnit::PB,
+            DataSizeUnit::TB,
+            DataSizeUnit::GB,
+            DataSizeUnit::MB,
+            DataSizeUnit::KB,
+            DataSizeUnit::Bytes,
+        ]
+    });
+
     pub const fn step(self) -> u64 {
         match self {
             DataSizeUnit::Bytes => 1,
@@ -33,15 +46,41 @@ impl DataSizeUnit {
         }
     }
 
+    pub const fn name(self) -> &'static str {
+        match self {
+            DataSizeUnit::Bytes => "B",
+            DataSizeUnit::KB => "KB",
+            DataSizeUnit::MB => "MB",
+            DataSizeUnit::GB => "GB",
+            DataSizeUnit::TB => "TB",
+            DataSizeUnit::PB => "PB",
+        }
+    }
+
     pub fn step_f64(self) -> f64 {
         self.step().to_f64().unwrap()
     }
 
     pub fn of(&self, value: f64) -> Result<DataSize, ParserError> {
         let i = self.step_f64() * value;
-        Ok(DataSize {
-            bytes: i.to_u64().unwrap(),
-        })
+        let bytes = i.to_u64().unwrap();
+        let (unit, value) = Self::calculate_bytes(bytes);
+        Ok(DataSize { bytes, unit, value })
+    }
+
+    pub fn calculate_bytes(value: u64) -> (DataSizeUnit, f64) {
+        if value >= DataSizeUnit::KB.step() {
+            for unit in Self::units.iter() {
+                if value >= unit.step() {
+                    let f = value as f64 / unit.step_f64();
+                    // 保留两位小数
+                    let v = format!("{:.2}", f).parse::<f64>().unwrap();
+                    return (*unit, v);
+                }
+            }
+        }
+
+        (DataSizeUnit::Bytes, value.to_f64().unwrap())
     }
 
     pub fn from_str(unit: &str) -> Result<Self, ParserError> {
@@ -56,14 +95,17 @@ impl DataSizeUnit {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy)]
 pub struct DataSize {
     pub bytes: u64,
+    pub unit: DataSizeUnit,
+    pub value: f64,
 }
 
 impl DataSize {
     pub fn of_bytes(bytes: u64) -> Self {
-        DataSize { bytes }
+        let (unit, value) = DataSizeUnit::calculate_bytes(bytes);
+        DataSize { bytes, unit, value }
     }
 
     pub fn parse(source: &str) -> Result<Self, ParserError> {
@@ -92,4 +134,23 @@ impl DataSize {
             .map(DataSize::of_bytes)
             .map_err(|_| ParserError::InvalidFormat(source.to_string()))
     }
+
+    pub fn display(&self) -> String {
+        format!("{0:.2} {1}", self.value, self.unit.name())
+    }
 }
+
+impl Display for DataSize {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let str = self.display();
+        f.write_str(&str)
+    }
+}
+
+impl PartialEq for DataSize {
+    fn eq(&self, other: &Self) -> bool {
+        self.bytes == other.bytes
+    }
+}
+
+impl Eq for DataSize {}
