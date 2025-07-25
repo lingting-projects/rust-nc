@@ -1606,7 +1606,7 @@ version = "0.0.0"
 dependencies = [
  "futures",
  "log",
-    "serde_json",
+ "serde_json",
  "simple_logger",
  "sqlite",
  "thiserror 2.0.12",

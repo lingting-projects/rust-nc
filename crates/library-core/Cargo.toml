@@ -11,19 +11,19 @@ description.workspace = true
 
 [features]
 debug = []
-timer = ["tokio/sync", "tokio/time", "tokio/rt", "tokio/macros"]
-app = []
+timer = ["tokio", "time", "futures"]
+app = ["time", "db", "simple_logger"]
 file = []
-json = []
-sqlite = []
-full = ["timer", "app", "file", "sqlite", "json"]
+json = ["serde_json"]
+db = ['sqlite']
+full = ["timer", "app", "file", "db", "json"]
 
 [dependencies]
 log = { workspace = true, features = [] }
 thiserror = { workspace = true }
-simple_logger = { workspace = true, features = [] }
-futures = { workspace = true }
-tokio = { workspace = true, features = [] }
-time = { workspace = true }
-sqlite = { workspace = true }
-serde_json = { workspace = true }
+simple_logger = { workspace = true, features = [], optional = true }
+futures = { workspace = true, optional = true }
+tokio = { workspace = true, features = ["sync", "time", "rt", "macros"], optional = true }
+time = { workspace = true, optional = true }
+sqlite = { workspace = true, optional = true }
+serde_json = { workspace = true, optional = true }

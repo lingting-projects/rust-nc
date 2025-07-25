@@ -1,14 +1,15 @@
 pub mod boolean;
 pub mod core;
-pub mod snowflake;
 
+#[cfg(feature = "app")]
+pub mod snowflake;
 #[cfg(feature = "app")]
 pub mod app;
 #[cfg(feature = "app")]
 pub mod app_config;
 #[cfg(feature = "file")]
 pub mod file;
-#[cfg(feature = "sqlite")]
+#[cfg(feature = "db")]
 pub mod sqlite;
 #[cfg(feature = "timer")]
 pub mod timer;
