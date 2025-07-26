@@ -133,15 +133,20 @@ impl Subscribe {
         let upload = self.upload.unwrap_or(0);
         let max = self.max.unwrap_or(0);
         let used = DataSize::of_bytes(download + upload);
-        let expire = self.expire.unwrap_or(0);
-        let expire_str = &expire.to_string();
+        let expire = self
+            .expire
+            .map(|u| {
+                if u < 1 {
+                    None
+                } else {
+                    Some(format!("{:.2}", u / 1000))
+                }
+            })
+            .flatten()
+            .unwrap_or("0".into());
         Some(format!(
             "download={}; upload={}; used={}; total={}; expire={}",
-            download,
-            upload,
-            used,
-            max,
-            if expire < 1 { "0" } else { expire_str }
+            download, upload, used, max, expire
         ))
     }
 }

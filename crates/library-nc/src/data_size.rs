@@ -136,7 +136,7 @@ impl DataSize {
     }
 
     pub fn display(&self) -> String {
-        format!("{0:.2} {1}", self.value, self.unit.name())
+        format!("{:.2} {}", self.value, self.unit.name())
     }
 }
 
