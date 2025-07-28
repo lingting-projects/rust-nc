@@ -1,5 +1,6 @@
 [package]
 name = "library-nc"
+version.workspace = true
 authors.workspace = true
 homepage.workspace = true
 repository.workspace = true
