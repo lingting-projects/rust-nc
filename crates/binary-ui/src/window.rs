@@ -2,6 +2,7 @@ use crate::init::FIRST;
 use library_core::app::APP;
 use library_core::core::{AnyResult, Exit};
 use library_web::webserver;
+use std::fmt::format;
 use std::process::exit;
 use std::sync::{
     mpsc::{channel, Receiver, Sender},
@@ -27,7 +28,9 @@ static LOOP_PROXY: OnceLock<EventLoopProxy<()>> = OnceLock::new();
 // 对外提供的发送函数
 pub fn send_event(event: WindowEvent) -> AnyResult<()> {
     if let Some(sender) = SENDER.get() {
-        sender.send(event)?;
+        sender
+            .send(event)
+            .map_err(|e| format!("事件发生异常! {e}"))?;
         // 唤醒事件循环处理新事件
         if let Some(proxy) = LOOP_PROXY.get() {
             proxy.send_event(())?

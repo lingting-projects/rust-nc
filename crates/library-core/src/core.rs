@@ -1,7 +1,7 @@
 use std::error::Error;
 use std::path::PathBuf;
 
-pub type AnyResult<T> = Result<T, Box<dyn Error>>;
+pub type AnyResult<T> = Result<T, Box<dyn Error + Send + Sync>>;
 
 #[derive(thiserror::Error, Debug)]
 pub enum BizError {
