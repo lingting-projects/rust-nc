@@ -179,7 +179,7 @@ checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
 
 [[package]]
 name = "binary-ui"
-version = "0.0.0"
+version = "2025.7.180"
 dependencies = [
  "library-core",
  "library-web",
@@ -191,7 +191,7 @@ dependencies = [
 
 [[package]]
 name = "binary-web"
-version = "0.0.0"
+version = "2025.7.180"
 dependencies = [
  "library-core",
  "library-web",
@@ -201,7 +201,7 @@ dependencies = [
 
 [[package]]
 name = "binary-works-cloudflare"
-version = "0.0.0"
+version = "2025.7.180"
 dependencies = [
  "console_error_panic_hook",
  "library-core",
@@ -1602,7 +1602,7 @@ checksum = "1171693293099992e19cddea4e8b849964e9846f4acee11b3948bcc337be8776"
 
 [[package]]
 name = "library-core"
-version = "0.0.0"
+version = "2025.7.180"
 dependencies = [
  "futures",
  "log",
@@ -1616,7 +1616,7 @@ dependencies = [
 
 [[package]]
 name = "library-nc"
-version = "0.0.0"
+version = "2025.7.180"
 dependencies = [
  "base64",
  "byte-unit",
@@ -1635,7 +1635,7 @@ dependencies = [
 
 [[package]]
 name = "library-web"
-version = "0.0.0"
+version = "2025.7.180"
 dependencies = [
  "axum",
  "library-core",
@@ -3413,6 +3413,7 @@ dependencies = [
  "tower",
  "tower-layer",
  "tower-service",
+ "tracing",
 ]
 
 [[package]]

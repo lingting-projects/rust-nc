@@ -14,8 +14,10 @@ pub struct AppConfig {
 impl AppConfig {
     pub const table_name: &'static str = "app_config";
 
+    pub const key_version: &'static str = "version";
+
     pub fn version() -> i32 {
-        Self::get("version")
+        Self::get(Self::key_version)
             .ok()
             .flatten()
             .map(|s| s.parse::<i32>().ok())
@@ -24,7 +26,7 @@ impl AppConfig {
     }
 
     pub fn version_set(v: i32) -> AnyResult<()> {
-        Self::set("version", &v.to_string())
+        Self::set(Self::key_version, &v.to_string())
     }
 
     pub fn find(key: &str) -> AnyResult<Option<Self>> {

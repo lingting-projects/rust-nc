@@ -157,16 +157,19 @@ const TIMESTAMP_FORMAT: &[FormatItem] =
     format_description!("[year]-[month]-[day] [hour]:[minute]:[second].[subsecond digits:3]");
 
 pub fn init() -> AnyResult<()> {
-    #[cfg(not(feature = "debug"))]
-    let level = LevelFilter::Info;
-    #[cfg(feature = "debug")]
-    let level = LevelFilter::Debug;
+    let mut level = LevelFilter::Info;
+    if cfg!(feature = "trace") {
+        level = LevelFilter::Trace;
+    } else if cfg!(feature = "debug") {
+        level = LevelFilter::Debug;
+    }
 
     let logger = SimpleLogger::new()
         .with_local_timestamps()
         .with_timestamp_format(TIMESTAMP_FORMAT)
         .with_level(level);
     logger.init().unwrap();
+    log::debug!("完成日志初始化, 日志级别: {level}");
     log::debug!("初始化应用程序基础数据");
     APP.get_or_init(Application::new);
     log::debug!("初始化数据库");

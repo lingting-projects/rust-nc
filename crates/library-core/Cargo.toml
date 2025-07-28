@@ -12,6 +12,7 @@ description.workspace = true
 
 [features]
 debug = []
+trace = []
 timer = ["tokio", "time", "futures"]
 app = ["time", "db", "simple_logger"]
 file = []
