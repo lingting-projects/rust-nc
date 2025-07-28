@@ -10,3 +10,4 @@ mod tbl_rule;
 mod tbl_subscribe;
 pub mod webserver;
 mod tbl_setting;
+pub mod settings;

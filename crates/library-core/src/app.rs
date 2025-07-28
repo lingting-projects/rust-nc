@@ -30,10 +30,7 @@ pub struct Application {
 
     // 配置属性
     pub is_dev: bool,
-    pub log_level: LevelFilter,
     pub run_on_root: bool,
-    pub minimize_file: PathBuf,
-    pub run_on_minimize: bool,
 }
 
 impl Application {
@@ -46,7 +43,7 @@ impl Application {
         let repo = "lingting-nc";
 
         // 生成初始 ID
-        let start_id = "0".to_string();
+        let start_id = next_str();
 
         // 确定全局目录
         let global_dir = {
@@ -90,24 +87,15 @@ impl Application {
         };
 
         // 计算属性
-        let is_dev = false;
+        let mut is_dev = true;
+        if cfg!(feature = "prod") {
+            is_dev = false
+        }
 
-        let log_level = if is_dev {
-            LevelFilter::Debug
-        } else {
-            LevelFilter::Info
-        };
-
-        let run_on_root = false;
-
-        // 最小化文件路径
-        let minimize_file = cache_dir.join("minimize");
-
-        let run_on_minimize = if is_dev {
-            false
-        } else {
-            minimize_file.exists()
-        };
+        let mut run_on_root = false;
+        if cfg!(feature = "dev") {
+            run_on_root = true
+        }
 
         Self {
             id,
@@ -124,10 +112,7 @@ impl Application {
             startup_dir,
             install_dir,
             is_dev,
-            log_level,
             run_on_root,
-            minimize_file,
-            run_on_minimize,
         }
     }
 }
@@ -149,6 +134,7 @@ fn create_sub_dir(parent: &PathBuf, name: &str) -> PathBuf {
 pub static APP: OnceLock<Application> = OnceLock::new();
 
 use crate::core::AnyResult;
+use crate::snowflake::next_str;
 use crate::sqlite;
 use simple_logger::SimpleLogger;
 use time::{format_description::FormatItem, macros::format_description};

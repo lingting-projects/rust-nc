@@ -1,8 +1,8 @@
 use crate::window::dispatch;
 use library_core::app::APP;
 use library_core::core::{AnyResult, BizError, Exit};
-use library_web::webserver;
 use library_web::webserver::{WebServer, SERVER};
+use library_web::{settings, webserver};
 use std::process::exit;
 use std::sync::{Mutex, OnceLock};
 use std::{panic, thread};
@@ -185,6 +185,9 @@ fn init_system() -> AnyResult<()> {
     let icon = Icon::from_path("icons/256x256.png", Some(PhysicalSize::new(256, 256)))?;
 
     dispatch(move |w, _| {
+        if !*settings::is_minimize {
+            w.set_visible(true)
+        }
         w.set_window_icon(Some(icon));
     })?;
 
@@ -252,7 +255,6 @@ fn update(url: String) {}
 fn assets() {}
 
 fn completed() {
-    let app = APP.wait();
     #[cfg(feature = "local-ui")]
     let url = format!("file:///{}", app.ui_dir.to_str().unwrap());
     #[cfg(not(feature = "local-ui"))]
@@ -260,9 +262,6 @@ fn completed() {
 
     dispatch(move |w, wv| {
         w.set_title("nc");
-        if app.run_on_minimize {
-            w.set_visible(false)
-        }
         match wv.load_url(&url) {
             Ok(_) => {}
             Err(_) => emit(LoadingState::UiError),

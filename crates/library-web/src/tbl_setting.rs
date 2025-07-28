@@ -104,21 +104,13 @@ impl TblSettingSoftware {
         test_url: test_url.into(),
     });
 
-    pub const key_startup: &'static str = "setting:software:startup";
     pub const key_minimize: &'static str = "setting:software:minimize";
     pub const key_version: &'static str = AppConfig::key_version;
 
     pub fn get() -> AnyResult<Self> {
-        let map = AppConfig::keys(vec![
-            Self::key_startup,
-            Self::key_minimize,
-            Self::key_version,
-        ])?;
+        let map = AppConfig::keys(vec![Self::key_minimize, Self::key_version])?;
         let software = TblSettingSoftware {
-            startup: map
-                .get(Self::key_startup)
-                .map(|v| is_true(v))
-                .unwrap_or(Self::default.startup),
+            startup: false,
             minimize: map
                 .get(Self::key_minimize)
                 .map(|v| is_true(v))
@@ -134,10 +126,15 @@ impl TblSettingSoftware {
         Ok(software)
     }
 
+    pub fn is_minimize() -> bool {
+        AppConfig::get(Self::key_minimize)
+            .ok()
+            .flatten()
+            .map(|v| is_true(&v))
+            .unwrap_or(Self::default.minimize)
+    }
+
     pub fn append_upsert(&self, sets: &mut Vec<String>, args: &mut Vec<Value>) {
-        sets.push("(?,?)".to_string());
-        args.push(Value::from(Self::key_startup));
-        args.push(to_value(self.startup));
         sets.push("(?,?)".to_string());
         args.push(Value::from(Self::key_minimize));
         args.push(to_value(self.minimize));

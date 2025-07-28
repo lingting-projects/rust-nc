@@ -11,10 +11,10 @@ rust-version.workspace = true
 description.workspace = true
 
 [features]
-default = ['dev']
-dev = ["library-core/debug"]
-uat = ['local-ui', "library-core/debug"]
-prod = ['local-ui']
+default = ["dev"]
+dev = ["library-core/dev", "library-core/debug"]
+uat = ["library-core/uat", "local-ui", "library-core/debug"]
+prod = ["library-core/prod", "local-ui"]
 
 local-ui = []
 
