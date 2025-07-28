@@ -1,5 +1,4 @@
 use crate::route_global::{current_millis, from_err_box, to_value, IdPo, R};
-use crate::route_setting::key_config_selected;
 use crate::tbl_config::{TblConfig, TblConfigUpsertDTO};
 use crate::tbl_rule::TblRule;
 use crate::tbl_setting::TblSettingKernel;
@@ -180,7 +179,7 @@ async fn _refresh(config: TblConfig) -> AnyResult<()> {
         return Err(Box::new(BizError::NodesEmpty(config.id.clone())));
     }
     log::info!("[配置] [{}] 获取内核设置", config.name);
-    let setting = TblSettingKernel::new()?;
+    let setting = TblSettingKernel::get()?;
     log::info!("[配置] [{}] 构建包含规则", config.name);
     let include = NodeContains {
         non_area: config.include_area_non,

@@ -1,20 +1,151 @@
+use crate::route_global::to_value;
 use library_core::app_config::AppConfig;
+use library_core::boolean::is_true;
 use library_core::core::AnyResult;
+use library_core::sqlite::execute;
+use library_nc::core::FAST_GItHUB_PREFIX;
 use library_nc::kernel::{
     default_mixed_listen, default_mixed_port, default_ui, dns_default_cn, dns_default_proxy,
+    test_url,
 };
 use serde::{Deserialize, Serialize};
+use sqlite::Value;
 use std::clone::Clone;
 use std::convert::Into;
 use std::string::ToString;
 use std::sync::LazyLock;
 
-#[derive(Default, Debug, Clone, Serialize, Deserialize)]
-pub struct TblSetting {}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TblSetting {
+    pub kernel: TblSettingKernel,
+    pub software: TblSettingSoftware,
+    pub run: TblSettingRun,
+}
 
-impl TblSetting {}
+impl TblSetting {
+    pub fn get() -> AnyResult<Self> {
+        Ok(TblSetting {
+            kernel: TblSettingKernel::get()?,
+            software: TblSettingSoftware::get()?,
+            run: TblSettingRun::get()?,
+        })
+    }
 
-#[derive(Default, Debug, Clone, Serialize, Deserialize)]
+    pub fn upsert(&self) -> AnyResult<i32> {
+        let mut sql = format!(
+            "REPLACE INTO {} (`key`, `value`) VALUES ",
+            AppConfig::table_name
+        );
+        let mut sets = Vec::new();
+        let mut args = Vec::new();
+        self.run.append_upsert(&mut sets, &mut args);
+        self.software.append_upsert(&mut sets, &mut args);
+        self.kernel.append_upsert(&mut sets, &mut args)?;
+
+        sql.push_str(&sets.join(","));
+
+        execute(&sql, args)
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TblSettingRun {
+    pub auto: bool,
+    pub selected: Option<String>,
+}
+
+impl TblSettingRun {
+    pub const default: LazyLock<TblSettingRun> = LazyLock::new(|| TblSettingRun {
+        auto: false,
+        selected: None,
+    });
+
+    pub const key_auto: &'static str = "setting:run:auto";
+    pub const key_selected: &'static str = "setting:run:selected";
+
+    pub fn get() -> AnyResult<Self> {
+        let map = AppConfig::keys(vec![Self::key_auto, Self::key_selected])?;
+        let run = TblSettingRun {
+            auto: map
+                .get(Self::key_auto)
+                .map(|v| is_true(v))
+                .unwrap_or(Self::default.auto),
+            selected: map.get(Self::key_selected).map(|v| v.to_string()),
+        };
+
+        Ok(run)
+    }
+
+    pub fn append_upsert(&self, sets: &mut Vec<String>, args: &mut Vec<Value>) {
+        sets.push("(?,?)".to_string());
+        args.push(Value::from(Self::key_auto));
+        args.push(to_value(self.auto));
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TblSettingSoftware {
+    pub startup: bool,
+    pub minimize: bool,
+    pub version: String,
+    pub fast_github: String,
+    pub test_url: String,
+}
+
+impl TblSettingSoftware {
+    pub const default: LazyLock<TblSettingSoftware> = LazyLock::new(|| TblSettingSoftware {
+        startup: false,
+        minimize: false,
+        version: "0.0.0".to_string(),
+        fast_github: FAST_GItHUB_PREFIX.clone(),
+        test_url: test_url.into(),
+    });
+
+    pub const key_startup: &'static str = "setting:software:startup";
+    pub const key_minimize: &'static str = "setting:software:minimize";
+    pub const key_version: &'static str = AppConfig::key_version;
+
+    pub fn get() -> AnyResult<Self> {
+        let map = AppConfig::keys(vec![
+            Self::key_startup,
+            Self::key_minimize,
+            Self::key_version,
+        ])?;
+        let software = TblSettingSoftware {
+            startup: map
+                .get(Self::key_startup)
+                .map(|v| is_true(v))
+                .unwrap_or(Self::default.startup),
+            minimize: map
+                .get(Self::key_minimize)
+                .map(|v| is_true(v))
+                .unwrap_or(Self::default.minimize),
+            version: map
+                .get(Self::key_version)
+                .map(|v| v.clone())
+                .unwrap_or(Self::default.version.clone()),
+            fast_github: Self::default.fast_github.clone(),
+            test_url: Self::default.test_url.clone(),
+        };
+
+        Ok(software)
+    }
+
+    pub fn append_upsert(&self, sets: &mut Vec<String>, args: &mut Vec<Value>) {
+        sets.push("(?,?)".to_string());
+        args.push(Value::from(Self::key_startup));
+        args.push(to_value(self.startup));
+        sets.push("(?,?)".to_string());
+        args.push(Value::from(Self::key_minimize));
+        args.push(to_value(self.minimize));
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TblSettingKernel {
     pub sing_box_version: String,
     pub ui: String,
@@ -41,7 +172,7 @@ impl TblSettingKernel {
     pub const key_dns_cn: &'static str = "setting:kernel:dns_cn";
     pub const key_dns_proxy: &'static str = "setting:kernel:dns_proxy";
 
-    pub fn new() -> AnyResult<Self> {
+    pub fn get() -> AnyResult<Self> {
         let map = AppConfig::keys(vec![
             Self::key_sing_box_version,
             Self::key_ui,
@@ -81,5 +212,28 @@ impl TblSettingKernel {
                 .unwrap_or(Self::default.dns_proxy.clone()),
         };
         Ok(kernel)
+    }
+
+    pub fn append_upsert(&self, sets: &mut Vec<String>, args: &mut Vec<Value>) -> AnyResult<()> {
+        sets.push("(?,?)".to_string());
+        args.push(Value::from(Self::key_ui));
+        args.push(Value::String(self.ui.clone()));
+        sets.push("(?,?)".to_string());
+        args.push(Value::from(Self::key_mixed_listen));
+        args.push(Value::String(self.mixed_listen.clone()));
+        sets.push("(?,?)".to_string());
+        args.push(Value::from(Self::key_mixed_port));
+        args.push(Value::Integer(self.mixed_port as i64));
+        sets.push("(?,?)".to_string());
+        args.push(Value::from(Self::key_dns_cn));
+        args.push(Value::String(serde_json::to_string(
+            &serde_json::Value::from(self.dns_cn.clone()),
+        )?));
+        sets.push("(?,?)".to_string());
+        args.push(Value::from(Self::key_dns_proxy));
+        args.push(Value::String(serde_json::to_string(
+            &serde_json::Value::from(self.dns_proxy.clone()),
+        )?));
+        Ok(())
     }
 }

@@ -1,5 +1,4 @@
 use crate::route_global::{current_millis, from_err_box, IdPo, R};
-use crate::route_setting::key_config_selected;
 use crate::tbl_rule::{TblRule, TblRuleRefreshDTO, TblRuleUpsertDTO};
 use crate::{http, kernel};
 use axum::routing::{get, patch, post};

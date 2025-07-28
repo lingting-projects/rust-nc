@@ -1,12 +1,18 @@
-use axum::routing::get;
-use axum::Router;
+use crate::route_global::R;
+use crate::tbl_setting::TblSetting;
+use axum::routing::{get, post};
+use axum::{Json, Router};
 
-pub static key_config_selected: &str = "config_selected";
+async fn _get() -> R<TblSetting> {
+    TblSetting::get().into()
+}
 
-async fn hello() -> String {
-    String::from("hello")
+async fn upsert(Json(entity): Json<TblSetting>) -> R<i32> {
+    entity.upsert().into()
 }
 
 pub fn fill(router: Router) -> Router {
-    router.route("/", get(hello))
+    router
+        .route("/settings/get", get(_get))
+        .route("/settings/upsert", post(upsert))
 }
