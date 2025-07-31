@@ -43,6 +43,7 @@ fn build_go_library(target: &str, out_dir: &str, manifest_dir: &str) {
     let mut cmd = Command::new("go");
     cmd.current_dir(&go_dir)
         .arg("build")
+        .arg("-tags=with_clash_api")
         .arg("-buildmode=c-shared")
         .arg("-o")
         .arg(&out_path);

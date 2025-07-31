@@ -7,59 +7,109 @@ package main
 import "C"
 import (
 	"context"
-	"fmt"
+	"github.com/sagernet/sing-box"
 	"github.com/sagernet/sing-box/common/srs"
+	"github.com/sagernet/sing-box/include"
+	"github.com/sagernet/sing-box/log"
+	"github.com/sagernet/sing-box/option"
+	"github.com/sagernet/sing/common/json"
+	"github.com/sagernet/sing/service/filemanager"
 	"io"
 	"os"
 	"os/signal"
 	"syscall"
-
-	"github.com/sagernet/sing-box"
-	"github.com/sagernet/sing-box/option"
-	"github.com/sagernet/sing/common/json"
 )
 
-var instance *box.Box
-var ctx context.Context
-var cancel context.CancelFunc
+var (
+	instance *box.Box
+	ctx      context.Context
+	cancel   context.CancelFunc
+)
 
-//export SingBoxStart
-func SingBoxStart(configPathPtr *C.char) C.int {
-	configPath := C.GoString(configPathPtr)
+func readConfig(ctx context.Context, _path *C.char) (option.Options, error) {
+	path := C.GoString(_path)
+	log.Debug("读取配置文件: ", path)
 	// 读取配置文件
-	configContent, err := os.ReadFile(configPath)
+	config, err := os.ReadFile(path)
 	if err != nil {
-		fmt.Printf("读取配置文件失败: %v\n", err)
-		return -1
+		log.Error("读取配置文件失败: ", err)
+		return option.Options{}, err
 	}
 
-	background := context.Background()
-	// 解析配置文件
-	var options option.Options
-	options, err = json.UnmarshalExtendedContext[option.Options](ctx, configContent)
+	options, err := json.UnmarshalExtendedContext[option.Options](ctx, config)
+
 	if err != nil {
-		fmt.Printf("解析配置文件失败: %v\n", err)
-		return -1
+		log.Error("配置文件解析异常: ", err)
+		return option.Options{}, err
 	}
 
-	// 创建sing-box实例
-	ctx, cancel = context.WithCancel(background)
-	instance, err = box.New(box.Options{
+	return options, nil
+}
+
+func create(configPathPtr *C.char, workDirPtr *C.char) (*box.Box, error) {
+	c := box.Context(context.Background(), include.InboundRegistry(), include.OutboundRegistry(), include.EndpointRegistry())
+	ctx, cancel = context.WithCancel(c)
+
+	workDir := C.GoString(workDirPtr)
+
+	if workDir != "" {
+		log.Debug("设置工作目录: ", workDir)
+		_, err := os.Stat(workDir)
+		if err != nil {
+			filemanager.MkdirAll(ctx, workDir, 0o777)
+		}
+		err = os.Chdir(workDir)
+		if err != nil {
+			log.Error("工作目录设置异常: ", err)
+			return nil, err
+		}
+	}
+
+	options, err := readConfig(ctx, configPathPtr)
+	if err != nil {
+		return nil, err
+	}
+	instance, err := box.New(box.Options{
 		Context: ctx,
 		Options: options,
 	})
+	return instance, err
+}
+
+func isRunning() bool {
+	return instance != nil
+}
+
+//export SingBoxRunning
+func SingBoxRunning() C.int {
+	if !isRunning() {
+		return 0
+	}
+	return 1
+}
+
+//export SingBoxStart
+func SingBoxStart(configPathPtr *C.char, workDirPtr *C.char) C.int {
+	var (
+		err error
+	)
+	instance, err = create(
+		configPathPtr,
+		workDirPtr,
+	)
 	if err != nil {
 		cancel()
-		fmt.Printf("创建服务失败: %v\n", err)
-		return -1
+		log.Error("创建服务失败: ", err)
+		return -2
 	}
 
 	// 启动sing-box
 	err = instance.Start()
 	if err != nil {
 		cancel()
-		fmt.Printf("启动服务失败: %v\n", err)
-		return -1
+		instance = nil
+		log.Error("启动服务失败: ", err)
+		return -3
 	}
 
 	// 监听系统信号以优雅关闭
@@ -71,7 +121,7 @@ func SingBoxStart(configPathPtr *C.char) C.int {
 		// 关闭sing-box
 		err = instance.Close()
 		if err != nil {
-			fmt.Printf("关闭服务失败: %v\n", err)
+			log.Error("关闭服务失败: ", err)
 		}
 		cancel()
 	}()
@@ -79,68 +129,19 @@ func SingBoxStart(configPathPtr *C.char) C.int {
 	return 0
 }
 
-//export SingBoxRefresh
-func SingBoxRefresh(configPathPtr *C.char) C.int {
-	if ctx == nil || instance == nil {
-		fmt.Printf("未启动")
-		return 0
-	}
-	configPath := C.GoString(configPathPtr)
-	// 读取新配置文件
-	configContent, err := os.ReadFile(configPath)
-	if err != nil {
-		fmt.Printf("读取配置文件失败: %v\n", err)
-		return -1
-	}
-
-	// 解析新配置
-	var options option.Options
-	options, err = json.UnmarshalExtendedContext[option.Options](ctx, configContent)
-	if err != nil {
-		fmt.Printf("解析配置文件失败: %v\n", err)
-		return -1
-	}
-
-	// 关闭当前实例
-	err = instance.Close()
-	if err != nil {
-		fmt.Printf("关闭服务失败: %v\n", err)
-		return -1
-	}
-
-	// 创建并启动新实例
-	ctx, cancel = context.WithCancel(context.Background())
-	instance, err = box.New(box.Options{
-		Context: ctx,
-		Options: options,
-	})
-	if err != nil {
-		cancel()
-		fmt.Printf("创建服务失败: %v\n", err)
-		return -1
-	}
-
-	err = instance.Start()
-	if err != nil {
-		cancel()
-		fmt.Printf("启动服务失败: %v\n", err)
-		return -1
-	}
-
-	return 0
-}
-
 //export SingBoxStop
 func SingBoxStop() C.int {
-	if instance != nil {
-		err := instance.Close()
-		if err != nil {
-			fmt.Printf("关闭服务失败: %v\n", err)
-			return -1
-		}
-		instance = nil
-		cancel()
+	if !isRunning() {
+		return 0
 	}
+
+	err := instance.Close()
+	if err != nil {
+		log.Error("关闭服务失败: ", err)
+		return -8
+	}
+	instance = nil
+	cancel()
 	return 0
 }
 
@@ -156,24 +157,24 @@ func SingBoxJsonToSrs(jsonPathPtr *C.char, srsPathPtr *C.char) C.int {
 
 	reader, err = os.Open(jsonPath)
 	if err != nil {
-		fmt.Printf("打开json文件失败: %v\n", err)
-		return -1
+		log.Error("打开json文件失败: ", err)
+		return -9
 	}
 	content, err := io.ReadAll(reader)
 	if err != nil {
-		fmt.Printf("读取json文件失败: %v\n", err)
-		return -1
+		log.Error("读取json文件失败: ", err)
+		return -10
 	}
 	ruleSet, err := json.UnmarshalExtended[option.PlainRuleSetCompat](content)
 	if err != nil {
-		fmt.Printf("json规则读取异常: %v\n", err)
-		return -3
+		log.Error("json规则读取异常: ", err)
+		return -11
 	}
 
 	srsFile, err := os.Create(srsPath)
 	if err != nil {
-		fmt.Printf("创建srs文件异常: %v\n", err)
-		return -2
+		log.Error("创建srs文件异常: ", err)
+		return -12
 	}
 	defer srsFile.Close()
 
@@ -181,8 +182,8 @@ func SingBoxJsonToSrs(jsonPathPtr *C.char, srsPathPtr *C.char) C.int {
 	if err != nil {
 		srsFile.Close()
 		os.Remove(srsPath)
-		fmt.Printf("写入srs文件内容异常: %v\n", err)
-		return -2
+		log.Error("写入srs文件内容异常: ", err)
+		return -13
 	}
 	srsFile.Close()
 	return 0

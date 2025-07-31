@@ -1,26 +1,30 @@
 mod _box;
 
-use crate::_box::{load_lib, SingBoxJsonToSrs, SingBoxRefresh, SingBoxStart, SingBoxStop};
+use crate::_box::{load_lib, SingBoxJsonToSrs, SingBoxRunning, SingBoxStart, SingBoxStop};
 use library_core::core::{AnyResult, BizError};
 use std::ffi::CString;
 use std::os::raw::c_int;
 use std::path::Path;
 
-pub static version: &'static str = "v1.11.15";
+pub static version: &'static str = "v1.11.9";
 
-/// 启动SingBox服务
-pub fn start(config_path: &Path) -> AnyResult<()> {
+pub fn is_running() -> AnyResult<bool> {
     load_lib();
-    let config_c_str = path_to_c_string(config_path)?;
-    let result = unsafe { SingBoxStart(config_c_str.as_ptr() as *mut _) };
-    check_result(result)
+    let result = unsafe { SingBoxRunning() };
+    check_result(result)?;
+    Ok(result == 1)
 }
 
-/// 刷新SingBox配置
-pub fn refresh(config_path: &Path) -> AnyResult<()> {
+/// 启动SingBox服务
+pub fn start(config_path: &Path, work_dir: &Path) -> AnyResult<()> {
     load_lib();
-    let config_c_str = path_to_c_string(config_path)?;
-    let result = unsafe { SingBoxRefresh(config_c_str.as_ptr() as *mut _) };
+    let config_path_c = path_to_c_string(config_path)?;
+    let work_dir_c = path_to_c_string(work_dir)?;
+    let result = unsafe {
+        let config_path_ptr = config_path_c.as_ptr() as *mut _;
+        let work_dir_ptr = work_dir_c.as_ptr() as *mut _;
+        SingBoxStart(config_path_ptr, work_dir_ptr)
+    };
     check_result(result)
 }
 
@@ -54,7 +58,8 @@ fn path_to_c_string(path: &Path) -> AnyResult<CString> {
 
 // 检查C函数返回结果
 fn check_result(result: c_int) -> AnyResult<()> {
-    if result == 0 {
+    // 为支持返回值识别,  小于0为异常, 其他为正常
+    if result >= 0 {
         Ok(())
     } else {
         Err(Box::new(BizError::OperationFailed(result)))
