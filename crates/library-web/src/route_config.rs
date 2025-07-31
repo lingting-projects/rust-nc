@@ -1,9 +1,9 @@
+use crate::http;
 use crate::route_global::{current_millis, from_err_box, to_value, IdPo, R};
 use crate::tbl_config::{TblConfig, TblConfigUpsertDTO};
 use crate::tbl_rule::TblRule;
 use crate::tbl_setting::TblSettingKernel;
 use crate::tbl_subscribe::TblSubscribe;
-use crate::http;
 use axum::routing::{get, patch, post};
 use axum::{Json, Router};
 use library_core::app::APP;
@@ -103,7 +103,7 @@ fn _build_sing_box(
     include: &NodeContains,
     exclude: &NodeContains,
 ) -> AnyResult<()> {
-    let root = TblConfig::dir_data(&config.id).join("sing_box");
+    let root = config.sing_box_dir();
     log::debug!(
         "[配置] [{}] [SingBox] 获取直连规则数据: {}",
         config.name,
@@ -136,7 +136,7 @@ fn _build_sing_box(
         dns_cn: setting.dns_cn.clone(),
         dns_proxy: setting.dns_proxy.clone(),
     }
-        .with_default(include, exclude);
+    .with_default(include, exclude);
 
     if kc.nodes.is_empty() {
         return Err(Box::new(BizError::NodesEmpty(config.id.clone())));
@@ -145,7 +145,7 @@ fn _build_sing_box(
     log::debug!("[配置] [{}] [SingBox] 构建配置", config.name,);
     let json = kc.sing_box(&setting.ui, &setting.mixed_listen, setting.mixed_port)?;
     log::debug!("[配置] [{}] [SingBox] 写入配置", config.name,);
-    let path = root.join("config.json");
+    let path = config.sing_box_json();
     file::delete(path.clone())?;
     file::write(path, &json)?;
     Ok(())
@@ -258,8 +258,8 @@ async fn upsert(Json(entity): Json<TblConfigUpsertDTO>) -> R<()> {
             .map(|s| serde_json::Value::String(s))
             .collect(),
     ))
-        .unwrap()
-        .into();
+    .unwrap()
+    .into();
     let rule_proxy_ids = serde_json::to_string(&serde_json::Value::Array(
         entity
             .rule_proxy_ids
@@ -267,8 +267,8 @@ async fn upsert(Json(entity): Json<TblConfigUpsertDTO>) -> R<()> {
             .map(|s| serde_json::Value::String(s))
             .collect(),
     ))
-        .unwrap()
-        .into();
+    .unwrap()
+    .into();
     let rule_reject_ids = serde_json::to_string(&serde_json::Value::Array(
         entity
             .rule_reject_ids
@@ -276,8 +276,8 @@ async fn upsert(Json(entity): Json<TblConfigUpsertDTO>) -> R<()> {
             .map(|s| serde_json::Value::String(s))
             .collect(),
     ))
-        .unwrap()
-        .into();
+    .unwrap()
+    .into();
     let include_area_non = to_value(entity.include_area_non);
     let include_area = serde_json::to_string(&serde_json::Value::Array(
         entity
@@ -286,8 +286,8 @@ async fn upsert(Json(entity): Json<TblConfigUpsertDTO>) -> R<()> {
             .map(|s| serde_json::Value::String(s))
             .collect(),
     ))
-        .unwrap()
-        .into();
+    .unwrap()
+    .into();
     let include_name_contains = serde_json::to_string(&serde_json::Value::Array(
         entity
             .include_name_contains
@@ -295,8 +295,8 @@ async fn upsert(Json(entity): Json<TblConfigUpsertDTO>) -> R<()> {
             .map(|s| serde_json::Value::String(s))
             .collect(),
     ))
-        .unwrap()
-        .into();
+    .unwrap()
+    .into();
     let exclude_area = serde_json::to_string(&serde_json::Value::Array(
         entity
             .exclude_area
@@ -304,8 +304,8 @@ async fn upsert(Json(entity): Json<TblConfigUpsertDTO>) -> R<()> {
             .map(|s| serde_json::Value::String(s))
             .collect(),
     ))
-        .unwrap()
-        .into();
+    .unwrap()
+    .into();
     let exclude_name_contains = serde_json::to_string(&serde_json::Value::Array(
         entity
             .exclude_name_contains
@@ -313,8 +313,8 @@ async fn upsert(Json(entity): Json<TblConfigUpsertDTO>) -> R<()> {
             .map(|s| serde_json::Value::String(s))
             .collect(),
     ))
-        .unwrap()
-        .into();
+    .unwrap()
+    .into();
 
     if create {
         sql = format!(
@@ -396,7 +396,7 @@ async fn refresh(Json(po): Json<IdPo>) -> R<()> {
 
 async fn delete(Json(po): Json<IdPo>) -> R<()> {
     if let Some(id) = po.id {
-        let sql = format!("delete from {} where `id` = ? ", TblConfig::table_name, );
+        let sql = format!("delete from {} where `id` = ? ", TblConfig::table_name,);
         let args = vec![id.clone().into()];
 
         match execute(&sql, args) {

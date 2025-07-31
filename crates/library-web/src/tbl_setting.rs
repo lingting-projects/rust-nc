@@ -83,6 +83,14 @@ impl TblSettingRun {
         args.push(Value::from(Self::key_auto));
         args.push(to_value(self.auto));
     }
+
+    pub fn selected() -> AnyResult<Option<String>> {
+        AppConfig::get(Self::key_selected)
+    }
+
+    pub fn set_selected(id: &str) -> AnyResult<()> {
+        AppConfig::set(Self::key_selected, id)
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -232,5 +240,31 @@ impl TblSettingKernel {
             &serde_json::Value::from(self.dns_proxy.clone()),
         )?));
         Ok(())
+    }
+
+    pub fn ui() -> AnyResult<String> {
+        let option = AppConfig::get(Self::key_ui)?;
+        Ok(option.unwrap_or_else(|| Self::default.ui.clone()))
+    }
+}
+
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TblAppState {
+    pub checking: bool,
+    pub new: bool,
+    pub downloading: bool,
+    pub unzipping: bool,
+    pub installing: bool,
+    pub installed: bool,
+    pub error: bool,
+    /// 异常文本
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
+}
+
+impl TblAppState {
+    pub fn new() -> AnyResult<Self> {
+        Ok(Default::default())
     }
 }

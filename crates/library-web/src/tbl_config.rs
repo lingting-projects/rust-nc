@@ -137,6 +137,14 @@ impl TblConfig {
     pub fn dir_data(id: &str) -> PathBuf {
         APP.get().unwrap().data_dir.join("config").join(id)
     }
+
+    pub fn sing_box_dir(&self) -> PathBuf {
+        Self::dir_data(&self.id).join("sing_box")
+    }
+
+    pub fn sing_box_json(&self) -> PathBuf {
+        self.sing_box_dir().join("config.json")
+    }
 }
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
