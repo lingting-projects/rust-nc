@@ -6,6 +6,8 @@ use std::ffi::CString;
 use std::os::raw::c_int;
 use std::path::Path;
 
+pub static version: &'static str = "v1.11.15";
+
 /// 启动SingBox服务
 pub fn start(config_path: &Path) -> AnyResult<()> {
     load_lib();

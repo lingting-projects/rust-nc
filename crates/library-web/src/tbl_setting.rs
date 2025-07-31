@@ -154,7 +154,7 @@ pub struct TblSettingKernel {
 
 impl TblSettingKernel {
     pub const default: LazyLock<TblSettingKernel> = LazyLock::new(|| TblSettingKernel {
-        sing_box_version: "1.11.9".into(),
+        sing_box_version: library_sing_box::version.into(),
         ui: default_ui.to_string(),
         mixed_listen: default_mixed_listen.to_string(),
         mixed_port: default_mixed_port,
