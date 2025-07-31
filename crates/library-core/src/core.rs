@@ -29,6 +29,14 @@ pub enum BizError {
     FileNotFound(String),
     #[error("没有可用节点! {0}")]
     NodesEmpty(String),
+    #[error("无效的UTF-8字符串")]
+    InvalidUtf8(),
+    #[error("字符串转换错误")]
+    NulError(#[from] std::ffi::NulError),
+    #[error("操作失败，错误码: {0}")]
+    OperationFailed(i32),
+    #[error("路径不能为空")]
+    EmptyPath,
 }
 
 pub enum Exit {

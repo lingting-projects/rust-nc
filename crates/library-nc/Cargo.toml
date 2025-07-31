@@ -12,13 +12,13 @@ description.workspace = true
 
 [features]
 default = []
-log = []
-wrangler = ["log"]
-binary = ["log"]
+loggger = []
+wrangler = ["worker", "loggger"]
+binary = ["log", "loggger"]
 
 [dependencies]
 library-core = { path = "../library-core", features = [] }
-log = { workspace = true }
+log = { workspace = true, optional = true }
 thiserror = { workspace = true }
 byte-unit = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
@@ -28,5 +28,5 @@ percent-encoding = { workspace = true }
 base64 = { workspace = true }
 regex = { workspace = true }
 time = { workspace = true, features = ["macros", "parsing"] }
-worker = { workspace = true }
-indexmap = { workspace = true ,features = ["serde"]}
+worker = { workspace = true, optional = true }
+indexmap = { workspace = true, features = ["serde"] }

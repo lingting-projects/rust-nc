@@ -6,6 +6,7 @@ members = [
     "crates/binary-ui",
     "crates/binary-web",
     "crates/binary-works-cloudflare",
+    "crates/library-sing-box",
 ]
 resolver = "2"
 
@@ -25,8 +26,9 @@ description = ""
 log = "0.4"
 simple_logger = "5.0"
 time = "0.3"
-# 自定义异常
 thiserror = "2.0"
+lazy_static = "1.5"
+zstd = "0.13"
 # tauri 基础组件
 wry = "0.52"
 tao = "0.34"
@@ -35,6 +37,7 @@ axum = "0.8"
 tokio = "1.44"
 tower-http = "0.6"
 reqwest = "0.12"
+tower = "0.5"
 # 基础
 bytesize = "2.0"
 humantime = "2.2"
@@ -55,7 +58,11 @@ url = "2.5"
 percent-encoding = "2.1"
 byte-unit = "5.1"
 # cloud flare worker
-worker = { version = "0.6.0" }
+worker = "0.6"
+# lib
+libloading = "0.8"
+libc = "0.2.174"
+bindgen = "0.72.0"
 
 [profile.release]
 # 编译优化 平衡编译速度和性能优化

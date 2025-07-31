@@ -3,7 +3,7 @@ use crate::tbl_config::{TblConfig, TblConfigUpsertDTO};
 use crate::tbl_rule::TblRule;
 use crate::tbl_setting::TblSettingKernel;
 use crate::tbl_subscribe::TblSubscribe;
-use crate::{http, kernel};
+use crate::http;
 use axum::routing::{get, patch, post};
 use axum::{Json, Router};
 use library_core::app::APP;

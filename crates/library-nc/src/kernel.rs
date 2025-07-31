@@ -3,6 +3,7 @@ use crate::subscribe::SubscribeNode;
 use indexmap::IndexMap;
 use std::cmp::Ordering;
 use std::sync::LazyLock;
+#[cfg(feature = "wrangler")]
 use worker::console_debug;
 
 #[derive(Default)]

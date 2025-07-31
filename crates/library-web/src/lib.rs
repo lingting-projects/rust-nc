@@ -1,5 +1,4 @@
 mod http;
-mod kernel;
 mod route_config;
 mod route_global;
 mod route_rule;

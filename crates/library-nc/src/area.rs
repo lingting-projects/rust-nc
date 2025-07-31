@@ -4,6 +4,7 @@ use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::{Arc, OnceLock};
+#[cfg(feature = "wrangler")]
 use worker::{console_debug, console_error};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

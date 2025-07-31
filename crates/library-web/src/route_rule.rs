@@ -1,6 +1,7 @@
+use crate::http;
+use crate::http::ResponseExt;
 use crate::route_global::{current_millis, from_err_box, IdPo, R};
 use crate::tbl_rule::{TblRule, TblRuleRefreshDTO, TblRuleUpsertDTO};
-use crate::{http, kernel};
 use axum::routing::{get, patch, post};
 use axum::{Json, Router};
 use library_core::app::APP;
@@ -46,7 +47,7 @@ async fn _refresh(s: TblRuleRefreshDTO) -> AnyResult<()> {
         log::info!("[规则] [{}] 远端规则", s.name);
         let url_fast = fast(&s.url);
         let response = http::get(&url_fast).await?;
-        let body = response.text().await?;
+        let body = response.read_text().await?;
         log::debug!("[规则] [{}] 获取到远端数据", s.name);
         sing_box = SinBoxJsonRule::json_classical_process(body.as_str())?;
         content = Some(body);
@@ -92,7 +93,7 @@ async fn _refresh(s: TblRuleRefreshDTO) -> AnyResult<()> {
         log::debug!("[规则] [{}] SingBox 写入json: {}", s.name, name);
         file::write(path_json.clone(), &r.json)?;
         log::debug!("[规则] [{}] SingBox 尝试转换为srs: {}", s.name, name);
-        kernel::sing_box::json_srs(path_json, path_srs)?;
+        library_sing_box::json_to_srs(&path_json, &path_srs)?;
     }
 
     log::debug!("[规则] [{}] 数据保存", s.name);

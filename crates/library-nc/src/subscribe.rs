@@ -14,6 +14,7 @@ use serde_json::Value;
 use std::fmt;
 use time::macros::format_description;
 use time::PrimitiveDateTime;
+#[cfg(feature = "wrangler")]
 use worker::{console_error, console_warn};
 
 #[derive(Debug, Default)]

@@ -1,4 +1,5 @@
 use crate::http;
+use crate::http::ResponseExt;
 use crate::route_global::{current_millis, from_err_box, IdPo, R};
 use crate::tbl_subscribe::{TblSubscribe, TblSubscribeRefreshDTO, TblSubscribeUpsertDTO};
 use axum::routing::{get, patch, post};
@@ -48,7 +49,7 @@ async fn _refresh(s: TblSubscribeRefreshDTO) -> AnyResult<()> {
             .get(HEADER_INFO)
             .map(|v| v.to_str().unwrap_or(""))
             .map(|o| o.to_string());
-        let body = response.text().await?;
+        let body = response.read_text().await?;
         log::debug!("[订阅] [{}] 获取到远程数据", s.name);
         subscribe = Subscribe::resolve(&body, info)?;
         content = Some(body);

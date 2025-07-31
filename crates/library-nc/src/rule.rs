@@ -190,19 +190,24 @@ impl SinBoxJsonRule {
             } else if _m == "process-name" {
                 process.push(_value)
             } else {
-                let _type = if _m == "dst-port" {
-                    "port".to_string()
+                let _type: String;
+                let _v: Value;
+
+                if _m == "dst-port" {
+                    _type = "port".to_string();
+                    _v = Value::from(_value.parse::<u16>()?)
                 } else {
-                    _m.replace("-", "_")
+                    _type = _m.replace("-", "_");
+                    _v = Value::from(_value)
                 };
 
                 match other.get_mut(&_type) {
                     None => {
-                        let vec = vec![_value];
+                        let vec = vec![_v];
                         other.insert(_type, vec.to_owned());
                     }
                     Some(vec) => {
-                        vec.push(_value);
+                        vec.push(_v);
                     }
                 }
             }
@@ -218,7 +223,7 @@ impl SinBoxJsonRule {
             );
             let mut _json = BTreeMap::new();
             _json.insert("version", Value::from(2));
-            _json.insert("rules", Value::Object(_ip));
+            _json.insert("rules", Value::Array(vec![Value::Object(_ip)]));
             vec.push(SinBoxJsonRule {
                 type_: RuleType::Ip,
                 json: serde_json::to_string(&_json)?,
@@ -236,29 +241,40 @@ impl SinBoxJsonRule {
                 );
                 let mut _json = BTreeMap::new();
                 _json.insert("version", Value::from(2));
-                _json.insert("rules", Value::Object(_process));
+                _json.insert("rules", Value::Array(vec![Value::Object(_process)]));
                 vec.push(SinBoxJsonRule {
                     type_: RuleType::Process,
                     json: serde_json::to_string(&_json)?,
                     count: process.len().to_u64().unwrap(),
                 });
             } else {
-                other.insert(_type.to_string(), process);
+                other.insert(
+                    _type.to_string(),
+                    process.into_iter().map(|s| Value::from(s)).collect(),
+                );
             }
         }
 
         if !other.is_empty() {
-            let mut _other = Map::new();
             let mut count: u64 = 0;
-            for (_k, _vs) in other {
-                count = count + _vs.len().to_u64().unwrap();
-                let k = _k.to_string();
-                let vs = Value::Array(_vs.iter().map(|s| Value::from(*s)).collect());
-                _other.insert(k, vs);
-            }
             let mut _json = BTreeMap::new();
             _json.insert("version", Value::from(2));
-            _json.insert("rules", Value::Object(_other));
+            _json.insert(
+                "rules",
+                Value::Array(
+                    other
+                        .into_iter()
+                        .map(|(_k, _vs)| {
+                            count = count + _vs.len().to_u64().unwrap();
+                            let mut _m = Map::new();
+                            let k = _k.to_string();
+                            let vs = Value::Array(_vs);
+                            _m.insert(k, vs);
+                            Value::Object(_m)
+                        })
+                        .collect(),
+                ),
+            );
             vec.push(SinBoxJsonRule {
                 type_: RuleType::Other,
                 json: serde_json::to_string(&_json)?,

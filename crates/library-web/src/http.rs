@@ -6,13 +6,20 @@ use std::str::FromStr;
 use std::sync::LazyLock;
 use std::time::Duration;
 
+pub trait ResponseExt {
+    async fn read_text(self) -> AnyResult<String>;
+}
+
+impl ResponseExt for Response {
+    async fn read_text(self) -> AnyResult<String> {
+        let text = self.text().await?;
+        Ok(text)
+    }
+}
+
 static client: LazyLock<Client> = LazyLock::new(|| {
     let mut headers = HeaderMap::new();
-    headers.insert("Accept", HeaderValue::from_str("*/*").unwrap());
-    headers.insert(
-        "Accept-Encoding",
-        HeaderValue::from_str("gzip, deflate, br").unwrap(),
-    );
+    headers.insert("Accept-Encoding", HeaderValue::from_str("gzip").unwrap());
     headers.insert(
         "Accept-Language",
         HeaderValue::from_str("en-US,en;q=0.5").unwrap(),
@@ -42,11 +49,14 @@ fn build(method: Method, url: &str) -> AnyResult<RequestBuilder> {
     Ok(builder)
 }
 
-pub async fn get(url: &str) -> AnyResult<Response> {
-    let response = build(Method::GET, url)?.send().await?;
-
+fn handler(response: Response) -> AnyResult<Response> {
     match response.error_for_status() {
         Ok(r) => Ok(r),
         Err(e) => Err(Box::new(e)),
     }
+}
+
+pub async fn get(url: &str) -> AnyResult<Response> {
+    let response = build(Method::GET, url)?.send().await?;
+    handler(response)
 }
