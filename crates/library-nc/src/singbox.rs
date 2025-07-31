@@ -5,8 +5,11 @@ use crate::kernel::{
     tag_fallback, tag_selector, test_url, virtual_ipv4, virtual_ipv6, KernelConfig,
 };
 use crate::rule::{Rule, RuleType, SingBoxRule};
+use crate::subscribe::SubscribeNode;
+use indexmap::IndexMap;
 use library_core::core::AnyResult;
 use serde::Serialize;
+use serde_json::Value;
 
 pub const tag_dns_cn: &str = "dns-cn";
 pub const tag_dns_fake: &str = "dns-fake";
@@ -84,7 +87,8 @@ struct Outbound {
     tag: String,
     #[serde(rename = "type")]
     type_: String,
-    interrupt_exist_connections: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    interrupt_exist_connections: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub default: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -93,7 +97,113 @@ struct Outbound {
     pub interval: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tolerance: Option<u64>,
-    outbounds: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    outbounds: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "server_port")]
+    port: Option<u16>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    server: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    password: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    tls: Option<OutboundTls>,
+    #[serde(flatten)]
+    attributes: IndexMap<String, Value>,
+}
+
+impl Outbound {
+    pub fn url_test(tag: &str, outbounds: Vec<String>) -> Self {
+        Self {
+            tag: tag.into(),
+            type_: "urltest".into(),
+            interrupt_exist_connections: Some(false),
+            default: None,
+            url: Some(test_url.into()),
+            interval: Some("30s".into()),
+            tolerance: Some(150),
+            outbounds: Some(outbounds),
+            port: None,
+            server: None,
+            password: None,
+            tls: None,
+            attributes: Default::default(),
+        }
+    }
+
+    pub fn selector(tag: &str, default: String, outbounds: Vec<String>) -> Self {
+        Self {
+            tag: tag.into(),
+            type_: "selector".into(),
+            interrupt_exist_connections: Some(false),
+            default: Some(default),
+            url: None,
+            interval: None,
+            tolerance: None,
+            outbounds: Some(outbounds),
+            port: None,
+            server: None,
+            password: None,
+            tls: None,
+            attributes: Default::default(),
+        }
+    }
+
+    pub fn node(node: &SubscribeNode) -> Self {
+        let mut attributes = IndexMap::new();
+        node.attribute.iter().for_each(|(k, v)| {
+            if k == "type"
+                || k == "allowInsecure"
+                || k == "skip-cert-verify"
+                || k == "peer"
+                || k == "sni"
+            {
+                return;
+            }
+            attributes.insert(k.clone(), v.clone());
+        });
+        Self {
+            tag: node.name.clone(),
+            type_: node.node_type.clone(),
+            interrupt_exist_connections: None,
+            default: None,
+            url: None,
+            interval: None,
+            tolerance: None,
+            outbounds: None,
+            port: node.port,
+            server: Some(node.server.clone()),
+            password: node.password.clone(),
+            tls: Some(OutboundTls {
+                enabled: true,
+                insecure: !node.disable_ssl(),
+            }),
+            attributes,
+        }
+    }
+
+    pub fn _type(tag: &str, _type: &str) -> Self {
+        Self {
+            tag: tag.into(),
+            type_: _type.into(),
+            interrupt_exist_connections: None,
+            default: None,
+            url: None,
+            interval: None,
+            tolerance: None,
+            outbounds: None,
+            port: None,
+            server: None,
+            password: None,
+            tls: None,
+            attributes: Default::default(),
+        }
+    }
+}
+
+#[derive(Serialize)]
+struct OutboundTls {
+    enabled: bool,
+    insecure: bool,
 }
 
 #[derive(Serialize)]
@@ -306,6 +416,11 @@ impl KernelConfig {
         // 合并所有代理组
         let mut outbounds = vec![selector, auto, fallback];
         outbounds.extend(auto_area);
+        self.nodes
+            .iter()
+            .for_each(|node| outbounds.push(Outbound::node(node)));
+        outbounds.push(Outbound::_type(key_direct, key_direct));
+        outbounds.push(Outbound::_type(key_reject, "block"));
         outbounds
     }
 
@@ -331,16 +446,7 @@ impl KernelConfig {
     }
 
     fn sing_box_build_outbound_auto(&self, tag: &str, outbounds: Vec<String>) -> Outbound {
-        Outbound {
-            tag: tag.into(),
-            type_: "urltest".into(),
-            interrupt_exist_connections: false,
-            default: None,
-            url: Some(test_url.into()),
-            interval: Some("30s".into()),
-            tolerance: Some(150),
-            outbounds,
-        }
+        Outbound::url_test(tag, outbounds)
     }
 
     fn sing_box_build_outbound_selector(
@@ -362,16 +468,7 @@ impl KernelConfig {
             .iter()
             .for_each(|node| outbounds.push(node.name.clone()));
 
-        Outbound {
-            tag: tag.into(),
-            type_: "selector".into(),
-            interrupt_exist_connections: false,
-            default: Some(default),
-            url: None,
-            interval: None,
-            tolerance: None,
-            outbounds,
-        }
+        Outbound::selector(tag, default, outbounds)
     }
 
     fn sing_box_build_dns_route(&self) -> (RouteConfig, DnsConfig) {

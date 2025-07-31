@@ -95,8 +95,8 @@ impl Rule {
                 format,
                 url: None,
                 path: Some(self.path.to_string()),
-                download_detour: Some(key_direct.into()),
-                update_interval: Some("1d".into()),
+                download_detour: None,
+                update_interval: None,
             }
         }
     }

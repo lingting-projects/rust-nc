@@ -158,14 +158,14 @@ struct Proxy {
     name: String,
     #[serde(rename = "type")]
     type_: String,
-    #[serde(flatten)]
-    attributes: IndexMap<String, Value>,
     #[serde(rename = "skip-cert-verify")]
     skip_cert_verify: bool,
     server: String,
     port: u16,
     #[serde(skip_serializing_if = "Option::is_none")]
     password: Option<String>,
+    #[serde(flatten)]
+    attributes: IndexMap<String, Value>,
 }
 
 #[derive(Serialize)]
