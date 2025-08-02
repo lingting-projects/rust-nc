@@ -12,7 +12,7 @@ description.workspace = true
 
 [features]
 default = ["dev"]
-dev = ["library-core/dev", "library-core/debug"]
+dev = ["library-core/dev", "library-core/debug", "library-core/trace", "library-web/trace"]
 uat = ["library-core/uat", "local-ui", "library-core/debug"]
 prod = ["library-core/prod", "local-ui"]
 

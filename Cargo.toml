@@ -18,8 +18,8 @@ authors = ["lingting"]
 homepage = "https://github.com/lingting"
 repository = "https://github.com/lingting-projects/lingting-nc"
 categories = ["network"]
-license = "Apache-2.0 OR MIT"
-description = ""
+license = "Apache-2.0"
+description = "lingting network control"
 
 [workspace.dependencies]
 # 日志
