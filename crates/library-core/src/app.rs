@@ -1,4 +1,8 @@
+use crate::core::AnyResult;
+use crate::snowflake::next_str;
+use crate::{file, sqlite};
 use log::LevelFilter;
+use simple_logger::SimpleLogger;
 use std::{
     env,
     error::Error,
@@ -6,6 +10,7 @@ use std::{
     path::{Path, PathBuf},
     sync::OnceLock,
 };
+use time::{format_description::FormatItem, macros::format_description};
 
 #[derive(Debug)]
 pub struct Application {
@@ -25,7 +30,9 @@ pub struct Application {
     pub tmp_dir: PathBuf,
     pub logs_dir: PathBuf,
     pub ui_dir: PathBuf,
+    /// 运行目录
     pub startup_dir: PathBuf,
+    /// 安装目录
     pub install_dir: PathBuf,
 
     // 配置属性
@@ -40,7 +47,7 @@ impl Application {
         let id = "live.lingting.nc.rust";
         let ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36";
         let owner = "lingting-projects";
-        let repo = "lingting-nc";
+        let repo = "rust-nc";
 
         // 生成初始 ID
         let start_id = next_str();
@@ -56,35 +63,44 @@ impl Application {
             };
 
             let path = PathBuf::from(dir).join(id);
-            create_dir_all(&path).expect("Failed to create global directory");
+
+            file::create_dir(&path).expect("Failed to create global directory");
             path
         };
 
         // 创建其他目录
-        let data_dir = create_sub_dir(&global_dir, "data");
-        let cache_dir = create_sub_dir(&global_dir, "cache");
+        let data_dir = global_dir.join("data");
+        file::create_dir(&data_dir).expect("Failed to create data_dir");
+
+        let cache_dir = global_dir.join("cache");
+        file::create_dir(&cache_dir).expect("Failed to create cache_dir");
+
         let tmp_dir = {
             let tmp_dir = env::temp_dir();
             let path = tmp_dir.join(id);
-            create_dir_all(&path).expect("Failed to create tmp directory");
+            file::create_dir(&path).expect("Failed to create tmp directory");
             path
         };
-        let logs_basic_dir = create_sub_dir(&tmp_dir, "logs");
-        let logs_dir = create_sub_dir(&logs_basic_dir, &start_id);
-        let ui_dir = create_sub_dir(&global_dir, "ui");
+        let logs_basic_dir = tmp_dir.join("logs");
+        file::create_dir(&logs_basic_dir).expect("Failed to create logs_basic_dir");
+
+        let logs_dir = logs_basic_dir.join(&start_id);
+        file::create_dir(&logs_dir).expect("Failed to create logs_dir");
+
+        let ui_dir = global_dir.join("ui");
+        file::create_dir(&ui_dir).expect("Failed to create ui_dir");
 
         // 获取启动目录和安装目录
         let startup_dir = env::current_dir().expect("Failed to get current directory");
-
+        log::trace!("运行目录: {}", startup_dir.display());
         let install_dir = {
-            let exe_path = env::current_exe().expect("Failed to get executable path");
-            let parent = exe_path
+            env::current_exe()
+                .expect("Failed to get executable path")
                 .parent()
                 .expect("Failed to get parent directory of executable")
-                .parent()
-                .expect("Failed to get grandparent directory of executable");
-            parent.to_path_buf()
+                .to_path_buf()
         };
+        log::trace!("安装目录: {}", install_dir.display());
 
         // 计算属性
         let mut is_dev = true;
@@ -117,27 +133,7 @@ impl Application {
     }
 }
 
-// 辅助函数
-fn create_dir_all(path: &Path) -> Result<(), Box<dyn Error>> {
-    if !path.exists() {
-        fs::create_dir_all(path)?;
-    }
-    Ok(())
-}
-
-fn create_sub_dir(parent: &PathBuf, name: &str) -> PathBuf {
-    let path = parent.join(name);
-    create_dir_all(&path).expect(&format!("Failed to create directory: {}", path.display()));
-    path
-}
-
 pub static APP: OnceLock<Application> = OnceLock::new();
-
-use crate::core::AnyResult;
-use crate::snowflake::next_str;
-use crate::sqlite;
-use simple_logger::SimpleLogger;
-use time::{format_description::FormatItem, macros::format_description};
 
 const TIMESTAMP_FORMAT: &[FormatItem] =
     format_description!("[year]-[month]-[day] [hour]:[minute]:[second].[subsecond digits:3]");

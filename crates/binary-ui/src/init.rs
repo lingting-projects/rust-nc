@@ -179,10 +179,10 @@ fn _init() -> AnyResult<()> {
 
 fn init_system() -> AnyResult<()> {
     #[cfg(target_os = "windows")]
-    let icon = Icon::from_path("icons/256x256.ico", Some(PhysicalSize::new(256, 256)))?;
-
+    let path = "icons/256x256.ico";
     #[cfg(not(target_os = "windows"))]
-    let icon = Icon::from_path("icons/256x256.png", Some(PhysicalSize::new(256, 256)))?;
+    let path = "icons/256x256.png";
+    let icon = Icon::from_path(path, Some(PhysicalSize::new(256, 256)))?;
 
     dispatch(move |w, _| {
         if !*settings::is_minimize {
@@ -255,10 +255,12 @@ fn update(url: String) {}
 fn assets() {}
 
 fn completed() {
-    #[cfg(feature = "local-ui")]
-    let url = format!("file:///{}", app.ui_dir.to_str().unwrap());
-    #[cfg(not(feature = "local-ui"))]
-    let url = String::from("http://localhost:30000");
+    let url = if cfg!(not(feature = "local-ui")) {
+        String::from("http://localhost:30000")
+    } else {
+        let app = APP.get().unwrap();
+        format!("file:///{}", app.ui_dir.to_str().unwrap())
+    };
 
     dispatch(move |w, wv| {
         w.set_title("nc");
