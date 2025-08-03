@@ -1,4 +1,6 @@
 use crate::init::FIRST;
+use crate::uiview;
+use crate::uiview::UiView;
 use library_core::app::APP;
 use library_core::core::{AnyResult, Exit};
 use library_web::webserver;
@@ -17,7 +19,7 @@ use tao::{
 use wry::{WebView, WebViewBuilder};
 
 pub enum WindowEvent {
-    ExecuteMain(Box<dyn FnOnce(&Window, &WebView) + Send>),
+    ExecuteMain(Box<dyn FnOnce(&Window, &dyn UiView) + Send>),
 }
 
 // 全局 sender，用于从其他模块发送事件
@@ -42,14 +44,14 @@ pub fn send_event(event: WindowEvent) -> AnyResult<()> {
 // 新增 dispatch 函数，简化 ExecuteMain 事件的发送
 pub fn dispatch<F>(closure: F) -> AnyResult<()>
 where
-    F: FnOnce(&Window, &WebView) + Send + 'static,
+    F: FnOnce(&Window, &dyn UiView) + Send + 'static,
 {
     send_event(WindowEvent::ExecuteMain(Box::new(closure)))
 }
 
 pub struct WindowManager {
     window: Window,
-    webview: WebView,
+    ui: Box<dyn UiView>,
     receiver: Receiver<WindowEvent>,
 }
 
@@ -64,47 +66,6 @@ impl WindowManager {
             }
         };
 
-        // 创建窗口
-        let size = PhysicalSize::new(1280, 960);
-        let window = WindowBuilder::new()
-            .with_title(FIRST.window_title())
-            .with_visible(false)
-            .with_inner_size(size)
-            .with_min_inner_size(size)
-            .build(event_loop)
-            .unwrap();
-
-        let html = include_str!("../../../assets/loading.html");
-        // 创建webview
-        let builder = WebViewBuilder::new()
-            .with_html(html)
-            .with_on_page_load_handler(move |_, _| match webserver::port() {
-                None => {}
-                Some(port) => {
-                    let api = format!("http://localhost:{}", port);
-                    let js = format!(
-                        r#"
-        try {{
-            localStorage.setItem("nc:requestPrefix", "{}");
-            window.requestPrefix="{}";
-            window.setRequestPrefix && window.setRequestPrefix("{}");
-        }} catch(e) {{
-            console.error("初始化请求前缀异常!", e);
-        }}
-        "#,
-                        api, api, api
-                    );
-
-                    dispatch(move |_, wv| wv.evaluate_script(&js).unwrap()).unwrap()
-                }
-            });
-
-        #[cfg(not(target_os = "linux"))]
-        let webview = builder.build(&window).unwrap();
-
-        #[cfg(target_os = "linux")]
-        let webview = builder.build_gtk(window.gtk_window()).unwrap();
-
         // 创建事件通道
         let (sender, receiver) = channel::<WindowEvent>();
 
@@ -117,9 +78,21 @@ impl WindowManager {
             }
         }
 
+        // 创建窗口
+        let size = PhysicalSize::new(1280, 960);
+        let window = WindowBuilder::new()
+            .with_title(FIRST.window_title())
+            .with_visible(false)
+            .with_inner_size(size)
+            .with_min_inner_size(size)
+            .build(event_loop)
+            .unwrap();
+
+        let ui = uiview::new(&window).expect("ui view init err");
+
         Self {
             window,
-            webview,
+            ui,
             receiver,
         }
     }
@@ -144,7 +117,7 @@ impl WindowManager {
         while let Ok(event) = self.receiver.try_recv() {
             match event {
                 WindowEvent::ExecuteMain(closure) => {
-                    closure(&self.window, &self.webview);
+                    closure(&self.window, self.ui.as_ref());
                 }
             }
         }

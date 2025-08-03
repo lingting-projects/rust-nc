@@ -1,3 +1,4 @@
+use crate::uiview::UiView;
 use crate::window::dispatch;
 use library_core::app::APP;
 use library_core::core::{AnyResult, BizError, Exit};
@@ -87,7 +88,7 @@ fn emit(state: LoadingState) {
         INIT_ERROR.get_or_init(|| false);
     }
     log::debug!("[初始化] 提交事件: {}", state.title());
-    let closure = move |w: &Window, wv: &WebView| {
+    let closure = move |w: &Window, wv: &dyn UiView| {
         w.set_title(state.window_title());
 
         let js_code = format!(
@@ -97,7 +98,7 @@ fn emit(state: LoadingState) {
             state.message(),
             "info"
         );
-        match wv.evaluate_script(&js_code) {
+        match wv.eval(&js_code) {
             Ok(_) => {}
             Err(e) => {
                 log::error!("执行js异常! {}", e);
@@ -264,7 +265,7 @@ fn completed() {
 
     dispatch(move |w, wv| {
         w.set_title("nc");
-        match wv.load_url(&url) {
+        match wv.load(&url) {
             Ok(_) => {}
             Err(_) => emit(LoadingState::UiError),
         }
