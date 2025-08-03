@@ -264,7 +264,7 @@ fn completed() {
     };
 
     dispatch(move |w, wv| {
-        w.set_title("nc");
+        w.set_title("NC");
         match wv.load(&url) {
             Ok(_) => {}
             Err(_) => emit(LoadingState::UiError),

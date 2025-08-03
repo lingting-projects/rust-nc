@@ -1,3 +1,5 @@
+#![windows_subsystem = "windows"]
+
 use crate::window::WindowManager;
 use library_core::core::AnyResult;
 use std::thread;
