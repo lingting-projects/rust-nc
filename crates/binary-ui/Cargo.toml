@@ -20,7 +20,7 @@ local-ui = []
 
 [dependencies]
 # tauri 基础组件
-wry = { workspace = true }
+wry = { workspace = true, features = [] }
 tao = { workspace = true }
 log = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread"] }
