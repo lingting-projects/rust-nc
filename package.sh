@@ -2,7 +2,7 @@
 
 bash ./build.sh "$@"
 
-cp target/release/binary-ui.exe target/tar/lingting-nc.exe
+cp target/release/lingting-nc.exe target/tar/lingting-nc.exe
 cp -rf icons target/tar
 
 # 发布当前平台的 tar.gz 包

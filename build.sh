@@ -2,12 +2,14 @@
 
 profile="prod"
 features=()
+clean=false
 
 while [ "$#" -gt 0 ]; do
     case "$1" in
         -d) profile="dev"; shift 1 ;;
         -u) profile="uat"; shift 1 ;;
         -p) profile="prod"; shift 1 ;;
+        -c) clean=true; shift 1 ;;
         --f) features+=("$2"); shift 2 ;;
         *) echo "未知参数: $1"; shift  ;;
     esac
@@ -26,6 +28,11 @@ if [ ${#features[@]} -gt 0 ]; then
 fi
 
 build_cmd="cargo build -p binary-ui --release --no-default-features $feature_args"
+
+if [ "$clean" = true ]; then
+    echo "cargo clean"
+    cargo clean
+fi
 
 echo "构建配置:"
 echo "  环境: $profile"

@@ -10,6 +10,10 @@ edition.workspace = true
 rust-version.workspace = true
 description.workspace = true
 
+[[bin]]
+name = "lingting-nc"
+path = "src/main.rs"
+
 [features]
 default = ["prod"]
 dev = ["library-core/dev", "library-core/debug", "library-core/trace", "library-web/trace"]
