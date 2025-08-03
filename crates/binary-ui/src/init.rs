@@ -259,7 +259,7 @@ fn completed() {
         String::from("http://localhost:30000")
     } else {
         let app = APP.get().unwrap();
-        format!("file:///{}", app.ui_dir.to_str().unwrap())
+        format!("file:///{}/index.html", app.ui_dir.to_str().unwrap())
     };
 
     dispatch(move |w, wv| {
