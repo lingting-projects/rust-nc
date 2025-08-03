@@ -6,7 +6,7 @@ use tao::event_loop::{ControlFlow, EventLoop};
 
 mod init;
 mod window;
-mod uiview;
+mod view;
 
 #[tokio::main]
 async fn main() -> AnyResult<()> {

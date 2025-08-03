@@ -1,4 +1,4 @@
-use crate::core::AnyResult;
+use crate::core::{is_root, restart_root, AnyResult};
 use crate::snowflake::next_str;
 use crate::{file, sqlite};
 use log::LevelFilter;
@@ -41,7 +41,6 @@ pub struct Application {
 }
 
 impl Application {
-    // 公开构造函数
     pub fn new() -> Self {
         // 常量属性
         let id = "live.lingting.nc.rust";
@@ -108,8 +107,12 @@ impl Application {
             is_dev = false
         }
 
-        let mut run_on_root = false;
+        let mut run_on_root = is_root();
         if cfg!(feature = "dev") {
+            run_on_root = true
+        }
+        if !run_on_root {
+            restart_root();
             run_on_root = true
         }
 

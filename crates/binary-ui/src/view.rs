@@ -1,4 +1,4 @@
-use crate::uiview::webview::UiWebView;
+use crate::view::webview::UiWebView;
 use crate::window::dispatch;
 use library_core::core::AnyResult;
 use library_web::webserver;

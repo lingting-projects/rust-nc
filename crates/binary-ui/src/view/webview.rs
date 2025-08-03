@@ -1,4 +1,4 @@
-use crate::uiview::UiView;
+use crate::view::UiView;
 use library_core::app::APP;
 use library_core::core::AnyResult;
 use library_core::file;
@@ -16,7 +16,7 @@ impl UiWebView {
         with_page_load: fn(),
     ) -> AnyResult<UiWebView> {
         // 创建webview
-        let mut builder = WebViewBuilder::new()
+        let builder = WebViewBuilder::new()
             .with_html(html)
             .with_autoplay(false)
             .with_on_page_load_handler(move |_, _| with_page_load());

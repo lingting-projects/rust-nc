@@ -1,4 +1,4 @@
-use crate::uiview::UiView;
+use crate::view::UiView;
 use crate::window::dispatch;
 use library_core::app::APP;
 use library_core::core::{AnyResult, BizError, Exit};

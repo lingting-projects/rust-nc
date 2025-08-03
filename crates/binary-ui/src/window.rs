@@ -1,6 +1,6 @@
 use crate::init::FIRST;
-use crate::uiview;
-use crate::uiview::UiView;
+use crate::view;
+use crate::view::UiView;
 use library_core::app::APP;
 use library_core::core::{AnyResult, Exit};
 use library_web::webserver;
@@ -88,7 +88,7 @@ impl WindowManager {
             .build(event_loop)
             .unwrap();
 
-        let ui = uiview::new(&window).expect("ui view init err");
+        let ui = view::new(&window).expect("ui view init err");
 
         Self {
             window,
