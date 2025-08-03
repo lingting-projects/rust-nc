@@ -26,3 +26,6 @@ log = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread"] }
 library-web = { path = "../library-web" }
 library-core = { path = "../library-core" }
+
+[target.'cfg(windows)'.build-dependencies]
+winres = { workspace = true }
