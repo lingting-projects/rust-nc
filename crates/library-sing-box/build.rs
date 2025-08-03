@@ -1,19 +1,46 @@
 // rust/build.rs
 use std::env;
-use std::path::Path;
+use std::fs::{copy, create_dir_all};
+use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::LazyLock;
+
+// 确定输出文件名
+static lib_name: LazyLock<String> = LazyLock::new(|| {
+    let target = env::var("TARGET").unwrap();
+    if target.contains("windows") {
+        "libsingbox.dll"
+    } else if target.contains("apple") {
+        "libsingbox.dylib"
+    } else {
+        "libsingbox.so"
+    }
+    .to_string()
+});
 
 fn main() {
-    // 检测目标平台
-    let target = env::var("TARGET").unwrap();
-    let out_dir = env::var("OUT_DIR").unwrap();
-    let manifest_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
-    println!("cargo:target={target}");
-    println!("cargo:out={out_dir}");
-    println!("cargo:manifest={manifest_dir}");
+    let target = env::var("TARGET").expect("env TARGET err");
+    let out_dir = env::var("OUT_DIR").expect("env OUT_DIR err");
+    let manifest_dir = env::var("CARGO_MANIFEST_DIR").expect("env CARGO_MANIFEST_DIR err");
+    let lib_path = Path::new(&out_dir).join(&*lib_name);
+
+    println!("cargo-lib={}", &*lib_name);
+    println!("cargo-platform={target}");
+    println!("cargo-out={out_dir}");
+    println!("cargo-manifest={manifest_dir}");
 
     // 构建Go库
-    build_go_library(&target, &out_dir, &manifest_dir);
+    build_go_library(&target, &lib_path, &manifest_dir);
+
+    let target_dir = lib_path.ancestors().nth(5).expect("target dir err");
+    println!("cargo-target={}", target_dir.display());
+    let tar_dir = target_dir.join("tar");
+    // 分发 lib
+    if !tar_dir.exists() {
+        create_dir_all(&tar_dir).expect("create tar dir err");
+    }
+    let tar_lib_path = tar_dir.join(&*lib_name);
+    copy(lib_path, tar_lib_path).expect("copy lib err");
 
     // 告诉Cargo在哪里可以找到库
     println!("cargo:rustc-link-search=native={}", out_dir);
@@ -25,19 +52,8 @@ fn main() {
     println!("cargo:rerun-if-changed=Makefile");
 }
 
-fn build_go_library(target: &str, out_dir: &str, manifest_dir: &str) {
+fn build_go_library(target: &str, lib_path: &PathBuf, manifest_dir: &str) {
     let go_dir = Path::new(manifest_dir);
-
-    // 确定输出文件名
-    let lib_name = if target.contains("windows") {
-        "libsingbox.dll"
-    } else if target.contains("apple") {
-        "libsingbox.dylib"
-    } else {
-        "libsingbox.so"
-    };
-
-    let out_path = Path::new(out_dir).join(lib_name);
 
     // 构建命令
     let mut cmd = Command::new("go");
@@ -46,7 +62,7 @@ fn build_go_library(target: &str, out_dir: &str, manifest_dir: &str) {
         .arg("-tags=with_clash_api")
         .arg("-buildmode=c-shared")
         .arg("-o")
-        .arg(&out_path);
+        .arg(&lib_path);
 
     // 启用 cgo
     cmd.env("CGO_ENABLED", "1");
@@ -87,6 +103,6 @@ fn build_go_library(target: &str, out_dir: &str, manifest_dir: &str) {
     if !status.success() {
         panic!("Go build failed with status: {}", status);
     }
-    println!("cargo:rustc-env=LIB_PATH={}", out_path.display());
-    println!("Built Go library: {}", out_path.display());
+    println!("cargo:rustc-env=LIB_PATH={}", lib_path.display());
+    println!("Built Go library: {}", lib_path.display());
 }

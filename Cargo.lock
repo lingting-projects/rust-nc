@@ -179,7 +179,7 @@ checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
 
 [[package]]
 name = "binary-ui"
-version = "2025.7.180"
+version = "25.7.180"
 dependencies = [
  "library-core",
  "library-web",
@@ -191,7 +191,7 @@ dependencies = [
 
 [[package]]
 name = "binary-web"
-version = "2025.7.180"
+version = "25.7.180"
 dependencies = [
  "library-core",
  "library-web",
@@ -201,7 +201,7 @@ dependencies = [
 
 [[package]]
 name = "binary-works-cloudflare"
-version = "2025.7.180"
+version = "25.7.180"
 dependencies = [
  "console_error_panic_hook",
  "library-core",
@@ -1612,7 +1612,7 @@ dependencies = [
 
 [[package]]
 name = "library-core"
-version = "2025.7.180"
+version = "25.7.180"
 dependencies = [
  "futures",
  "log",
@@ -1626,7 +1626,7 @@ dependencies = [
 
 [[package]]
 name = "library-nc"
-version = "2025.7.180"
+version = "25.7.180"
 dependencies = [
  "base64",
  "byte-unit",
@@ -1645,7 +1645,7 @@ dependencies = [
 
 [[package]]
 name = "library-sing-box"
-version = "2025.7.180"
+version = "25.7.180"
 dependencies = [
  "libloading",
  "library-core",
@@ -1653,7 +1653,7 @@ dependencies = [
 
 [[package]]
 name = "library-web"
-version = "2025.7.180"
+version = "25.7.180"
 dependencies = [
  "axum",
  "library-core",
