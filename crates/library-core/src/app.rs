@@ -107,10 +107,10 @@ impl Application {
             is_dev = false
         }
 
+        #[cfg(not(debug_assertions))]
         let mut run_on_root = is_root();
-        if cfg!(feature = "dev") {
-            run_on_root = true
-        }
+        #[cfg(debug_assertions)]
+        let mut run_on_root = true;
         if !run_on_root {
             restart_root();
             run_on_root = true
