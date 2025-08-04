@@ -32,6 +32,7 @@ zstd = "0.13"
 # tauri 基础组件
 wry = "0.52"
 tao = "0.34"
+tray-icon = "0.21"
 # web
 axum = "0.8"
 tokio = "1.44"
@@ -73,3 +74,5 @@ lto = "thin"
 opt-level = 3
 # 减少代码生成单元，提高优化效果
 codegen-units = 1
+debug = false
+debug-assertions = false

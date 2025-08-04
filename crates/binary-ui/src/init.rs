@@ -1,3 +1,4 @@
+use crate::icon;
 use crate::view::UiView;
 use crate::window::dispatch;
 use library_core::app::APP;
@@ -179,11 +180,10 @@ fn _init() -> AnyResult<()> {
 }
 
 fn init_system() -> AnyResult<()> {
-    #[cfg(target_os = "windows")]
-    let path = "icons/256x256.ico";
-    #[cfg(not(target_os = "windows"))]
-    let path = "icons/256x256.png";
-    let icon = Icon::from_path(path, Some(PhysicalSize::new(256, 256)))?;
+    let icon = Icon::from_path(
+        icon::path,
+        Some(PhysicalSize::new(icon::width, icon::height)),
+    )?;
 
     dispatch(move |w, _| {
         if !*settings::is_minimize {

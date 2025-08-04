@@ -23,13 +23,14 @@ prod = ["library-core/prod", "local-ui"]
 local-ui = []
 
 [dependencies]
+library-core = { path = "../library-core" }
+library-web = { path = "../library-web" }
+log = { workspace = true }
 # tauri 基础组件
 wry = { workspace = true, features = [] }
 tao = { workspace = true }
-log = { workspace = true }
+tray-icon = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread"] }
-library-web = { path = "../library-web" }
-library-core = { path = "../library-core" }
 
 [target.'cfg(windows)'.build-dependencies]
 winres = { workspace = true }

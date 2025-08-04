@@ -1,6 +1,6 @@
 use crate::init::FIRST;
-use crate::view;
 use crate::view::UiView;
+use crate::{view, UserEvent};
 use library_core::app::APP;
 use library_core::core::{AnyResult, Exit};
 use library_web::webserver;
@@ -25,7 +25,7 @@ pub enum WindowEvent {
 // 全局 sender，用于从其他模块发送事件
 static SENDER: OnceLock<Sender<WindowEvent>> = OnceLock::new();
 // 全局事件循环代理，用于唤醒事件循环
-static LOOP_PROXY: OnceLock<EventLoopProxy<()>> = OnceLock::new();
+static LOOP_PROXY: OnceLock<EventLoopProxy<UserEvent>> = OnceLock::new();
 
 // 对外提供的发送函数
 pub fn send_event(event: WindowEvent) -> AnyResult<()> {
@@ -35,7 +35,7 @@ pub fn send_event(event: WindowEvent) -> AnyResult<()> {
             .map_err(|e| format!("事件发生异常! {e}"))?;
         // 唤醒事件循环处理新事件
         if let Some(proxy) = LOOP_PROXY.get() {
-            proxy.send_event(())?
+            proxy.send_event(UserEvent::EMPTY())?
         }
     }
     Ok(())
@@ -56,7 +56,7 @@ pub struct WindowManager {
 }
 
 impl WindowManager {
-    pub fn new(event_loop: &EventLoop<()>) -> Self {
+    pub fn new(event_loop: &EventLoop<UserEvent>) -> Self {
         // 保存事件循环代理用于唤醒
         match LOOP_PROXY.set(event_loop.create_proxy()) {
             Ok(_) => {}
@@ -97,7 +97,7 @@ impl WindowManager {
         }
     }
 
-    pub fn handle_event(&mut self, event: &Event<()>, control_flow: &mut ControlFlow) {
+    pub fn handle_event(&mut self, event: &Event<UserEvent>, control_flow: &mut ControlFlow) {
         match event {
             Event::WindowEvent {
                 event: tao::event::WindowEvent::CloseRequested,
@@ -106,8 +106,7 @@ impl WindowManager {
             } if *window_id == self.window.id() => {
                 *control_flow = ControlFlow::Exit;
             }
-            Event::NewEvents(_) => self.handle_recv(),
-            Event::UserEvent(_) => self.handle_recv(),
+            Event::UserEvent(UserEvent::EMPTY())=> self.handle_recv(),
             _ => {}
         }
     }
