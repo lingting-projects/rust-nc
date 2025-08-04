@@ -11,8 +11,8 @@ rust-version.workspace = true
 description.workspace = true
 
 [features]
-dev = []
-uat = []
+dev = ["debug"]
+uat = ["debug"]
 prod = []
 
 debug = []

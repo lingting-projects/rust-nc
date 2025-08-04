@@ -154,7 +154,7 @@ pub fn init() -> AnyResult<()> {
         .with_timestamp_format(TIMESTAMP_FORMAT)
         .with_level(level);
     logger.init().unwrap();
-    log::debug!("完成日志初始化, 日志级别: {level}");
+    log::info!("完成日志初始化, 日志级别: {level}");
     log::debug!("初始化应用程序基础数据");
     APP.get_or_init(Application::new);
     log::debug!("初始化数据库");

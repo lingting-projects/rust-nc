@@ -15,11 +15,12 @@ name = "lingting-nc"
 path = "src/main.rs"
 
 [features]
-default = ["prod"]
-dev = ["library-core/dev", "library-core/debug", "library-core/trace", "library-web/trace"]
-uat = ["library-core/uat", "local-ui", "library-core/debug"]
+default = ["dev"]
+dev = ["library-core/dev"]
+uat = ["library-core/uat", "local-ui", ]
 prod = ["library-core/prod", "local-ui"]
 
+trace = ["library-web/trace", "library-core/trace"]
 local-ui = []
 
 [dependencies]
