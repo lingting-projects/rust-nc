@@ -1,5 +1,24 @@
+use std::env;
+
 #[cfg(windows)]
-fn win() {
+fn win(profile: &str) {
+    let mut manifest_addition = "".to_string();
+    match profile {
+        "release" => {
+            manifest_addition = r#"
+    <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
+        <security>
+            <requestedPrivileges>
+                <requestedExecutionLevel level="requireAdministrator" uiAccess="false" />
+            </requestedPrivileges>
+        </security>
+    </trustInfo>
+                "#
+            .into()
+        }
+        _ => {}
+    }
+
     let name = "lingting-nc";
     let version = env!("CARGO_PKG_VERSION");
     let manifest = format!(
@@ -10,13 +29,7 @@ fn win() {
         name="{name}"
         type="win32"
     />
-    <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
-        <security>
-            <requestedPrivileges>
-                <requestedExecutionLevel level="requireAdministrator" uiAccess="false" />
-            </requestedPrivileges>
-        </security>
-    </trustInfo>
+    {manifest_addition}
 </assembly>
     "#
     );
@@ -33,6 +46,11 @@ fn win() {
 }
 
 fn main() {
+    let profile = if let Ok(_p) = env::var("PROFILE") {
+        _p
+    } else {
+        "dev".into()
+    };
     #[cfg(windows)]
-    win()
+    win(&profile)
 }
