@@ -20,7 +20,7 @@ dev = ["library-core/dev"]
 uat = ["library-core/uat", "local-ui", ]
 prod = ["library-core/prod", "local-ui"]
 
-trace = ["library-web/trace", "library-core/trace"]
+trace = ["library-web/trace", "library-core/trace", "wry/tracing"]
 local-ui = []
 
 [dependencies]
@@ -29,7 +29,7 @@ library-web = { path = "../library-web" }
 log = { workspace = true }
 # tauri 基础组件
 wry = { workspace = true, features = [] }
-tao = { workspace = true }
+tao = { workspace = true, features = [] }
 tray-icon = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread"] }
 

@@ -1,6 +1,6 @@
 use crate::init::FIRST;
 use crate::view::UiView;
-use crate::{view, UserEvent};
+use crate::{view, ExecuteEvent, UserEvent};
 use library_core::app::APP;
 use library_core::core::{AnyResult, Exit};
 use library_web::webserver;
@@ -10,6 +10,9 @@ use std::sync::{
     mpsc::{channel, Receiver, Sender},
     OnceLock,
 };
+use tao::event::WindowEvent;
+use tao::event_loop::EventLoopClosed;
+use tao::window::WindowId;
 use tao::{
     dpi::PhysicalSize,
     event::Event,
@@ -18,17 +21,13 @@ use tao::{
 };
 use wry::{WebView, WebViewBuilder};
 
-pub enum WindowEvent {
-    ExecuteMain(Box<dyn FnOnce(&Window, &dyn UiView) + Send>),
-}
-
 // 全局 sender，用于从其他模块发送事件
-static SENDER: OnceLock<Sender<WindowEvent>> = OnceLock::new();
+static SENDER: OnceLock<Sender<ExecuteEvent>> = OnceLock::new();
 // 全局事件循环代理，用于唤醒事件循环
 static LOOP_PROXY: OnceLock<EventLoopProxy<UserEvent>> = OnceLock::new();
 
-// 对外提供的发送函数
-pub fn send_event(event: WindowEvent) -> AnyResult<()> {
+// 发送函数
+fn send_event(event: ExecuteEvent) -> AnyResult<()> {
     if let Some(sender) = SENDER.get() {
         sender
             .send(event)
@@ -41,21 +40,35 @@ pub fn send_event(event: WindowEvent) -> AnyResult<()> {
     Ok(())
 }
 
-// 新增 dispatch 函数，简化 ExecuteMain 事件的发送
+// 新增 dispatch 函数，简化事件的发送
 pub fn dispatch<F>(closure: F) -> AnyResult<()>
 where
     F: FnOnce(&Window, &dyn UiView) + Send + 'static,
 {
-    send_event(WindowEvent::ExecuteMain(Box::new(closure)))
+    send_event(ExecuteEvent::Main(Box::new(closure)))
 }
 
 pub struct WindowManager {
     window: Window,
     ui: Box<dyn UiView>,
-    receiver: Receiver<WindowEvent>,
+    receiver: Receiver<ExecuteEvent>,
 }
 
 impl WindowManager {
+    pub fn id(&self) -> WindowId {
+        self.window.id()
+    }
+
+    pub fn show(&self) {
+        self.window.set_visible(true);
+        self.window.set_minimized(false);
+        self.window.set_focus();
+    }
+
+    pub fn hidden(&self) {
+        self.window.set_visible(false);
+    }
+
     pub fn new(event_loop: &EventLoop<UserEvent>) -> Self {
         // 保存事件循环代理用于唤醒
         match LOOP_PROXY.set(event_loop.create_proxy()) {
@@ -67,7 +80,7 @@ impl WindowManager {
         };
 
         // 创建事件通道
-        let (sender, receiver) = channel::<WindowEvent>();
+        let (sender, receiver) = channel::<ExecuteEvent>();
 
         // 设置全局 sender
         match SENDER.set(sender) {
@@ -97,25 +110,22 @@ impl WindowManager {
         }
     }
 
-    pub fn handle_event(&mut self, event: &Event<UserEvent>, control_flow: &mut ControlFlow) {
+    pub fn handler(&self, event: &WindowEvent) {
         match event {
-            Event::WindowEvent {
-                event: tao::event::WindowEvent::CloseRequested,
-                window_id,
-                ..
-            } if *window_id == self.window.id() => {
-                *control_flow = ControlFlow::Exit;
+            WindowEvent::Focused(focused) => {
+                if !focused && self.window.is_minimized() {
+                    self.hidden();
+                }
             }
-            Event::UserEvent(UserEvent::EMPTY())=> self.handle_recv(),
             _ => {}
         }
     }
 
-    fn handle_recv(&mut self) {
+    pub fn receiver(&mut self) {
         // 处理自定义事件
         while let Ok(event) = self.receiver.try_recv() {
             match event {
-                WindowEvent::ExecuteMain(closure) => {
+                ExecuteEvent::Main(closure) => {
                     closure(&self.window, self.ui.as_ref());
                 }
             }

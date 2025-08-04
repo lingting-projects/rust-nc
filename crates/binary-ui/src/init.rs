@@ -68,14 +68,14 @@ impl LoadingState {
     // 获取带前缀的窗口标题
     pub const fn window_title(self) -> &'static str {
         match self {
-            LoadingState::InitSystem => "nc-正在初始化系统",
-            LoadingState::InitDb => "nc-正在初始化数据库",
-            LoadingState::CheckUpdate => "nc-正在检查更新",
-            LoadingState::Updating => "nc-正在进行更新",
-            LoadingState::LoadingAssets => "nc-正在加载资源",
-            LoadingState::Completed => "nc-系统初始化完成",
-            LoadingState::UiError => "nc-Ui加载异常",
-            LoadingState::ServerError => "nc-服务启动异常",
+            LoadingState::InitSystem => "NC-正在初始化系统",
+            LoadingState::InitDb => "NC-正在初始化数据库",
+            LoadingState::CheckUpdate => "NC-正在检查更新",
+            LoadingState::Updating => "NC-正在进行更新",
+            LoadingState::LoadingAssets => "NC-正在加载资源",
+            LoadingState::Completed => "NC-系统初始化完成",
+            LoadingState::UiError => "NC-Ui加载异常",
+            LoadingState::ServerError => "NC-服务启动异常",
         }
     }
 }
