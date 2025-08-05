@@ -18,20 +18,20 @@ pub fn create_parent<P: AsRef<Path>>(path: P) -> AnyResult<()> {
     create_dir(parent)
 }
 
-pub fn create<P: AsRef<Path>>(path: P) -> AnyResult<File> {
+pub fn create<P: AsRef<Path>>(path: P) -> AnyResult<()> {
     let p = path.as_ref();
     create_parent(p)?;
-    let f = if p.exists() {
-        File::open(p)?
-    } else {
-        File::create(p)?
-    };
+    if !p.exists() {
+        File::create(p)?;
+    }
 
-    Ok(f)
+    Ok(())
 }
 
 pub fn write<P: AsRef<Path>>(path: P, content: &str) -> AnyResult<()> {
-    let mut file = create(path)?;
+    create(&path)?;
+    let mut file = File::options().write(true).open(path)?;
+    file.set_len(0)?;
     file.write_all(content.as_bytes())?;
     Ok(())
 }

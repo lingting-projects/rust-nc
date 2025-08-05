@@ -41,6 +41,8 @@ pub enum BizError {
     OperationFailed(i32),
     #[error("路径不能为空")]
     EmptyPath,
+    #[error("不能重复运行")]
+    NoSingle,
 }
 
 pub enum Exit {

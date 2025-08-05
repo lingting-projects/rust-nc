@@ -32,6 +32,8 @@ wry = { workspace = true, features = [] }
 tao = { workspace = true, features = [] }
 tray-icon = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread"] }
+fs2 = "0.4.3"
 
 [target.'cfg(windows)'.build-dependencies]
 winres = { workspace = true }
+
