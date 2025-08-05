@@ -5,6 +5,7 @@ use crate::view::UiView;
 use crate::window::{dispatch, WindowManager};
 use library_core::app::APP;
 use library_core::core::{AnyResult, BizError};
+use library_core::file;
 use std::path::PathBuf;
 use std::thread;
 use std::time::Duration;
@@ -36,7 +37,7 @@ fn create_single(path: PathBuf, info: &str) -> AnyResult<Option<Single>> {
     if !single.is_single {
         log::error!("存在已启动进程: {}", single.pid.unwrap_or(0));
         log::error!("已启动进程info: {}", single.info);
-        Err(Box::new(BizError::NoSingle))
+        Err(Box::new(BizError::SingleRunning))
     } else {
         Ok(Some(single))
     }
@@ -71,7 +72,14 @@ async fn main() -> AnyResult<()> {
                 manager.handler(&event);
                 if event == WindowEvent::CloseRequested {
                     tray.take();
-                    o_single.take();
+                    let o = o_single.take();
+                    if let Some(single) = o {
+                        let path = single.path.clone();
+                        let path_info = single.path_info.clone();
+                        drop(single);
+                        let _ = file::delete(&path);
+                        let _ = file::delete(&path_info);
+                    }
                     *control_flow = ControlFlow::Exit;
                 }
             }

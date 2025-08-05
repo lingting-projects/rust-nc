@@ -42,7 +42,9 @@ pub enum BizError {
     #[error("路径不能为空")]
     EmptyPath,
     #[error("不能重复运行")]
-    NoSingle,
+    SingleRunning,
+    #[error("单进程信息写入异常")]
+    SingleWrite,
 }
 
 pub enum Exit {
