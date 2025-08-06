@@ -26,6 +26,18 @@ static SENDER: OnceLock<Sender<ExecuteEvent>> = OnceLock::new();
 // 全局事件循环代理，用于唤醒事件循环
 static LOOP_PROXY: OnceLock<EventLoopProxy<UserEvent>> = OnceLock::new();
 
+pub trait WindowExt {
+    fn force_show(&self);
+}
+
+impl WindowExt for Window {
+    fn force_show(&self) {
+        self.set_visible(true);
+        self.set_minimized(false);
+        self.set_focus();
+    }
+}
+
 // 发送函数
 fn send_event(event: ExecuteEvent) -> AnyResult<()> {
     if let Some(sender) = SENDER.get() {
@@ -60,9 +72,7 @@ impl WindowManager {
     }
 
     pub fn show(&self) {
-        self.window.set_visible(true);
-        self.window.set_minimized(false);
-        self.window.set_focus();
+        self.window.force_show()
     }
 
     pub fn hidden(&self) {

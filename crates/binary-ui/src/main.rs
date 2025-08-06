@@ -1,14 +1,15 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use crate::ipc::{IpcServer, IpcStream};
 use crate::single::Single;
 use crate::view::UiView;
-use crate::window::{dispatch, WindowManager};
+use crate::window::{dispatch, WindowExt, WindowManager};
 use library_core::app::APP;
-use library_core::core::{AnyResult, BizError};
+use library_core::core::{panic_msg, AnyResult, BizError};
 use library_core::file;
 use std::path::PathBuf;
-use std::thread;
 use std::time::Duration;
+use std::{panic, thread};
 use tao::event::{Event, WindowEvent};
 use tao::event_loop::{ControlFlow, EventLoop, EventLoopBuilder};
 use tao::window::Window;
@@ -16,6 +17,7 @@ use tray_icon::TrayIconEvent;
 
 mod icon;
 mod init;
+mod ipc;
 mod single;
 mod tray;
 mod view;
@@ -32,13 +34,54 @@ pub enum UserEvent {
     MenuEvent(tray_icon::menu::MenuEvent),
 }
 
-fn create_single(path: PathBuf, info: &str) -> AnyResult<Option<Single>> {
-    let single = Single::create(path, info)?;
+fn wake(ipc_path: &str) -> AnyResult<()> {
+    let mut stream = IpcStream::new(ipc_path)?;
+    stream.write("")
+}
+
+fn release_single(single: Single) {
+    let path = single.path.clone();
+    let path_info = single.path_info.clone();
+    drop(single);
+    let _ = file::delete(&path);
+    let _ = file::delete(&path_info);
+}
+
+fn create_single(path: PathBuf, ipc_path: &str) -> AnyResult<Option<Single>> {
+    let single = Single::create(path, ipc_path)?;
     if !single.is_single {
         log::error!("存在已启动进程: {}", single.pid.unwrap_or(0));
-        log::error!("已启动进程info: {}", single.info);
+        log::error!("已启动进程Ipc: {}", single.info);
+        if let Err(e) = wake(&single.info) {
+            log::error!("已启动进程唤醒异常! {}", e)
+        }
         Err(Box::new(BizError::SingleRunning))
     } else {
+        log::debug!("创建ipc服务: {}", ipc_path);
+        match IpcServer::new(ipc_path) {
+            Ok(server) => {
+                thread::spawn(move || {
+                    loop {
+                        match panic::catch_unwind(|| server.next()) {
+                            Ok(Ok(_)) => {
+                                let _ = dispatch(|w, _| w.force_show());
+                            }
+                            Ok(Err(e)) => {
+                                log::error!("ipc server read err! {}", e)
+                            }
+                            Err(p) => {
+                                log::error!("ipc server read err! {}", panic_msg(p))
+                            }
+                        }
+                    }
+                });
+            }
+            Err(e) => {
+                release_single(single);
+                log::error!("创建ipc服务异常! {}", e);
+                return Err(e);
+            }
+        }
         Ok(Some(single))
     }
 }
@@ -48,7 +91,9 @@ async fn main() -> AnyResult<()> {
     library_core::app::init()?;
     let app = APP.get().expect("get app failed");
     let lock_path = app.cache_dir.join("single.lock");
-    let mut o_single = create_single(lock_path, "ipc info")?;
+    let _ipc_path = app.cache_dir.join("ipc.socket");
+    let ipc_path = _ipc_path.to_str().expect("failed get ipc path");
+    let mut o_single = create_single(lock_path, ipc_path)?;
     let event_loop = EventLoopBuilder::<UserEvent>::with_user_event().build();
     let mut manager = WindowManager::new(&event_loop);
     let mut tray = Some(tray::create(&event_loop)?);
@@ -74,11 +119,7 @@ async fn main() -> AnyResult<()> {
                     tray.take();
                     let o = o_single.take();
                     if let Some(single) = o {
-                        let path = single.path.clone();
-                        let path_info = single.path_info.clone();
-                        drop(single);
-                        let _ = file::delete(&path);
-                        let _ = file::delete(&path_info);
+                        release_single(single)
                     }
                     *control_flow = ControlFlow::Exit;
                 }

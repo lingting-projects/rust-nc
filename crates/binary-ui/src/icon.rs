@@ -1,6 +1,6 @@
-#[cfg(windows)]
+#[cfg(target_os = "windows")]
 pub static path: &'static str = "icons/256x256.ico";
-#[cfg(not(windows))]
+#[cfg(not(target_os = "windows"))]
 pub static path: &'static str = "icons/256x256.png";
 
 pub static width: u32 = 256;

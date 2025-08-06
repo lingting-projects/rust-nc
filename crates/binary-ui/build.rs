@@ -1,6 +1,6 @@
 use std::env;
 
-#[cfg(windows)]
+#[cfg(target_os = "windows")]
 fn win(profile: &str) {
     let mut manifest_addition = "".to_string();
     match profile {
@@ -51,6 +51,6 @@ fn main() {
     } else {
         "dev".into()
     };
-    #[cfg(windows)]
+    #[cfg(target_os = "windows")]
     win(&profile)
 }

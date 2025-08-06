@@ -1,3 +1,4 @@
+use std::any::Any;
 use std::error::Error;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
@@ -73,7 +74,17 @@ impl Exit {
     }
 }
 
-#[cfg(windows)]
+pub fn panic_msg(p: Box<dyn Any+Send>)->String{
+    match p.downcast_ref::<String>() {
+        Some(s) => s.to_string(),
+        None => match p.downcast_ref::<&str>() {
+            Some(s) => (*s).to_string(),
+            None => "panic 未提供错误信息".to_string(),
+        },
+    }
+}
+
+#[cfg(target_os = "windows")]
 pub fn is_root() -> bool {
     let (tx, rx) = mpsc::channel();
 
@@ -111,12 +122,12 @@ pub fn is_root() -> bool {
     }
 }
 
-#[cfg(not(windows))]
+#[cfg(not(target_os = "windows"))]
 pub fn is_root() -> bool {
     unsafe { libc::getuid() == 0 }
 }
 
-#[cfg(windows)]
+#[cfg(target_os = "windows")]
 fn start_root(path: &str, args: Vec<String>) {
     let args_str = args.join(" ");
     let ps_command = format!(
@@ -129,7 +140,7 @@ fn start_root(path: &str, args: Vec<String>) {
         .status();
 }
 
-#[cfg(not(windows))]
+#[cfg(not(target_os = "windows"))]
 fn start_root(path: &str, args: Vec<String>) {
     let _ = Command::new("sudo").arg(path).args(&args[1..]).status();
 }

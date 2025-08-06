@@ -21,7 +21,7 @@ impl UiWebView {
             .with_autoplay(false)
             .with_on_page_load_handler(move |_, _| with_page_load());
 
-        #[cfg(windows)]
+        #[cfg(target_os = "windows")]
         {
             let app = APP.get().expect("failed get app context");
             let dir = app.cache_dir.join("webview");
