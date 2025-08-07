@@ -24,7 +24,7 @@ type SingBoxStop = unsafe extern "system" fn() -> c_int;
 type SingBoxJsonToSrs =
     unsafe extern "system" fn(jsonPathPtr: *mut c_char, srsPathPtr: *mut c_char) -> c_int;
 
-unsafe fn get<T>(symbol: &[u8]) -> Symbol<T> {
+fn get<T>(symbol: &[u8]) -> Symbol<T> {
     unsafe {
         lib.get()
             .expect("failed load lib")
@@ -33,25 +33,25 @@ unsafe fn get<T>(symbol: &[u8]) -> Symbol<T> {
     }
 }
 
-pub unsafe fn SingBoxRunning() -> c_int {
+pub fn SingBoxRunning() -> c_int {
     unsafe {
         let s: Symbol<SingBoxRunning> = get(b"SingBoxRunning\0");
         s()
     }
 }
-pub unsafe fn SingBoxStart(configPathPtr: *mut c_char, workDirPtr: *mut c_char) -> c_int {
+pub fn SingBoxStart(configPathPtr: *mut c_char, workDirPtr: *mut c_char) -> c_int {
     unsafe {
         let s: Symbol<SingBoxStart> = get(b"SingBoxStart\0");
         s(configPathPtr, workDirPtr)
     }
 }
-pub unsafe fn SingBoxStop() -> c_int {
+pub fn SingBoxStop() -> c_int {
     unsafe {
         let s: Symbol<SingBoxStop> = get(b"SingBoxStop\0");
         s()
     }
 }
-pub unsafe fn SingBoxJsonToSrs(jsonPathPtr: *mut c_char, srsPathPtr: *mut c_char) -> c_int {
+pub fn SingBoxJsonToSrs(jsonPathPtr: *mut c_char, srsPathPtr: *mut c_char) -> c_int {
     unsafe {
         let s: Symbol<SingBoxJsonToSrs> = get(b"SingBoxJsonToSrs\0");
         s(jsonPathPtr, srsPathPtr)

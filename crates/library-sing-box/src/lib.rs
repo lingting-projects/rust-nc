@@ -10,9 +10,9 @@ pub static version: &'static str = "v1.11.9";
 
 pub fn is_running() -> AnyResult<bool> {
     load_lib();
-    let result = unsafe { SingBoxRunning() };
-    check_result(result)?;
-    Ok(result == 1)
+    let i = SingBoxRunning();
+    check_result(i)?;
+    Ok(i == 1)
 }
 
 /// 启动SingBox服务
@@ -20,19 +20,17 @@ pub fn start(config_path: &Path, work_dir: &Path) -> AnyResult<()> {
     load_lib();
     let config_path_c = path_to_c_string(config_path)?;
     let work_dir_c = path_to_c_string(work_dir)?;
-    let result = unsafe {
-        let config_path_ptr = config_path_c.as_ptr() as *mut _;
-        let work_dir_ptr = work_dir_c.as_ptr() as *mut _;
-        SingBoxStart(config_path_ptr, work_dir_ptr)
-    };
-    check_result(result)
+    let config_path_ptr = config_path_c.as_ptr() as *mut _;
+    let work_dir_ptr = work_dir_c.as_ptr() as *mut _;
+    let i = SingBoxStart(config_path_ptr, work_dir_ptr);
+    check_result(i)
 }
 
 /// 停止SingBox服务
 pub fn stop() -> AnyResult<()> {
     load_lib();
-    let result = unsafe { SingBoxStop() };
-    check_result(result)
+    let i = SingBoxStop();
+    check_result(i)
 }
 
 /// 将JSON配置转换为SRS配置
@@ -40,11 +38,8 @@ pub fn json_to_srs(json_path: &Path, srs_path: &Path) -> AnyResult<()> {
     load_lib();
     let json_c_str = path_to_c_string(json_path)?;
     let srs_c_str = path_to_c_string(srs_path)?;
-
-    let result =
-        unsafe { SingBoxJsonToSrs(json_c_str.as_ptr() as *mut _, srs_c_str.as_ptr() as *mut _) };
-
-    check_result(result)
+    let i = SingBoxJsonToSrs(json_c_str.as_ptr() as *mut _, srs_c_str.as_ptr() as *mut _);
+    check_result(i)
 }
 
 // 将Path转换为CString
@@ -57,11 +52,11 @@ fn path_to_c_string(path: &Path) -> AnyResult<CString> {
 }
 
 // 检查C函数返回结果
-fn check_result(result: c_int) -> AnyResult<()> {
+fn check_result(i: c_int) -> AnyResult<()> {
     // 为支持返回值识别,  小于0为异常, 其他为正常
-    if result >= 0 {
+    if i >= 0 {
         Ok(())
     } else {
-        Err(Box::new(BizError::OperationFailed(result)))
+        Err(Box::new(BizError::OperationFailed(i)))
     }
 }
