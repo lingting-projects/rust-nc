@@ -99,10 +99,10 @@ struct Outbound {
     pub tolerance: Option<u64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     outbounds: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none", rename = "server_port")]
-    port: Option<u16>,
     #[serde(skip_serializing_if = "Option::is_none")]
     server: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "server_port")]
+    port: Option<u16>,
     #[serde(skip_serializing_if = "Option::is_none")]
     password: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -175,7 +175,7 @@ impl Outbound {
             password: node.password.clone(),
             tls: Some(OutboundTls {
                 enabled: true,
-                insecure: !node.disable_ssl(),
+                insecure: node.disable_ssl(),
             }),
             attributes,
         }
@@ -271,8 +271,28 @@ struct DnsFakeIp {
 
 #[derive(Serialize)]
 struct DnsRule {
-    server: String,
     rule_set: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    server: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    action: Option<String>,
+}
+
+impl DnsRule {
+    pub fn route(rule_set: String, server: String) -> Self {
+        Self {
+            server: Some(server),
+            rule_set,
+            action: None,
+        }
+    }
+    pub fn action(rule_set: String, action: String) -> Self {
+        Self {
+            server: None,
+            rule_set,
+            action: Some(action),
+        }
+    }
 }
 
 #[derive(Serialize)]
@@ -420,7 +440,7 @@ impl KernelConfig {
             .iter()
             .for_each(|node| outbounds.push(Outbound::node(node)));
         outbounds.push(Outbound::_type(key_direct, key_direct));
-        outbounds.push(Outbound::_type(key_reject, "block"));
+        outbounds.push(Outbound::_type("dns_out", "dns"));
         outbounds
     }
 
@@ -457,7 +477,6 @@ impl KernelConfig {
     ) -> Outbound {
         let mut outbounds = Vec::new();
         outbounds.push(key_direct.into());
-        outbounds.push(key_reject.into());
         outbounds.push(tag_auto.into());
 
         auto_area
@@ -606,12 +625,6 @@ impl KernelConfig {
     fn sing_box_build_dns(&self, route: &RouteConfig) -> DnsConfig {
         let mut servers = vec![
             DnsServer {
-                tag: "dns-local".into(),
-                address: "local".into(),
-                detour: Some(key_direct.into()),
-                strategy: self.ip_strategy(),
-            },
-            DnsServer {
                 tag: tag_dns_cn.into(),
                 address: self.dns_cn.get(0).unwrap().clone(),
                 detour: Some(key_direct.into()),
@@ -640,31 +653,24 @@ impl KernelConfig {
             .filter_map(|r| {
                 let tag = r.tag.as_str();
 
-                if tag.starts_with(key_reject) || tag.contains("_i_") {
-                    None
-                } else {
-                    let mut vec = vec![];
-
-                    if tag.starts_with(key_proxy) {
-                        if self.fake_ip {
-                            vec.push(DnsRule {
-                                server: tag_dns_fake.into(),
-                                rule_set: tag.into(),
-                            })
-                        }
-                        vec.push(DnsRule {
-                            server: tag_dns_proxy.into(),
-                            rule_set: tag.into(),
-                        })
-                    } else {
-                        vec.push(DnsRule {
-                            server: tag_dns_cn.into(),
-                            rule_set: tag.into(),
-                        })
-                    }
-
-                    Some(vec)
+                if !tag.contains("_o_") {
+                    return None;
                 }
+
+                let mut vec = vec![];
+
+                if tag.starts_with(key_proxy) {
+                    if self.fake_ip {
+                        vec.push(DnsRule::route(tag.into(), tag_dns_fake.into()));
+                    }
+                    vec.push(DnsRule::route(tag.into(), tag_dns_proxy.into()));
+                } else if tag.starts_with(key_direct) {
+                    vec.push(DnsRule::route(tag.into(), tag_dns_cn.into()));
+                } else {
+                    vec.push(DnsRule::action(tag.into(), key_reject.into()));
+                }
+
+                Some(vec)
             })
             .flatten()
             .collect();
