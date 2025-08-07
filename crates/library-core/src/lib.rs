@@ -15,3 +15,5 @@ pub mod sqlite;
 pub mod timer;
 #[cfg(feature = "json")]
 pub mod json;
+#[cfg(feature = "redirect")]
+mod redirect;

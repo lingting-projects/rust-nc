@@ -16,9 +16,9 @@ path = "src/main.rs"
 
 [features]
 default = ["dev"]
-dev = ["library-core/dev"]
-uat = ["library-core/uat", "local-ui", ]
-prod = ["library-core/prod", "local-ui"]
+dev = ["library-core/dev", "library-core/redirect"]
+uat = ["library-core/uat", "local-ui", "library-core/redirect"]
+prod = ["library-core/prod", "local-ui", "library-core/redirect"]
 
 trace = ["library-web/trace", "library-core/trace", "wry/tracing"]
 local-ui = []

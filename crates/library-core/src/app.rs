@@ -1,16 +1,63 @@
-use crate::core::{is_root, restart_root, AnyResult};
+use crate::core::{is_root, panic_msg, restart_root, AnyResult};
 use crate::snowflake::next_str;
 use crate::{file, sqlite};
-use log::LevelFilter;
-use simple_logger::SimpleLogger;
+use std::ops::Deref;
+use std::sync::LazyLock;
 use std::{
     env,
     error::Error,
-    fs,
+    fs, panic,
     path::{Path, PathBuf},
     sync::OnceLock,
 };
-use time::{format_description::FormatItem, macros::format_description};
+
+static ID: &'static str = "live.lingting.nc.rust";
+static UA: &'static str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36";
+static OWNER: &'static str = "lingting-projects";
+static REPO: &'static str = "rust-nc";
+
+static START_ID: LazyLock<String> = LazyLock::new(|| next_str());
+static DIR_GLOBAL: LazyLock<PathBuf> = LazyLock::new(|| {
+    let dir = if cfg!(windows) {
+        env::var("ALLUSERSPROFILE").expect("ALLUSERSPROFILE environment variable not set")
+    } else if cfg!(target_os = "linux") {
+        "/usr/local/share/".to_string()
+    } else {
+        "/Library/Application Support/".to_string()
+    };
+
+    let path = PathBuf::from(dir).join(ID);
+
+    file::create_dir(&path).expect("Failed to create global directory");
+    path
+});
+static DIR_TEMP: LazyLock<PathBuf> = LazyLock::new(|| {
+    let tmp_dir = env::temp_dir();
+    let path = tmp_dir.join(ID);
+    file::create_dir(&path).expect("Failed to create tmp directory");
+    path
+});
+static DIR_LOGS: LazyLock<PathBuf> = LazyLock::new(|| {
+    let dir = DIR_TEMP.join("logs").join(&*START_ID);
+    file::create_dir(&dir).expect("Failed to create logs dir");
+    dir
+});
+
+static DIR_DATA: LazyLock<PathBuf> = LazyLock::new(|| {
+    let dir = DIR_GLOBAL.join("data");
+    file::create_dir(&dir).expect("Failed to create da a_dir");
+    dir
+});
+static DIR_CACHE: LazyLock<PathBuf> = LazyLock::new(|| {
+    let dir = DIR_GLOBAL.join("cache");
+    file::create_dir(&dir).expect("Failed to create ca he_dir");
+    dir
+});
+static DIR_UI: LazyLock<PathBuf> = LazyLock::new(|| {
+    let dir = DIR_GLOBAL.join("ui");
+    file::create_dir(&dir).expect("Failed to create ui dir");
+    dir
+});
 
 #[derive(Debug)]
 pub struct Application {
@@ -21,15 +68,15 @@ pub struct Application {
     pub repo: &'static str,
 
     // 启动id
-    pub start_id: String,
+    pub start_id: &'static str,
 
     // 目录路径
-    pub global_dir: PathBuf,
-    pub data_dir: PathBuf,
-    pub cache_dir: PathBuf,
-    pub tmp_dir: PathBuf,
-    pub logs_dir: PathBuf,
-    pub ui_dir: PathBuf,
+    pub global_dir: &'static PathBuf,
+    pub data_dir: &'static PathBuf,
+    pub cache_dir: &'static PathBuf,
+    pub tmp_dir: &'static PathBuf,
+    pub logs_dir: &'static PathBuf,
+    pub ui_dir: &'static PathBuf,
     /// 运行目录
     pub startup_dir: PathBuf,
     /// 安装目录
@@ -42,53 +89,6 @@ pub struct Application {
 
 impl Application {
     pub fn new() -> Self {
-        // 常量属性
-        let id = "live.lingting.nc.rust";
-        let ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36";
-        let owner = "lingting-projects";
-        let repo = "rust-nc";
-
-        // 生成初始 ID
-        let start_id = next_str();
-
-        // 确定全局目录
-        let global_dir = {
-            let dir = if cfg!(windows) {
-                env::var("ALLUSERSPROFILE").expect("ALLUSERSPROFILE environment variable not set")
-            } else if cfg!(target_os = "linux") {
-                "/usr/local/share/".to_string()
-            } else {
-                "/Library/Application Support/".to_string()
-            };
-
-            let path = PathBuf::from(dir).join(id);
-
-            file::create_dir(&path).expect("Failed to create global directory");
-            path
-        };
-
-        // 创建其他目录
-        let data_dir = global_dir.join("data");
-        file::create_dir(&data_dir).expect("Failed to create data_dir");
-
-        let cache_dir = global_dir.join("cache");
-        file::create_dir(&cache_dir).expect("Failed to create cache_dir");
-
-        let tmp_dir = {
-            let tmp_dir = env::temp_dir();
-            let path = tmp_dir.join(id);
-            file::create_dir(&path).expect("Failed to create tmp directory");
-            path
-        };
-        let logs_basic_dir = tmp_dir.join("logs");
-        file::create_dir(&logs_basic_dir).expect("Failed to create logs_basic_dir");
-
-        let logs_dir = logs_basic_dir.join(&start_id);
-        file::create_dir(&logs_dir).expect("Failed to create logs_dir");
-
-        let ui_dir = global_dir.join("ui");
-        file::create_dir(&ui_dir).expect("Failed to create ui_dir");
-
         // 获取启动目录和安装目录
         let startup_dir = env::current_dir().expect("Failed to get current directory");
         log::trace!("运行目录: {}", startup_dir.display());
@@ -117,17 +117,17 @@ impl Application {
         }
 
         Self {
-            id,
-            ua,
-            owner,
-            repo,
-            start_id,
-            global_dir,
-            data_dir,
-            cache_dir,
-            tmp_dir,
-            logs_dir,
-            ui_dir,
+            id: ID,
+            ua: UA,
+            owner: OWNER,
+            repo: REPO,
+            start_id: &*START_ID,
+            global_dir: &*DIR_GLOBAL,
+            data_dir: &*DIR_DATA,
+            cache_dir: &*DIR_CACHE,
+            tmp_dir: &*DIR_TEMP,
+            logs_dir: &*DIR_LOGS,
+            ui_dir: &*DIR_UI,
             startup_dir,
             install_dir,
             is_dev,
@@ -138,10 +138,9 @@ impl Application {
 
 pub static APP: OnceLock<Application> = OnceLock::new();
 
-const TIMESTAMP_FORMAT: &[FormatItem] =
-    format_description!("[year]-[month]-[day] [hour]:[minute]:[second].[subsecond digits:3]");
-
-pub fn init() -> AnyResult<()> {
+#[cfg(feature = "simple_logger")]
+fn log_simple() {
+    use log::LevelFilter;
     let mut level = LevelFilter::Info;
     if cfg!(feature = "trace") {
         level = LevelFilter::Trace;
@@ -149,17 +148,45 @@ pub fn init() -> AnyResult<()> {
         level = LevelFilter::Debug;
     }
 
+    use time::{format_description::FormatItem, macros::format_description};
+    const TIMESTAMP_FORMAT: &[FormatItem] =
+        format_description!("[year]-[month]-[day] [hour]:[minute]:[second].[subsecond digits:3]");
+
+    use simple_logger::{init, SimpleLogger};
     let logger = SimpleLogger::new()
         .with_local_timestamps()
         .with_timestamp_format(TIMESTAMP_FORMAT)
         .with_level(level);
     logger.init().unwrap();
     log::info!("完成日志初始化, 日志级别: {level}");
+}
+
+fn _init() -> AnyResult<()> {
+    #[cfg(feature = "redirect")]
+    crate::redirect::redirect_dir(&*DIR_LOGS)?;
+    #[cfg(feature = "simple_logger")]
+    log_simple();
+
     log::debug!("初始化应用程序基础数据");
     APP.get_or_init(Application::new);
     log::debug!("初始化数据库");
     sqlite::init()?;
     log::debug!("初始化完成");
+    Ok(())
+}
 
+pub fn init() -> AnyResult<()> {
+    match panic::catch_unwind(|| _init()) {
+        Ok(Ok(_)) => {}
+        Ok(Err(e)) => {
+            log::error!("初始化异常! {}", e);
+            return Err(e);
+        }
+        Err(p) => {
+            let msg = panic_msg(p);
+            log::error!("初始化崩溃! {}", msg);
+            panic!("初始化崩溃: {}", msg)
+        }
+    }
     Ok(())
 }

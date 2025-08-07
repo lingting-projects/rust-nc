@@ -6,7 +6,7 @@ use interprocess::{
     },
 };
 use library_core::core::AnyResult;
-use std::io::{Read, Write};
+use std::io::Write;
 
 #[cfg(target_os = "windows")]
 const prefix: &str = r"\\.\pipe\";
@@ -43,12 +43,6 @@ impl IpcStream {
         let bytes = content.as_bytes();
         self.inner.write(bytes)?;
         Ok(())
-    }
-
-    pub fn read(&mut self) -> AnyResult<Vec<u8>> {
-        let mut vec = Vec::new();
-        self.inner.read(&mut vec)?;
-        Ok(vec)
     }
 }
 
