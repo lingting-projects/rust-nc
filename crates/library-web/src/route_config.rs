@@ -353,13 +353,13 @@ VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         ];
     } else {
         sql = format!(
-            "update {} set `name`
-            ,`tun`,`fake_ip`,`ipv6`
-            ,`subscribe_id`,`geo_cn`
-            ,`rule_direct_ids`,`rule_proxy_ids`,`rule_reject_ids`
-            ,`include_area_non`,`include_area`,`include_name_contains`
-            ,`exclude_area`,`exclude_name_contains`
-            ,`interval`,`update_time`, where `id`=?",
+            "update {} set `name`=?
+            ,`tun`=?,`fake_ip`=?,`ipv6`=?
+            ,`subscribe_id`=?,`geo_cn`=?
+            ,`rule_direct_ids`=?,`rule_proxy_ids`=?,`rule_reject_ids`=?
+            ,`include_area_non`=?,`include_area`=?,`include_name_contains`=?
+            ,`exclude_area`=?,`exclude_name_contains`=?
+            ,`interval`=?,`update_time`=? where `id`=?",
             TblConfig::table_name
         );
         args = vec![
