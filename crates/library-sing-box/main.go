@@ -7,6 +7,12 @@ package main
 import "C"
 import (
 	"context"
+	"io"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
 	"github.com/sagernet/sing-box"
 	"github.com/sagernet/sing-box/common/srs"
 	"github.com/sagernet/sing-box/include"
@@ -14,17 +20,38 @@ import (
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing/common/json"
 	"github.com/sagernet/sing/service/filemanager"
-	"io"
-	"os"
-	"os/signal"
-	"syscall"
 )
 
 var (
-	instance *box.Box
-	ctx      context.Context
-	cancel   context.CancelFunc
+	instance    *box.Box
+	ctx         context.Context
+	cancel      context.CancelFunc
+	initialized bool
 )
+
+type Code = C.int
+
+const (
+	StartCreateError Code = -iota - 1
+	StartError
+	StartAlready
+	StopError
+	FileCreateError
+	FileOpenError
+	FileReadError
+	FileWriteError
+	RuleReadError
+)
+
+func setLog(color bool) {
+	formatter := log.Formatter{
+		BaseTime:      time.Now(),
+		DisableColors: !color,
+	}
+	factory := log.NewDefaultFactory(context.Background(), formatter, os.Stdout, "", nil, false)
+	logger := factory.Logger()
+	log.SetStdLogger(logger)
+}
 
 func readConfig(ctx context.Context, _path *C.char) (option.Options, error) {
 	path := C.GoString(_path)
@@ -69,14 +96,22 @@ func create(configPathPtr *C.char, workDirPtr *C.char) (*box.Box, error) {
 	if err != nil {
 		return nil, err
 	}
-	instance, err := box.New(box.Options{
+	options.Log.DisableColor = true
+	options.Log.Level = "trace"
+	boxOptions := box.Options{
 		Context: ctx,
 		Options: options,
-	})
+	}
+	instance, err := box.New(boxOptions)
+
 	return instance, err
 }
 
 func isRunning() bool {
+	if !initialized {
+		initialized = true
+		setLog(false)
+	}
 	return instance != nil
 }
 
@@ -90,6 +125,10 @@ func SingBoxRunning() C.int {
 
 //export SingBoxStart
 func SingBoxStart(configPathPtr *C.char, workDirPtr *C.char) C.int {
+	if isRunning() {
+		log.Warn("服务已启动")
+		return StartAlready
+	}
 	var (
 		err error
 	)
@@ -100,7 +139,7 @@ func SingBoxStart(configPathPtr *C.char, workDirPtr *C.char) C.int {
 	if err != nil {
 		cancel()
 		log.Error("创建服务失败: ", err)
-		return -2
+		return StartCreateError
 	}
 
 	// 启动sing-box
@@ -109,7 +148,7 @@ func SingBoxStart(configPathPtr *C.char, workDirPtr *C.char) C.int {
 		cancel()
 		instance = nil
 		log.Error("启动服务失败: ", err)
-		return -3
+		return StartError
 	}
 
 	// 监听系统信号以优雅关闭
@@ -138,7 +177,7 @@ func SingBoxStop() C.int {
 	err := instance.Close()
 	if err != nil {
 		log.Error("关闭服务失败: ", err)
-		return -8
+		return StopError
 	}
 	instance = nil
 	cancel()
@@ -158,23 +197,23 @@ func SingBoxJsonToSrs(jsonPathPtr *C.char, srsPathPtr *C.char) C.int {
 	reader, err = os.Open(jsonPath)
 	if err != nil {
 		log.Error("打开json文件失败: ", err)
-		return -9
+		return FileOpenError
 	}
 	content, err := io.ReadAll(reader)
 	if err != nil {
 		log.Error("读取json文件失败: ", err)
-		return -10
+		return FileReadError
 	}
 	ruleSet, err := json.UnmarshalExtended[option.PlainRuleSetCompat](content)
 	if err != nil {
 		log.Error("json规则读取异常: ", err)
-		return -11
+		return RuleReadError
 	}
 
 	srsFile, err := os.Create(srsPath)
 	if err != nil {
 		log.Error("创建srs文件异常: ", err)
-		return -12
+		return FileCreateError
 	}
 	defer srsFile.Close()
 
@@ -183,7 +222,7 @@ func SingBoxJsonToSrs(jsonPathPtr *C.char, srsPathPtr *C.char) C.int {
 		srsFile.Close()
 		os.Remove(srsPath)
 		log.Error("写入srs文件内容异常: ", err)
-		return -13
+		return FileWriteError
 	}
 	srsFile.Close()
 	return 0
