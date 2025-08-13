@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"runtime/debug"
 	"syscall"
 	"time"
 
@@ -64,12 +65,6 @@ const (
 	RuleReadError
 )
 
-var (
-	instance *box.Box
-	ctx      context.Context
-	cancel   context.CancelFunc
-)
-
 func setLog(color bool) {
 	formatter := log.Formatter{
 		BaseTime:      time.Now(),
@@ -99,26 +94,30 @@ func readConfig(ctx context.Context, path string) (option.Options, error) {
 	return options, nil
 }
 
-func create(configPath string, workDir string) (*box.Box, error) {
+func create(configPath string, workDir string) (context.CancelFunc, *box.Box, error) {
 	_ctx := box.Context(context.Background(), include.InboundRegistry(), include.OutboundRegistry(), include.EndpointRegistry())
-	ctx, cancel = context.WithCancel(_ctx)
+	ctx, cancel := context.WithCancel(_ctx)
 
 	if workDir != "" {
 		log.Debug("设置工作目录: ", workDir)
 		_, err := os.Stat(workDir)
 		if err != nil {
-			filemanager.MkdirAll(ctx, workDir, 0o777)
+			err = filemanager.MkdirAll(ctx, workDir, 0o777)
+			if err != nil {
+				log.Error("工作目录创建异常: ", err)
+				return cancel, nil, err
+			}
 		}
 		err = os.Chdir(workDir)
 		if err != nil {
 			log.Error("工作目录设置异常: ", err)
-			return nil, err
+			return cancel, nil, err
 		}
 	}
 
 	options, err := readConfig(ctx, configPath)
 	if err != nil {
-		return nil, err
+		return cancel, nil, err
 	}
 	options.Log.DisableColor = true
 	options.Log.Level = "trace"
@@ -128,48 +127,61 @@ func create(configPath string, workDir string) (*box.Box, error) {
 	}
 	instance, err := box.New(boxOptions)
 
-	return instance, err
+	return cancel, instance, err
 }
 
 func Start(configPath string, workDir string) SingBoxError {
 	setLog(false)
+	osSignals := make(chan os.Signal, 1)
+	signal.Notify(osSignals, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
+	defer signal.Stop(osSignals)
+
 	var (
-		err error
+		instance *box.Box
+		cancel   context.CancelFunc
 	)
-	instance, err = create(
-		configPath,
-		workDir,
-	)
-	if err != nil {
-		cancel()
-		log.Error("创建服务失败: ", err)
-		return StartCreateError
-	}
 
-	// 启动sing-box
-	err = instance.Start()
-	if err != nil {
-		cancel()
-		instance = nil
-		log.Error("启动服务失败: ", err)
-		return StartError
-	}
+	for {
+		debug.FreeOSMemory()
+		_c, _i, _e := create(configPath, workDir)
 
-	// 监听系统信号以优雅关闭
-	go func() {
-		signals := make(chan os.Signal, 1)
-		signal.Notify(signals, os.Interrupt, syscall.SIGTERM)
-		<-signals
-
-		// 关闭sing-box
-		err = instance.Close()
-		if err != nil {
-			log.Error("关闭服务失败: ", err)
+		if _e != nil {
+			log.Error("实例创建异常: ", _e)
+			// 创建异常, 但是不存在已启动实例
+			if instance == nil {
+				return StartCreateError
+			}
+		} else {
+			if instance != nil {
+				cancel()
+				err := instance.Close()
+				if err != nil {
+					log.Error("实例关闭异常: ", err)
+				}
+			}
+			cancel = _c
+			instance = _i
+			err := instance.Start()
+			if err != nil {
+				log.Error("实例启动异常: ", _e)
+				return StartError
+			}
 		}
-		cancel()
-	}()
 
-	return Nil
+		osSignal := <-osSignals
+		// SIGHUP 刷新配置. 重启实例
+		if osSignal == syscall.SIGHUP {
+			continue
+		}
+		// 其他的关闭实例
+		cancel()
+		err := instance.Close()
+		if err != nil {
+			log.Error("实例关闭异常: ", err)
+			return StopError
+		}
+		return Nil
+	}
 }
 
 func JsonToSrs(jsonPath string, srsPath string) SingBoxError {
