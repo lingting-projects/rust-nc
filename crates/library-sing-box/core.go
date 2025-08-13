@@ -1,12 +1,8 @@
-package main
+package core
 
-/*
-#cgo CFLAGS: -I.
-#include <stdlib.h>
-*/
-import "C"
 import (
 	"context"
+	"errors"
 	"io"
 	"os"
 	"os/signal"
@@ -22,17 +18,42 @@ import (
 	"github.com/sagernet/sing/service/filemanager"
 )
 
-var (
-	instance    *box.Box
-	ctx         context.Context
-	cancel      context.CancelFunc
-	initialized bool
-)
+type SingBoxError int8
 
-type Code = C.int
+func (e SingBoxError) Error() string {
+	switch {
+	case errors.Is(e, Nil):
+		return ""
+	case errors.Is(e, StartCreateError):
+		return "启动创建失败"
+	case errors.Is(e, StartError):
+		return "启动失败"
+	case errors.Is(e, StartAlready):
+		return "已启动"
+	case errors.Is(e, StopError):
+		return "停止失败"
+	case errors.Is(e, FileCreateError):
+		return "文件创建失败"
+	case errors.Is(e, FileOpenError):
+		return "文件打开失败"
+	case errors.Is(e, FileReadError):
+		return "文件读取失败"
+	case errors.Is(e, FileWriteError):
+		return "文件写入失败"
+	case errors.Is(e, RuleReadError):
+		return "规则读取失败"
+	default:
+		return "未知错误"
+	}
+}
+
+func (e SingBoxError) ToInt() int {
+	return int(e)
+}
 
 const (
-	StartCreateError Code = -iota - 1
+	Nil SingBoxError = -iota
+	StartCreateError
 	StartError
 	StartAlready
 	StopError
@@ -41,6 +62,12 @@ const (
 	FileReadError
 	FileWriteError
 	RuleReadError
+)
+
+var (
+	instance *box.Box
+	ctx      context.Context
+	cancel   context.CancelFunc
 )
 
 func setLog(color bool) {
@@ -53,8 +80,7 @@ func setLog(color bool) {
 	log.SetStdLogger(logger)
 }
 
-func readConfig(ctx context.Context, _path *C.char) (option.Options, error) {
-	path := C.GoString(_path)
+func readConfig(ctx context.Context, path string) (option.Options, error) {
 	log.Debug("读取配置文件: ", path)
 	// 读取配置文件
 	config, err := os.ReadFile(path)
@@ -73,11 +99,9 @@ func readConfig(ctx context.Context, _path *C.char) (option.Options, error) {
 	return options, nil
 }
 
-func create(configPathPtr *C.char, workDirPtr *C.char) (*box.Box, error) {
-	c := box.Context(context.Background(), include.InboundRegistry(), include.OutboundRegistry(), include.EndpointRegistry())
-	ctx, cancel = context.WithCancel(c)
-
-	workDir := C.GoString(workDirPtr)
+func create(configPath string, workDir string) (*box.Box, error) {
+	_ctx := box.Context(context.Background(), include.InboundRegistry(), include.OutboundRegistry(), include.EndpointRegistry())
+	ctx, cancel = context.WithCancel(_ctx)
 
 	if workDir != "" {
 		log.Debug("设置工作目录: ", workDir)
@@ -92,7 +116,7 @@ func create(configPathPtr *C.char, workDirPtr *C.char) (*box.Box, error) {
 		}
 	}
 
-	options, err := readConfig(ctx, configPathPtr)
+	options, err := readConfig(ctx, configPath)
 	if err != nil {
 		return nil, err
 	}
@@ -107,34 +131,14 @@ func create(configPathPtr *C.char, workDirPtr *C.char) (*box.Box, error) {
 	return instance, err
 }
 
-func isRunning() bool {
-	if !initialized {
-		initialized = true
-		setLog(false)
-	}
-	return instance != nil
-}
-
-//export SingBoxRunning
-func SingBoxRunning() C.int {
-	if !isRunning() {
-		return 0
-	}
-	return 1
-}
-
-//export SingBoxStart
-func SingBoxStart(configPathPtr *C.char, workDirPtr *C.char) C.int {
-	if isRunning() {
-		log.Warn("服务已启动")
-		return StartAlready
-	}
+func Start(configPath string, workDir string) SingBoxError {
+	setLog(false)
 	var (
 		err error
 	)
 	instance, err = create(
-		configPathPtr,
-		workDirPtr,
+		configPath,
+		workDir,
 	)
 	if err != nil {
 		cancel()
@@ -165,30 +169,10 @@ func SingBoxStart(configPathPtr *C.char, workDirPtr *C.char) C.int {
 		cancel()
 	}()
 
-	return 0
+	return Nil
 }
 
-//export SingBoxStop
-func SingBoxStop() C.int {
-	if !isRunning() {
-		return 0
-	}
-
-	err := instance.Close()
-	if err != nil {
-		log.Error("关闭服务失败: ", err)
-		return StopError
-	}
-	instance = nil
-	cancel()
-	return 0
-}
-
-//export SingBoxJsonToSrs
-func SingBoxJsonToSrs(jsonPathPtr *C.char, srsPathPtr *C.char) C.int {
-	jsonPath := C.GoString(jsonPathPtr)
-	srsPath := C.GoString(srsPathPtr)
-
+func JsonToSrs(jsonPath string, srsPath string) SingBoxError {
 	var (
 		err    error
 		reader io.Reader
@@ -225,10 +209,5 @@ func SingBoxJsonToSrs(jsonPathPtr *C.char, srsPathPtr *C.char) C.int {
 		return FileWriteError
 	}
 	srsFile.Close()
-	return 0
-}
-
-func main() {
-	// 保持程序运行，避免DLL加载后立即退出
-	select {}
+	return Nil
 }

@@ -1,6 +1,6 @@
 // rust/build.rs
 use std::env;
-use std::fs::{copy, create_dir_all};
+use std::fs::{copy, create_dir_all, remove_file};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::LazyLock;
@@ -18,19 +18,30 @@ static lib_name: LazyLock<String> = LazyLock::new(|| {
     .to_string()
 });
 
+static bin_name: &'static str = "lingting-nc-singbox";
+
 fn main() {
     let target = env::var("TARGET").expect("env TARGET err");
     let out_dir = env::var("OUT_DIR").expect("env OUT_DIR err");
     let manifest_dir = env::var("CARGO_MANIFEST_DIR").expect("env CARGO_MANIFEST_DIR err");
     let lib_path = Path::new(&out_dir).join(&*lib_name);
+    let bin_path = Path::new(&out_dir).join(&*bin_name);
 
+    println!("cargo:rustc-env=SING_BOX_DIR={}", out_dir);
     println!("cargo-lib={}", &*lib_name);
+    println!("cargo-bin={}", &*bin_name);
     println!("cargo-platform={target}");
     println!("cargo-out={out_dir}");
     println!("cargo-manifest={manifest_dir}");
 
+    if bin_path.exists() {
+        remove_file(&bin_path).expect("failed remove bin");
+    }
+    if lib_path.exists() {
+        remove_file(&lib_path).expect("failed remove lib");
+    }
     // 构建Go库
-    build_go_library(&target, &lib_path, &manifest_dir);
+    build_go(&target, &lib_path, &bin_path, Path::new(&manifest_dir));
 
     let target_dir = lib_path.ancestors().nth(5).expect("target dir err");
     println!("cargo-target={}", target_dir.display());
@@ -40,7 +51,13 @@ fn main() {
         create_dir_all(&tar_dir).expect("create tar dir err");
     }
     let tar_lib_path = tar_dir.join(&*lib_name);
-    copy(lib_path, tar_lib_path).expect("copy lib err");
+    if lib_path.exists() {
+        copy(lib_path, tar_lib_path).expect("copy lib err");
+    }
+    let tar_bin_path = tar_dir.join(&*bin_name);
+    if bin_path.exists() {
+        copy(bin_path, tar_bin_path).expect("copy bin err");
+    }
 
     // 告诉Cargo在哪里可以找到库
     println!("cargo:rustc-link-search=native={}", out_dir);
@@ -52,17 +69,24 @@ fn main() {
     println!("cargo:rerun-if-changed=Makefile");
 }
 
-fn build_go_library(target: &str, lib_path: &PathBuf, manifest_dir: &str) {
-    let go_dir = Path::new(manifest_dir);
-
+fn build_go(target: &str, lib_path: &Path, bin_path: &Path, manifest_dir: &Path) {
     // 构建命令
     let mut cmd = Command::new("go");
-    cmd.current_dir(&go_dir)
+    cmd.current_dir(manifest_dir)
         .arg("build")
+        .arg("-v")
+        .arg("-trimpath")
         .arg("-tags=with_clash_api")
-        .arg("-buildmode=c-shared")
-        .arg("-o")
-        .arg(&lib_path);
+        .arg("-ldflags=-s -buildid=");
+
+    if cfg!(feature = "bin") {
+        cmd.arg("-o").arg(&bin_path).arg("./cmd");
+    } else {
+        cmd.arg("-buildmode=c-shared")
+            .arg("-o")
+            .arg(&lib_path)
+            .arg("./lib");
+    }
 
     // 启用 cgo
     cmd.env("CGO_ENABLED", "1");
@@ -103,6 +127,5 @@ fn build_go_library(target: &str, lib_path: &PathBuf, manifest_dir: &str) {
     if !status.success() {
         panic!("Go build failed with status: {}", status);
     }
-    println!("cargo:rustc-env=LIB_PATH={}", lib_path.display());
     println!("Built Go library: {}", lib_path.display());
 }

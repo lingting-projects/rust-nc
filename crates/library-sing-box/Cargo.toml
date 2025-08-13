@@ -13,6 +13,12 @@ description.workspace = true
 [lib]
 crate-type = ["cdylib", "rlib"]
 
+[features]
+default=["lib"]
+lib = ["libloading"]
+bin = []
+
 [dependencies]
 library-core = { path = "../library-core" }
-libloading = { workspace = true }
+log = { workspace = true }
+libloading = { workspace = true, optional = true }

@@ -1764,6 +1764,7 @@ version = "25.7.180"
 dependencies = [
  "libloading 0.8.8",
  "library-core",
+ "log",
 ]
 
 [[package]]

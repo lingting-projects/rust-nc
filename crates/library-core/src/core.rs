@@ -46,6 +46,8 @@ pub enum BizError {
     SingleRunning,
     #[error("单进程信息写入异常")]
     SingleWrite,
+    #[error("SingBox初始化异常")]
+    SingBoxInit,
 }
 
 pub enum Exit {
