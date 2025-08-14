@@ -3,41 +3,28 @@ mod _bin;
 #[cfg(not(feature = "bin"))]
 mod _lib;
 
-use library_core::core::{AnyResult, BizError};
+use library_core::core::AnyResult;
 use std::path::Path;
-use std::sync::{Arc, LazyLock, Mutex, MutexGuard};
 
 pub static version: &'static str = "v1.11.9";
 
+pub struct State {
+    pub running: bool,
+    pub error: bool,
+    pub reason: Option<String>,
+}
+
 pub trait SingBox {
-    fn start(&self, config_path: &Path, work_dir: &Path) -> AnyResult<()>;
+    fn state(&mut self) -> AnyResult<State>;
+    fn start(&mut self, config_path: &Path, work_dir: &Path) -> AnyResult<()>;
+    fn stop(&mut self) -> AnyResult<()>;
     fn json_srs(&self, json_path: &Path, srs_path: &Path) -> AnyResult<()>;
 }
 
-static INSTANCE: LazyLock<Arc<Mutex<Box<dyn SingBox + Send + 'static>>>> = LazyLock::new(|| {
+pub fn create() -> AnyResult<Box<dyn SingBox + Send + Sync>> {
     #[cfg(feature = "bin")]
-    let i = _bin::new();
+    let i = _bin::new()?;
     #[cfg(not(feature = "bin"))]
-    let i = _lib::new();
-    Arc::new(Mutex::new(Box::new(i.expect("failed init instance"))))
-});
-
-pub fn start(config_path: &Path, work_dir: &Path) -> AnyResult<()> {
-    match INSTANCE.lock() {
-        Ok(x) => x.start(config_path, work_dir),
-        Err(e) => {
-            log::error!("获取sing box 实例异常! {}", e);
-            Err(Box::new(BizError::SingBoxInit))
-        }
-    }
-}
-
-pub fn json_to_srs(json_path: &Path, srs_path: &Path) -> AnyResult<()> {
-    match INSTANCE.lock() {
-        Ok(x) => x.json_srs(json_path, srs_path),
-        Err(e) => {
-            log::error!("获取sing box 实例异常! {}", e);
-            Err(Box::new(BizError::SingBoxInit))
-        }
-    }
+    let i = _lib::new()?;
+    Ok(Box::new(i))
 }

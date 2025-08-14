@@ -84,10 +84,6 @@ impl TblSettingRun {
         args.push(to_value(self.auto));
     }
 
-    pub fn selected() -> AnyResult<Option<String>> {
-        AppConfig::get(Self::key_selected)
-    }
-
     pub fn set_selected(id: &str) -> AnyResult<()> {
         AppConfig::set(Self::key_selected, id)
     }
@@ -240,11 +236,6 @@ impl TblSettingKernel {
             &serde_json::Value::from(self.dns_proxy.clone()),
         )?));
         Ok(())
-    }
-
-    pub fn ui() -> AnyResult<String> {
-        let option = AppConfig::get(Self::key_ui)?;
-        Ok(option.unwrap_or_else(|| Self::default.ui.clone()))
     }
 }
 

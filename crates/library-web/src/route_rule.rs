@@ -1,7 +1,7 @@
-use crate::http;
 use crate::http::ResponseExt;
 use crate::route_global::{current_millis, from_err_box, IdPo, R};
 use crate::tbl_rule::{TblRule, TblRuleRefreshDTO, TblRuleUpsertDTO};
+use crate::{http, singbox};
 use axum::routing::{get, patch, post};
 use axum::{Json, Router};
 use library_core::app::APP;
@@ -93,7 +93,7 @@ async fn _refresh(s: TblRuleRefreshDTO) -> AnyResult<()> {
         log::debug!("[规则] [{}] SingBox 写入json: {}", s.name, name);
         file::write(path_json.clone(), &r.json)?;
         log::debug!("[规则] [{}] SingBox 尝试转换为srs: {}", s.name, name);
-        library_sing_box::json_to_srs(&path_json, &path_srs)?;
+        singbox::json_to_srs(&path_json, &path_srs)?;
     }
 
     log::debug!("[规则] [{}] 数据保存", s.name);
@@ -216,7 +216,7 @@ async fn refresh(Json(po): Json<IdPo>) -> R<()> {
 
 async fn delete(Json(po): Json<IdPo>) -> R<()> {
     if let Some(id) = po.id {
-        let sql = format!("delete from {} where `id` = ? ", TblRule::table_name, );
+        let sql = format!("delete from {} where `id` = ? ", TblRule::table_name,);
         let args = vec![id.clone().into()];
 
         match execute(&sql, args) {

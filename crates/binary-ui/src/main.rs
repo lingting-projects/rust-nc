@@ -7,7 +7,7 @@ use crate::window::{dispatch, WindowExt, WindowManager};
 use library_core::app::APP;
 use library_core::core::{panic_msg, AnyResult, BizError};
 use library_core::file;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 use std::{panic, thread};
 use tao::event::{Event, WindowEvent};

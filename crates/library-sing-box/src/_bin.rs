@@ -1,7 +1,7 @@
-use crate::SingBox;
+use crate::{SingBox, State};
 use library_core::core::{AnyResult, BizError};
 use std::path::{Path, PathBuf};
-use std::process::{Command, ExitStatus};
+use std::process::{Child, Command, ExitStatus};
 use std::sync::{Arc, LazyLock, Mutex};
 
 static BIN: LazyLock<String> = LazyLock::new(|| {
@@ -11,17 +11,72 @@ static BIN: LazyLock<String> = LazyLock::new(|| {
     ps.to_string()
 });
 
-pub struct BinSingBox {}
+pub struct BinSingBox {
+    child: Option<Child>,
+    error: bool,
+    reason: Option<String>,
+}
 
 impl SingBox for BinSingBox {
-    fn start(&self, config_path: &Path, work_dir: &Path) -> AnyResult<()> {
+    fn state(&mut self) -> AnyResult<State> {
+        if let Some(c) = &mut self.child {
+            match c.try_wait() {
+                Ok(Some(s)) => {
+                    self.child = None;
+                    // 已经结束, 判断结果
+                    if let Err(e) = check_result(s) {
+                        log::error!("singbox执行异常! {}", &e);
+                        self.error = true;
+                        self.reason = Some(e.to_string());
+                    }
+                }
+                Ok(None) => {
+                    // 未结束, 不做处理
+                }
+                Err(e) => {
+                    log::error!("获取singbox运行状态异常! {}", e)
+                }
+            }
+        }
+
+        Ok(State {
+            running: self.child.is_some(),
+            error: self.error,
+            reason: self.reason.clone(),
+        })
+    }
+
+    fn start(&mut self, config_path: &Path, work_dir: &Path) -> AnyResult<()> {
+        if self.child.is_some() {
+            return Ok(());
+        }
+
         let mut cmd = Command::new(BIN.clone());
         cmd.arg("start")
             .current_dir(work_dir)
             .arg(config_path.to_str().expect("failed get config path"))
             .arg(work_dir.to_str().expect("failed get work dir"));
-        let status = cmd.status()?;
-        check_result(status)
+
+        let child = cmd.spawn()?;
+        self.child = Some(child);
+        self.error = false;
+        self.reason = None;
+        Ok(())
+    }
+
+    fn stop(&mut self) -> AnyResult<()> {
+        let option = self.child.take();
+        if let Some(mut c) = option {
+            match c.kill() {
+                Ok(_) => {}
+                Err(e) => {
+                    // 没结束, 放回去
+                    self.child = Some(c);
+                    log::error!("singbox结束进程异常! {}", e)
+                }
+            }
+        }
+        Ok(())
     }
 
     fn json_srs(&self, json_path: &Path, srs_path: &Path) -> AnyResult<()> {
@@ -44,5 +99,9 @@ fn check_result(status: ExitStatus) -> AnyResult<()> {
 }
 
 pub fn new() -> AnyResult<BinSingBox> {
-    Ok(BinSingBox {})
+    Ok(BinSingBox {
+        child: None,
+        error: false,
+        reason: None,
+    })
 }
