@@ -18,6 +18,12 @@ impl Process {
     }
 
     pub fn new_pipe_charset(mut cmd: Command, charset: String) -> AnyResult<Self> {
+        #[cfg(target_os = "windows")]
+        {
+            use std::os::windows::process::CommandExt;
+            // 在windows下, 不弹 cmd/powershell 创建
+            cmd.creation_flags(0x08000000);
+        }
         let child = cmd.stdout(Stdio::piped()).stderr(Stdio::piped()).spawn()?;
         Ok(Self {
             child,
