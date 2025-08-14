@@ -4,6 +4,12 @@ DIR_ROOT=$(cd "$(dirname "$0")" && pwd)
 
 cd "$DIR_ROOT"
 bash "$DIR_ROOT/build.sh" "$@"
+c=$?
+
+if [ $c -ne 0 ]; then
+  echo "编译异常! code: $c"
+  exit 1
+fi
 
 cd target
 cp release/lingting-nc.exe tar/lingting-nc.exe
