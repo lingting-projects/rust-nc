@@ -98,10 +98,7 @@ where
 }
 
 pub fn current_millis() -> Value {
-    let millis = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("get time err")
-        .as_millis();
+    let millis = library_core::core::current_millis().expect("get time err");
     let time: Value = millis.to_string().into();
     time
 }

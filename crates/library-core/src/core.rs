@@ -3,7 +3,7 @@ use std::error::Error;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::sync::mpsc;
-use std::time::Duration;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use std::{env, process, thread};
 
 pub type AnyResult<T> = Result<T, Box<dyn Error + Send + Sync>>;
@@ -48,6 +48,12 @@ pub enum BizError {
     SingleWrite,
     #[error("SingBox初始化异常")]
     SingBoxInit,
+    #[error("执行超时")]
+    Timeout,
+    #[error("自启动操作异常")]
+    StartupOperation,
+    #[error("字符集识别异常")]
+    CharsetReadErr,
 }
 
 pub enum Exit {
@@ -76,7 +82,7 @@ impl Exit {
     }
 }
 
-pub fn panic_msg(p: Box<dyn Any+Send>)->String{
+pub fn panic_msg(p: Box<dyn Any + Send>) -> String {
     match p.downcast_ref::<String>() {
         Some(s) => s.to_string(),
         None => match p.downcast_ref::<&str>() {
@@ -163,4 +169,9 @@ pub fn require_root() {
         return;
     }
     restart_root()
+}
+
+pub fn current_millis() -> AnyResult<u128> {
+    let millis = SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis();
+    Ok(millis)
 }
