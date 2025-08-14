@@ -8,28 +8,46 @@ use std::time::Duration;
 pub struct Process {
     child: Child,
     pub charset: String,
-    pub status: Option<ExitStatus>,
+    status: Option<ExitStatus>,
 }
 
 impl Process {
-    pub fn new_pipe(cmd: Command) -> AnyResult<Self> {
+    pub fn new(cmd: Command) -> AnyResult<Self> {
         let charset = system::charset::get_system()?;
-        Self::new_pipe_charset(cmd, charset)
+        Self::new_charset(cmd, charset)
     }
 
-    pub fn new_pipe_charset(mut cmd: Command, charset: String) -> AnyResult<Self> {
+    pub fn new_charset(mut cmd: Command, charset: String) -> AnyResult<Self> {
         #[cfg(target_os = "windows")]
         {
             use std::os::windows::process::CommandExt;
             // 在windows下, 不弹 cmd/powershell 创建
             cmd.creation_flags(0x08000000);
         }
-        let child = cmd.stdout(Stdio::piped()).stderr(Stdio::piped()).spawn()?;
+        let child = cmd.spawn()?;
         Ok(Self {
             child,
             charset,
             status: None,
         })
+    }
+    pub fn new_pipe(cmd: Command) -> AnyResult<Self> {
+        let charset = system::charset::get_system()?;
+        Self::new_pipe_charset(cmd, charset)
+    }
+
+    pub fn new_pipe_charset(mut cmd: Command, charset: String) -> AnyResult<Self> {
+        cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
+        Self::new_charset(cmd, charset)
+    }
+
+    pub fn status(&mut self) -> AnyResult<Option<ExitStatus>> {
+        if self.status.is_some() {
+            return Ok(self.status);
+        }
+        let option = self.child.try_wait()?;
+        self.status = option;
+        Ok(option)
     }
 
     pub fn wait(&mut self) -> AnyResult<()> {
@@ -64,6 +82,11 @@ impl Process {
             }
             sleep(Duration::from_millis(100))
         }
+    }
+
+    pub fn kill(&mut self) -> AnyResult<()> {
+        self.child.kill()?;
+        Ok(())
     }
 
     pub fn out_bytes(&mut self) -> AnyResult<Option<Vec<u8>>> {

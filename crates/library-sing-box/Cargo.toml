@@ -19,6 +19,6 @@ lib = ["libloading"]
 bin = []
 
 [dependencies]
-library-core = { path = "../library-core" }
+library-core = { path = "../library-core", features = ["system"] }
 log = { workspace = true }
 libloading = { workspace = true, optional = true }

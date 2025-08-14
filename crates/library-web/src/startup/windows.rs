@@ -30,7 +30,7 @@ fn run_timeout(cmd: Command) -> AnyResult<Process> {
     if !wait {
         return Err(Box::new(BizError::Timeout));
     }
-    let status = process.status.unwrap();
+    let status = process.status()?.unwrap();
     if !status.success() {
         let code = status.code().unwrap_or(-1);
         log::error!("执行指令异常! {}", code);
