@@ -1,11 +1,21 @@
 use crate::core::AnyResult;
 use crate::file;
 use std::fs::File;
+use std::io::Write;
 use std::path::Path;
 use std::sync::{LazyLock, Mutex};
 
-static out: LazyLock<Mutex<Option<File>>> = LazyLock::new(||Mutex::new(None));
-static err: LazyLock<Mutex<Option<File>>> = LazyLock::new(||Mutex::new(None));
+static out: LazyLock<Mutex<Option<File>>> = LazyLock::new(|| Mutex::new(None));
+
+static err: LazyLock<Mutex<Option<File>>> = LazyLock::new(|| Mutex::new(None));
+
+fn flush() -> AnyResult<()> {
+    let mut stdout = std::io::stdout();
+    std::io::Write::flush(&mut stdout)?;
+    let mut stderr = std::io::stderr();
+    std::io::Write::flush(&mut stderr)?;
+    Ok(())
+}
 
 pub fn redirect_dir<P: AsRef<Path>>(_d: P) -> AnyResult<()> {
     let dir = _d.as_ref();
@@ -48,6 +58,8 @@ pub fn redirect_dir<P: AsRef<Path>>(_d: P) -> AnyResult<()> {
         }
     }
 
+
+    flush()?;
     *out.lock().unwrap() = Some(stdout_file);
     *err.lock().unwrap() = Some(stderr_file);
 
