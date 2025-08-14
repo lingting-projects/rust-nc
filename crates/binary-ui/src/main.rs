@@ -1,5 +1,3 @@
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-
 use crate::ipc::{IpcServer, IpcStream};
 use crate::single::Single;
 use crate::view::UiView;
@@ -88,6 +86,21 @@ fn create_single(path: PathBuf, ipc_path: &str) -> AnyResult<Option<Single>> {
 
 #[tokio::main]
 async fn main() -> AnyResult<()> {
+    #[cfg(all(target_os = "windows", not(debug_assertions)))]
+    {
+        use std::ptr;
+        use winapi::um::wincon::GetConsoleWindow;
+        use winapi::um::winuser::{ShowWindow, SW_HIDE};
+        let console_window = unsafe { GetConsoleWindow() };
+
+        if console_window != ptr::null_mut() {
+            // 隐藏窗口
+            unsafe {
+                ShowWindow(console_window, SW_HIDE);
+            }
+        }
+    }
+
     library_core::app::init()?;
     let app = get_app();
     let lock_path = app.cache_dir.join("single.lock");

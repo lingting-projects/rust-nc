@@ -189,6 +189,7 @@ dependencies = [
  "tao",
  "tokio",
  "tray-icon",
+ "winapi",
  "winres",
  "wry",
 ]
