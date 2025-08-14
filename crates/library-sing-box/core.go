@@ -120,7 +120,6 @@ func create(configPath string, workDir string) (context.CancelFunc, *box.Box, er
 		return cancel, nil, err
 	}
 	options.Log.DisableColor = true
-	options.Log.Level = "trace"
 	boxOptions := box.Options{
 		Context: ctx,
 		Options: options,
