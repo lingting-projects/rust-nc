@@ -28,7 +28,7 @@ pub fn create<P: AsRef<Path>>(path: P) -> AnyResult<()> {
     Ok(())
 }
 
-pub fn write<P: AsRef<Path>>(path: P, content: &str) -> AnyResult<()> {
+pub fn overwrite<P: AsRef<Path>>(path: P, content: &str) -> AnyResult<()> {
     create(&path)?;
     let mut file = File::options().write(true).open(path)?;
     file.set_len(0)?;
@@ -43,6 +43,7 @@ pub fn copy<P: AsRef<Path>>(source: P, target: P) -> AnyResult<()> {
     }
     copy_force(source, target)
 }
+
 pub fn copy_force<P: AsRef<Path>>(source: P, target: P) -> AnyResult<()> {
     create_parent(target.as_ref())?;
     fs::copy(source, target)?;

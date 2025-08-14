@@ -18,14 +18,15 @@ prod = []
 debug = []
 trace = []
 
-redirect = ["libc", "winapi"]
+system = ["encoding", "winapi/winnls"]
+redirect = ["libc", "winapi/processenv", "winapi/winbase", "winapi/handleapi", "winapi/winnt"]
 log = ["simple_logger"]
 file = []
 json = ["serde_json"]
 db = ['sqlite']
 timer = ["tokio", "time", "futures"]
 app = ["time", "db", "log"]
-full = ["timer", "app", "file", "db", "json"]
+full = ["timer", "app", "file", "db", "json", "system"]
 
 [dependencies]
 log = { workspace = true, features = [] }
@@ -38,9 +39,10 @@ tokio = { workspace = true, features = ["sync", "time", "rt", "macros"], optiona
 time = { workspace = true, optional = true }
 sqlite = { workspace = true, optional = true }
 serde_json = { workspace = true, optional = true }
+encoding = { workspace = true, optional = true }
 
 [target.'cfg(target_os="windows")'.dependencies]
-winapi = { workspace = true, optional = true, features = ["processenv", "winbase", "handleapi", "winnt"] }
+winapi = { workspace = true, optional = true, features = [] }
 
 [target.'cfg(not(target_os="windows"))'.dependencies]
 libc = { workspace = true, optional = true }
