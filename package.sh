@@ -1,9 +1,17 @@
 #!/bin/bash
 
-bash ./build.sh "$@"
+DIR_ROOT=$(cd "$(dirname "$0")" && pwd)
 
-cp target/release/lingting-nc.exe target/tar/lingting-nc.exe
-cp -rf icons target/tar
+cd "$DIR_ROOT"
+bash "$DIR_ROOT/build.sh" "$@"
 
-# 发布当前平台的 tar.gz 包
-# 发布当前平台格式的安装包
+cd target
+cp release/lingting-nc.exe tar/lingting-nc.exe
+cp -rf ../icons tar
+
+# 当前平台的 tar.gz 包
+cd tar
+tar zcvf lingting-nc.tar.gz icons/ lingting-nc.exe lingting-nc-singbox libsingbox.*
+mv lingting-nc.tar.gz ../
+
+# 当前平台格式的安装包

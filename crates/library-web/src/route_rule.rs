@@ -86,12 +86,9 @@ async fn _refresh(s: TblRuleRefreshDTO) -> AnyResult<()> {
         log::debug!("[规则] [{}] SingBox 规则处理: {}", s.name, name);
         let path_json = root.join(format!("{}.json", name));
         let path_srs = root.join(format!("{}.srs", name));
-        log::debug!("[规则] [{}] SingBox 清理旧数据文件: {}", s.name, name);
-        file::delete(path_json.clone())?;
-        file::delete(path_srs.clone())?;
 
         log::debug!("[规则] [{}] SingBox 写入json: {}", s.name, name);
-        file::write(path_json.clone(), &r.json)?;
+        file::overwrite(path_json.clone(), &r.json)?;
         log::debug!("[规则] [{}] SingBox 尝试转换为srs: {}", s.name, name);
         singbox::json_to_srs(&path_json, &path_srs)?;
     }

@@ -1,7 +1,8 @@
 use crate::route_global::to_value;
+use crate::startup;
 use library_core::app_config::AppConfig;
 use library_core::boolean::is_true;
-use library_core::core::AnyResult;
+use library_core::core::{AnyResult, BizError};
 use library_core::sqlite::execute;
 use library_nc::core::FAST_GItHUB_PREFIX;
 use library_nc::kernel::{
@@ -33,6 +34,21 @@ impl TblSetting {
     }
 
     pub fn upsert(&self) -> AnyResult<i32> {
+        // 要开机自启
+        if self.software.startup {  
+            // 没设置开机自启
+            if !startup::is_startup()? {
+                // 设置开机自启失败
+                if !startup::enable()? { 
+                    return Err(Box::new(BizError::StartupOperation))
+                }
+            }
+        }
+        // 要关闭开机自启, 但是没关成
+        else if !startup::disable()? {
+            return Err(Box::new(BizError::StartupOperation))
+        }
+        
         let mut sql = format!(
             "REPLACE INTO {} (`key`, `value`) VALUES ",
             AppConfig::table_name
@@ -114,7 +130,7 @@ impl TblSettingSoftware {
     pub fn get() -> AnyResult<Self> {
         let map = AppConfig::keys(vec![Self::key_minimize, Self::key_version])?;
         let software = TblSettingSoftware {
-            startup: false,
+            startup: startup::is_startup()?,
             minimize: map
                 .get(Self::key_minimize)
                 .map(|v| is_true(v))

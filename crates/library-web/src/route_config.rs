@@ -146,8 +146,7 @@ fn _build_sing_box(
     let json = kc.sing_box(&setting.ui, &setting.mixed_listen, setting.mixed_port)?;
     log::debug!("[配置] [{}] [SingBox] 写入配置", config.name,);
     let path = config.sing_box_json();
-    file::delete(path.clone())?;
-    file::write(path, &json)?;
+    file::overwrite(path, &json)?;
     Ok(())
 }
 

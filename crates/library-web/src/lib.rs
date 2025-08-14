@@ -12,5 +12,6 @@ mod tbl_setting;
 mod tbl_subscribe;
 pub mod webserver;
 mod singbox;
+mod startup;
 
 pub use crate::route_kernel::set_start;

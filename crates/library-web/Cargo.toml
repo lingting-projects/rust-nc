@@ -25,3 +25,11 @@ serde = { workspace = true, features = ["derive"] }
 sqlite = { workspace = true }
 reqwest = { workspace = true, features = ["gzip", "native-tls"] }
 serde_json = { workspace = true }
+
+[target.'cfg(target_os="windows")'.dependencies]
+windows = { workspace = true, features = [
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_Security_Authorization",
+    "Win32_System_Threading",
+]}
