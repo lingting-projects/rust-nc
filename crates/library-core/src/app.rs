@@ -138,6 +138,14 @@ impl Application {
 
 pub static APP: OnceLock<Application> = OnceLock::new();
 
+pub fn get_app() -> &'static Application {
+    APP.get().expect("failed get app")
+}
+
+pub fn wait_app() -> &'static Application {
+    APP.wait()
+}
+
 #[cfg(feature = "simple_logger")]
 fn log_simple() {
     use log::LevelFilter;
