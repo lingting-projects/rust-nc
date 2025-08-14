@@ -4,7 +4,7 @@ use crate::ipc::{IpcServer, IpcStream};
 use crate::single::Single;
 use crate::view::UiView;
 use crate::window::{dispatch, WindowExt, WindowManager};
-use library_core::app::APP;
+use library_core::app::get_app;
 use library_core::core::{panic_msg, AnyResult, BizError};
 use library_core::file;
 use std::path::{Path, PathBuf};
@@ -89,7 +89,7 @@ fn create_single(path: PathBuf, ipc_path: &str) -> AnyResult<Option<Single>> {
 #[tokio::main]
 async fn main() -> AnyResult<()> {
     library_core::app::init()?;
-    let app = APP.get().expect("get app failed");
+    let app = get_app();
     let lock_path = app.cache_dir.join("single.lock");
     let _ipc_path = app.cache_dir.join("ipc.socket");
     let ipc_path = _ipc_path.to_str().expect("failed get ipc path");

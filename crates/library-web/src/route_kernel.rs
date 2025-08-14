@@ -4,7 +4,7 @@ use crate::tbl_config::TblConfig;
 use crate::tbl_setting::{TblSettingKernel, TblSettingRun};
 use axum::routing::{get, post};
 use axum::{Json, Router};
-use library_core::app::APP;
+use library_core::app::get_app;
 use library_core::app_config::AppConfig;
 use library_core::core::AnyResult;
 use library_core::file;
@@ -66,10 +66,7 @@ async fn start(Json(po): Json<IdPo>) -> R<()> {
     let id = po.id.expect("必须指定启动配置!");
     let config = TblConfig::find(&id).unwrap().expect("未找到对应配置!");
     TblSettingRun::set_selected(&id).unwrap();
-    let work_dir_path = APP
-        .get()
-        .expect("failed get app")
-        .cache_dir
+    let work_dir_path = get_app()        .cache_dir
         .join("sing_box");
     file::create_dir(&work_dir_path).unwrap();
     let func = _start.lock().unwrap();

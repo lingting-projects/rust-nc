@@ -1,4 +1,4 @@
-use library_core::app::APP;
+use library_core::app::app_map;
 use library_core::core::AnyResult;
 use reqwest::header::{HeaderMap, HeaderValue};
 use reqwest::{Client, ClientBuilder, Method, RequestBuilder, Response, Url};
@@ -41,8 +41,7 @@ static client: LazyLock<Client> = LazyLock::new(|| {
 
 fn build(method: Method, url: &str) -> AnyResult<RequestBuilder> {
     let mut builder = client.request(method, Url::from_str(url)?);
-    let _ua = APP.get().map(|a| a.ua);
-    if let Some(ua) = _ua {
+    if let Some(ua) = app_map(|a| a.ua) {
         builder = builder.header("User-Agent", HeaderValue::from_str(ua)?);
     }
 

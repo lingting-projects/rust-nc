@@ -1,5 +1,5 @@
 use crate::route_global::current_millis;
-use library_core::app::APP;
+use library_core::app::get_app;
 use library_core::core::AnyResult;
 use library_core::json::JsonValueExt;
 use library_core::sqlite::{query, StatementExt};
@@ -135,7 +135,7 @@ impl TblConfig {
     }
 
     pub fn dir_data(id: &str) -> PathBuf {
-        APP.get().unwrap().data_dir.join("config").join(id)
+        get_app().data_dir.join("config").join(id)
     }
 
     pub fn sing_box_dir(&self) -> PathBuf {

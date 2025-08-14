@@ -136,14 +136,18 @@ impl Application {
     }
 }
 
-pub static APP: OnceLock<Application> = OnceLock::new();
+static APP: OnceLock<Application> = OnceLock::new();
 
 pub fn get_app() -> &'static Application {
     APP.get().expect("failed get app")
 }
 
-pub fn wait_app() -> &'static Application {
+pub fn app_wait() -> &'static Application {
     APP.wait()
+}
+
+pub fn app_map<R, F: Fn(&'static Application) -> R>(f: F) -> Option<R> {
+    APP.get().map(f)
 }
 
 #[cfg(feature = "simple_logger")]

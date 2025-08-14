@@ -1,5 +1,5 @@
 use crate::view::UiView;
-use library_core::app::APP;
+use library_core::app::get_app;
 use library_core::core::AnyResult;
 use library_core::file;
 use tao::rwh_06::HasWindowHandle;
@@ -21,15 +21,11 @@ impl UiWebView {
             .with_autoplay(false)
             .with_on_page_load_handler(move |_, _| with_page_load());
 
-        #[cfg(target_os = "windows")]
-        {
-            let app = APP.get().expect("failed get app context");
-            let dir = app.cache_dir.join("webview");
-            file::create_dir(&dir)?;
-            let dir_str = dir.to_str().expect("failed get dir path");
-            log::debug!("用户数据: {}", dir_str)
-            // todo 等wry实现了指定用户数据目录
-        }
+        let app = get_app();
+        let dir = app.cache_dir.join("webview");
+        file::create_dir(&dir)?;
+        log::debug!("用户数据: {}", dir.display());
+        // todo 等wry实现了指定用户数据目录
 
         #[cfg(not(target_os = "linux"))]
         let webview = builder.build(&window).unwrap();

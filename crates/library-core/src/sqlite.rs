@@ -1,6 +1,6 @@
 mod v202507180;
 
-use crate::app::APP;
+use crate::app::get_app;
 use crate::app_config::AppConfig;
 use crate::boolean;
 use crate::core::{AnyResult, BizError};
@@ -208,7 +208,7 @@ pub fn init() -> AnyResult<()> {
     if let Some(_) = _CONN.get() {
         return Ok(());
     }
-    let path_db = APP.get().unwrap().data_dir.join("sqlite.db");
+    let path_db = get_app().data_dir.join("sqlite.db");
     log::debug!("数据库位置: {}", path_db.display());
     let safe = Connection::open_thread_safe(path_db)?;
     if let Err(_) = _CONN.set(safe) {

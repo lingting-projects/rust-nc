@@ -1,5 +1,5 @@
 use crate::route_global::current_millis;
-use library_core::app::APP;
+use library_core::app::get_app;
 use library_core::core::AnyResult;
 use library_core::sqlite::{query, StatementExt};
 use serde::{Deserialize, Serialize};
@@ -58,7 +58,7 @@ impl TblRule {
     }
 
     pub fn dir_data(id: &str) -> PathBuf {
-        APP.get().unwrap().data_dir.join("rule").join(id.to_string().as_str())
+        get_app().data_dir.join("rule").join(id.to_string().as_str())
     }
 }
 

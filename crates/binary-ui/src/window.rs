@@ -1,7 +1,6 @@
 use crate::init::FIRST;
 use crate::view::UiView;
 use crate::{view, ExecuteEvent, UserEvent};
-use library_core::app::APP;
 use library_core::core::{AnyResult, Exit};
 use library_web::webserver;
 use std::fmt::format;

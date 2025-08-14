@@ -6,7 +6,6 @@ use crate::tbl_setting::TblSettingKernel;
 use crate::tbl_subscribe::TblSubscribe;
 use axum::routing::{get, patch, post};
 use axum::{Json, Router};
-use library_core::app::APP;
 use library_core::app_config::AppConfig;
 use library_core::core::{AnyResult, BizError};
 use library_core::file;

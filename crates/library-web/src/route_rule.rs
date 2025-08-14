@@ -4,7 +4,6 @@ use crate::tbl_rule::{TblRule, TblRuleRefreshDTO, TblRuleUpsertDTO};
 use crate::{http, singbox};
 use axum::routing::{get, patch, post};
 use axum::{Json, Router};
-use library_core::app::APP;
 use library_core::app_config::AppConfig;
 use library_core::core::AnyResult;
 use library_core::file;

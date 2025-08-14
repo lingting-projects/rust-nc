@@ -1,7 +1,7 @@
 use crate::icon;
 use crate::view::UiView;
 use crate::window::dispatch;
-use library_core::app::APP;
+use library_core::app::get_app;
 use library_core::core::{AnyResult, BizError, Exit};
 use library_web::webserver::{WebServer, SERVER};
 use library_web::{settings, webserver};
@@ -259,7 +259,7 @@ fn completed() {
     let url = if cfg!(not(feature = "local-ui")) {
         String::from("http://localhost:30000")
     } else {
-        let app = APP.get().unwrap();
+        let app = get_app();
         format!("file:///{}/index.html", app.ui_dir.to_str().unwrap())
     };
 

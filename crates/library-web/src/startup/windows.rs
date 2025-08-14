@@ -1,4 +1,4 @@
-use library_core::app::{get_app, APP};
+use library_core::app::get_app;
 use library_core::core::{current_millis, AnyResult, BizError};
 use library_core::file;
 use library_core::logger::is_enable_debug;
