@@ -16,10 +16,20 @@ impl UiWebView {
         with_page_load: fn(),
     ) -> AnyResult<UiWebView> {
         // 创建webview
-        let builder = WebViewBuilder::new()
+        let mut builder = WebViewBuilder::new()
             .with_html(html)
             .with_autoplay(false)
             .with_on_page_load_handler(move |_, _| with_page_load());
+
+        #[cfg(not(feature = "prod"))]
+        {
+            builder = builder.with_devtools(true);
+        }
+
+        #[cfg(feature = "prod")]
+        {
+            builder = builder.with_devtools(false);
+        }
 
         let app = get_app();
         let dir = app.cache_dir.join("webview");
