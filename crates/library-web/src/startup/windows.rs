@@ -48,8 +48,6 @@ fn run_timeout(cmd: Command) -> AnyResult<Process> {
 pub fn is_startup() -> AnyResult<bool> {
     let mut cmd = Command::new("powershell");
     cmd.arg("Get-ScheduledTask")
-        .arg("-TaskName")
-        .arg(name)
         .arg("| Select-Object TaskName, @{Name='IsEnabled'; Expression={$_.Settings.Enabled}}");
     let mut process = run_timeout(cmd)?;
     let stdout = process.out_string()?.unwrap_or_else(|| "".into());
