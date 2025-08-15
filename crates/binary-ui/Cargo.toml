@@ -32,11 +32,11 @@ wry = { workspace = true, features = [] }
 tao = { workspace = true, features = [] }
 tray-icon = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread"] }
-fs2 = "0.4"
-interprocess = { version = "2.2" }
+sha2 = { workspace = true }
+rust-single = { workspace = true, features = ["ipc"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
-winapi = { workspace = true, features = [ "winuser", "wincon"] }
+winapi = { workspace = true, features = ["winuser", "wincon"] }
 
 [target.'cfg(target_os = "windows")'.build-dependencies]
 winres = { workspace = true }

@@ -1,10 +1,9 @@
-use crate::ipc::{IpcServer, IpcStream};
-use crate::single::Single;
 use crate::view::UiView;
 use crate::window::{dispatch, WindowExt, WindowManager};
 use library_core::app::get_app;
 use library_core::core::{panic_msg, AnyResult, BizError};
 use library_core::file;
+use rust_single::{Single, SingleBuild};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 use std::{panic, thread};
@@ -15,8 +14,6 @@ use tray_icon::TrayIconEvent;
 
 mod icon;
 mod init;
-mod ipc;
-mod single;
 mod tray;
 mod view;
 mod window;
@@ -32,11 +29,6 @@ pub enum UserEvent {
     MenuEvent(tray_icon::menu::MenuEvent),
 }
 
-fn wake(ipc_path: &str) -> AnyResult<()> {
-    let mut stream = IpcStream::new(ipc_path)?;
-    stream.write("")
-}
-
 fn release_single(single: Single) {
     let path = single.path.clone();
     let path_info = single.path_info.clone();
@@ -45,41 +37,20 @@ fn release_single(single: Single) {
     let _ = file::delete(&path_info);
 }
 
-fn create_single(path: PathBuf, ipc_path: &str) -> AnyResult<Option<Single>> {
-    let single = Single::create(path, ipc_path)?;
+fn create_single(path: PathBuf) -> AnyResult<Option<Single>> {
+    let single = SingleBuild::new(path)
+        .with_ipc(|_| {
+            let _ = dispatch(|w, _| w.force_show());
+        })
+        .build()?;
     if !single.is_single {
         log::error!("存在已启动进程: {}", single.pid.unwrap_or(0));
         log::error!("已启动进程Ipc: {}", single.info);
-        if let Err(e) = wake(&single.info) {
+        if let Err(e) = single.wake("") {
             log::error!("已启动进程唤醒异常! {}", e)
         }
         Err(Box::new(BizError::SingleRunning))
     } else {
-        log::debug!("创建ipc服务: {}", ipc_path);
-        match IpcServer::new(ipc_path) {
-            Ok(server) => {
-                thread::spawn(move || {
-                    loop {
-                        match panic::catch_unwind(|| server.next()) {
-                            Ok(Ok(_)) => {
-                                let _ = dispatch(|w, _| w.force_show());
-                            }
-                            Ok(Err(e)) => {
-                                log::error!("ipc server read err! {}", e)
-                            }
-                            Err(p) => {
-                                log::error!("ipc server read err! {}", panic_msg(p))
-                            }
-                        }
-                    }
-                });
-            }
-            Err(e) => {
-                release_single(single);
-                log::error!("创建ipc服务异常! {}", e);
-                return Err(e);
-            }
-        }
         Ok(Some(single))
     }
 }
@@ -104,9 +75,7 @@ async fn main() -> AnyResult<()> {
     library_core::app::init()?;
     let app = get_app();
     let lock_path = app.cache_dir.join("single.lock");
-    let _ipc_path = app.cache_dir.join("ipc.socket");
-    let ipc_path = _ipc_path.to_str().expect("failed get ipc path");
-    let mut o_single = create_single(lock_path, ipc_path)?;
+    let mut o_single = create_single(lock_path)?;
     let event_loop = EventLoopBuilder::<UserEvent>::with_user_event().build();
     let mut manager = WindowManager::new(&event_loop);
     let mut tray = Some(tray::create(&event_loop)?);

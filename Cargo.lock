@@ -181,11 +181,11 @@ checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
 name = "binary-ui"
 version = "25.7.180"
 dependencies = [
- "fs2",
- "interprocess",
  "library-core",
  "library-web",
  "log",
+ "rust-single",
+ "sha2",
  "tao",
  "tokio",
  "tray-icon",
@@ -2894,6 +2894,18 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "rust-single"
+version = "25.8.40"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ca0b1fa243fff938aa3fc88fb9561aed017f69fc04827e83b99e51df5b3305b4"
+dependencies = [
+ "fs2",
+ "interprocess",
+ "log",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
