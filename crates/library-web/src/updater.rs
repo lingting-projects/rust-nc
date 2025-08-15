@@ -5,6 +5,8 @@ use library_core::core::AnyResult;
 use library_core::data_size::DataSize;
 use library_nc::core::fast;
 use serde::{Deserialize, Serialize};
+use std::os::windows::process::CommandExt;
+use std::process::{exit, Command};
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 struct Asset {
@@ -12,6 +14,7 @@ struct Asset {
     name: String,
     size: u64,
 }
+
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 struct Release {
     tag_name: String,
@@ -46,7 +49,7 @@ pub fn check() -> AnyResult<Option<(String, String, DataSize)>> {
         let option = release
             .assets
             .into_iter()
-            .find(|asset| asset.name.eq("lingting-nc.exe"));
+            .find(|asset| asset.name.eq("lingting-nc.msi"));
 
         if let Some(asset) = option {
             let size = DataSize::of_bytes(asset.size);
@@ -55,4 +58,43 @@ pub fn check() -> AnyResult<Option<(String, String, DataSize)>> {
     }
 
     Ok(None)
+}
+
+pub struct UpdateListener {
+    pub url: String,
+    pub on_download: Box<dyn Fn()>,
+    pub on_install: Box<dyn Fn()>,
+}
+
+pub fn update(listener: UpdateListener) -> AnyResult<()> {
+    use hex::encode;
+    use sha2::{Digest, Sha256};
+
+    let url = listener.url;
+    let sha256_bytes = Sha256::digest(&url);
+    let sha256 = encode(sha256_bytes);
+    let app = get_app();
+    let path = &app.tmp_dir.join(&sha256);
+    let fast = fast(&url);
+
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .enable_io()
+        .enable_time()
+        .build()?;
+    (listener.on_download)();
+    runtime.block_on(async {
+        let response = http::get(&fast).await.expect("文件下载请求异常!");
+        response.overwrite(path).await
+    })?;
+
+    (listener.on_install)();
+    let mut cmd = Command::new("msiexec");
+    cmd.arg("/i")
+        .arg(&path)
+        .arg("/qb")
+        // 独立新进程
+        .creation_flags(0x00000200)
+        .spawn()?;
+
+    exit(0);
 }

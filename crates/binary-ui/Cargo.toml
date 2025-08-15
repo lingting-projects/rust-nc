@@ -32,8 +32,6 @@ wry = { workspace = true, features = [] }
 tao = { workspace = true, features = [] }
 tray-icon = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread"] }
-sha2 = { workspace = true }
-hex = { workspace = true }
 rust-single = { workspace = true, features = ["ipc"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]

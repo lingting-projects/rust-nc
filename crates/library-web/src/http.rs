@@ -2,18 +2,36 @@ use library_core::app::app_map;
 use library_core::core::AnyResult;
 use reqwest::header::{HeaderMap, HeaderValue};
 use reqwest::{Client, ClientBuilder, Method, RequestBuilder, Response, Url};
+use std::fs::File;
+use std::io::Write;
+use std::path::Path;
 use std::str::FromStr;
 use std::sync::LazyLock;
 use std::time::Duration;
 
 pub trait ResponseExt {
     async fn read_text(self) -> AnyResult<String>;
+    async fn overwrite<P: AsRef<Path>>(self, p: P) -> AnyResult<()>;
 }
 
 impl ResponseExt for Response {
     async fn read_text(self) -> AnyResult<String> {
         let text = self.text().await?;
         Ok(text)
+    }
+
+    async fn overwrite<P: AsRef<Path>>(mut self, p: P) -> AnyResult<()> {
+        let mut file = File::options()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open(p)?;
+        while let Some(bytes) = self.chunk().await? {
+            file.write_all(&bytes)?;
+            file.flush()?;
+        }
+
+        Ok(())
     }
 }
 

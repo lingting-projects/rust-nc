@@ -27,6 +27,8 @@ reqwest = { workspace = true, features = ["gzip", "native-tls"] }
 serde_json = { workspace = true }
 encoding = { workspace = true }
 regex = { workspace = true }
+sha2 = { workspace = true }
+hex = { workspace = true }
 
 [target.'cfg(target_os="windows")'.dependencies]
 windows = { workspace = true, features = [

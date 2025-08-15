@@ -181,12 +181,10 @@ checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
 name = "binary-ui"
 version = "25.7.180"
 dependencies = [
- "hex",
  "library-core",
  "library-web",
  "log",
  "rust-single",
- "sha2",
  "tao",
  "tokio",
  "tray-icon",
@@ -1848,6 +1846,7 @@ version = "25.7.180"
 dependencies = [
  "axum",
  "encoding",
+ "hex",
  "library-core",
  "library-nc",
  "library-sing-box",
@@ -1856,6 +1855,7 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
+ "sha2",
  "sqlite",
  "tokio",
  "tower-http",

@@ -35,20 +35,20 @@ impl TblSetting {
 
     pub fn upsert(&self) -> AnyResult<i32> {
         // 要开机自启
-        if self.software.startup {  
+        if self.software.startup {
             // 没设置开机自启
             if !startup::is_startup()? {
                 // 设置开机自启失败
-                if !startup::enable()? { 
-                    return Err(Box::new(BizError::StartupOperation))
+                if !startup::enable()? {
+                    return Err(Box::new(BizError::StartupOperation));
                 }
             }
         }
         // 要关闭开机自启, 但是没关成
         else if !startup::disable()? {
-            return Err(Box::new(BizError::StartupOperation))
+            return Err(Box::new(BizError::StartupOperation));
         }
-        
+
         let mut sql = format!(
             "REPLACE INTO {} (`key`, `value`) VALUES ",
             AppConfig::table_name
@@ -252,26 +252,5 @@ impl TblSettingKernel {
             &serde_json::Value::from(self.dns_proxy.clone()),
         )?));
         Ok(())
-    }
-}
-
-#[derive(Default, Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct TblAppState {
-    pub checking: bool,
-    pub new: bool,
-    pub downloading: bool,
-    pub unzipping: bool,
-    pub installing: bool,
-    pub installed: bool,
-    pub error: bool,
-    /// 异常文本
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub reason: Option<String>,
-}
-
-impl TblAppState {
-    pub fn new() -> AnyResult<Self> {
-        Ok(Default::default())
     }
 }

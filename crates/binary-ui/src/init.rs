@@ -255,14 +255,8 @@ fn check_update() -> Option<(String, String, DataSize)> {
 }
 
 fn update(version: String, url: String, size: DataSize) {
-    use hex::encode;
-    use sha2::{Digest, Sha256};
-
-    let sha256_bytes = Sha256::digest(&url);
-    let sha256 = encode(sha256_bytes);
     log::debug!("检测到新版本: {}", &version);
     log::debug!("下载地址: {}", &url);
-    log::debug!("sha256: {}", &sha256);
     log::debug!("大小: {}", &size);
 }
 
