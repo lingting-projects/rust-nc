@@ -14,14 +14,17 @@ pub fn create_dir<P: AsRef<Path>>(path: P) -> AnyResult<()> {
 
 pub fn create_parent<P: AsRef<Path>>(path: P) -> AnyResult<()> {
     let p = path.as_ref();
-    let parent = p.parent().unwrap();
-    create_dir(parent)
+    if !p.exists() {
+        let parent = p.parent().unwrap();
+        create_dir(parent)?;
+    }
+    Ok(())
 }
 
 pub fn create<P: AsRef<Path>>(path: P) -> AnyResult<()> {
     let p = path.as_ref();
-    create_parent(p)?;
     if !p.exists() {
+        create_parent(p)?;
         File::create(p)?;
     }
 
@@ -30,9 +33,14 @@ pub fn create<P: AsRef<Path>>(path: P) -> AnyResult<()> {
 
 pub fn overwrite<P: AsRef<Path>>(path: P, content: &str) -> AnyResult<()> {
     create(&path)?;
-    let mut file = File::options().write(true).open(path)?;
-    file.set_len(0)?;
-    file.write_all(content.as_bytes())?;
+    let bytes = content.as_bytes();
+    overwrite_bytes(path, bytes)
+}
+
+pub fn overwrite_bytes<P: AsRef<Path>>(path: P, bytes: &[u8]) -> AnyResult<()> {
+    create(&path)?;
+    let mut file = File::options().write(true).truncate(true).open(path)?;
+    file.write_all(bytes)?;
     Ok(())
 }
 

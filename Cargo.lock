@@ -1838,10 +1838,12 @@ name = "library-web"
 version = "25.7.180"
 dependencies = [
  "axum",
+ "encoding",
  "library-core",
  "library-nc",
  "library-sing-box",
  "log",
+ "regex",
  "reqwest",
  "serde",
  "serde_json",

@@ -1,9 +1,11 @@
+use encoding::{DecoderTrap, Encoding};
 use library_core::app::get_app;
 use library_core::core::{current_millis, AnyResult, BizError};
 use library_core::file;
 use library_core::logger::is_enable_debug;
 use library_core::system::process::Process;
 use library_sing_box::State;
+use regex::Regex;
 use std::env;
 use std::io::Read;
 use std::process::{Child, Command, Stdio};
@@ -121,15 +123,17 @@ pub fn enable() -> AnyResult<bool> {
     let user_sid = user_sid()?;
     let _exe = env::current_exe()?;
     let bin = _exe.to_str().expect("get exe path err");
-    let template = include_str!("../../../../assets/startup_windows.xml");
+    let bytes = include_bytes!("../../../../assets/startup_windows.xml");
+    let template = encoding::all::UTF_16BE.decode(bytes, DecoderTrap::Replace)?;
 
     let xml = template
         .replace("@author@", &author)
         .replace("@userid@", &user_sid)
-        .replace("@exe@", &bin)
-        .replace("\n", "\r\n");
+        .replace("@exe@", &bin);
+    let re =Regex::new(r"\r?\n")?;
+    let xml_crlf = re.replace_all(&xml, "\r\n");
 
-    file::overwrite(path, &xml)?;
+    file::overwrite(path, &xml_crlf)?;
 
     let mut cmd = Command::new("powershell");
 
