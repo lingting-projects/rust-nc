@@ -3,8 +3,9 @@ use crate::view::UiView;
 use crate::window::dispatch;
 use library_core::app::get_app;
 use library_core::core::{AnyResult, BizError, Exit};
+use library_core::data_size::DataSize;
 use library_web::webserver::{WebServer, SERVER};
-use library_web::{settings, webserver};
+use library_web::{settings, updater, webserver};
 use std::process::exit;
 use std::sync::{Mutex, OnceLock};
 use std::{panic, thread};
@@ -159,9 +160,9 @@ fn _init() -> AnyResult<()> {
     }
     emit(LoadingState::CheckUpdate);
     let option = check_update();
-    if option.is_some() {
+    if let Some((version, url, size)) = option {
         emit(LoadingState::Updating);
-        update(option.unwrap());
+        update(version, url, size);
         if INIT_ERROR.get().is_some() {
             return Err(Box::new(BizError::UiInit));
         }
@@ -245,13 +246,25 @@ fn start_web() -> AnyResult<()> {
     Ok(())
 }
 
-fn init_db() {}
-
-fn check_update() -> Option<String> {
-    None
+fn init_db() {
+    // 留着, 后面说不定需要
 }
 
-fn update(url: String) {}
+fn check_update() -> Option<(String, String, DataSize)> {
+    updater::check().ok().flatten()
+}
+
+fn update(version: String, url: String, size: DataSize) {
+    use hex::encode;
+    use sha2::{Digest, Sha256};
+
+    let sha256_bytes = Sha256::digest(&url);
+    let sha256 = encode(sha256_bytes);
+    log::debug!("检测到新版本: {}", &version);
+    log::debug!("下载地址: {}", &url);
+    log::debug!("sha256: {}", &sha256);
+    log::debug!("大小: {}", &size);
+}
 
 fn assets() {}
 

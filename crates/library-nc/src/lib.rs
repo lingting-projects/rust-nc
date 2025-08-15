@@ -1,7 +1,6 @@
 pub mod area;
 pub mod clash;
 pub mod core;
-pub mod data_size;
 pub mod http;
 pub mod kernel;
 pub mod rule;
