@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+    <?ifndef LIB ?>
+      <?define LIB = 0 ?>
+    <?endif ?>
+    <?ifndef BIN ?>
+      <?define BIN = 0 ?>
+    <?endif ?>
+    <?ifndef UI ?>
+      <?define UI = 0 ?>
+    <?endif ?>
+
+    <!--
+        语言: 2052 中文
+        范围: perMachine 一个电脑装一次
+        字符集: 65001 utf-8
+    -->
+    <Package
+        Name="_name"
+        Manufacturer="lingting"
+        Version="_version"
+        Language="2052"
+        Codepage="65001"
+        Scope="perMachine"
+        UpgradeCode="bc5d0591-984c-4698-9164-0f8d89442830"
+    >
+        <!-- 所有文件嵌入到msi中 -->
+        <MediaTemplate EmbedCab="yes" />
+        <!-- 定义图标 -->
+        <Icon Id="MainIcon" SourceFile="icons/256x256.ico" />
+        <Property Id="ARPPRODUCTICON" Value="MainIcon" />
+
+        <!-- 禁止降级, 升级的前先卸载低版本 -->
+        <MajorUpgrade DowngradeErrorMessage="当前应用已存在更高版本, 无法安装当前版本!" />
+
+        <!-- 定义安装程序的目录结构 -->
+        <StandardDirectory Id="ProgramFiles64Folder">
+            <Directory Id="ParentProgramFilesFolder" Name="lingting">
+                <Directory Id="INSTALLFOLDER" Name="_name">
+                    <Directory Id="WebViewFolder" Name="_name.exe.WebView2" />
+                    <Directory Id="UiFolder" Name="ui" />
+                </Directory>
+            </Directory>
+        </StandardDirectory>
+
+        <!-- 定义开始菜单的目录结构 -->
+        <StandardDirectory Id="ProgramMenuFolder">
+            <Directory Id="ParentProgramMenuFolder" Name="lingting">
+                <Directory Id="ApplicationProgramsFolder" Name="_name" />
+            </Directory>
+        </StandardDirectory>
+
+        <!-- 主程序资源 -->
+        <ComponentGroup Id="MainComponents">
+            <Component
+                Id="Main"
+                Guid="7d3f9b11-7c8b-4798-becf-a48d87152f08"
+                Directory="INSTALLFOLDER"
+            >
+                <!-- 相对于编译指令执行的位置 -->
+                <File Source="_name.exe" />
+                <?if $(var.BIN) = 1 ?>
+                <File Source="_name-singbox" />
+                <?endif ?>
+                <?if $(var.LIB) = 1 ?>
+                <File Source="libsingbox.dll" />
+                <?endif ?>
+
+                <!-- 卸载安装目录 -->
+                <RemoveFolder Id="RemoveInstallFolder" Directory="INSTALLFOLDER" On="uninstall" />
+            </Component>
+
+            <!-- 快捷方式 -->
+            <Component Id="MainShortcut"
+                Guid="9885f628-1b5f-4e3a-a219-01576e9b43b8"
+                Directory="INSTALLFOLDER"
+            >
+                <Shortcut
+                    Id="MainDesktopShortcut"
+                    Name="_name"
+                    Description="_desc"
+                    Target="[INSTALLFOLDER]_name.exe"
+                    WorkingDirectory="INSTALLFOLDER"
+                    Icon="MainIcon"
+                    IconIndex="0"
+                    Directory="DesktopFolder"
+                />
+
+                <Shortcut
+                    Id="MainStartMenuShortcut"
+                    Name="_name"
+                    Description="_desc"
+                    Target="[INSTALLFOLDER]_name.exe"
+                    WorkingDirectory="INSTALLFOLDER"
+                    Icon="MainIcon"
+                    IconIndex="0"
+                    Directory="ApplicationProgramsFolder"
+                />
+
+                <RemoveFolder Id="CleanUpShortcuts" Directory="ApplicationProgramsFolder" On="uninstall" />
+            </Component>
+
+            <!-- WebViewFolder 组件 - 配置文件夹及权限 -->
+            <Component Id="WebViewDirectory"
+                Guid="a1b2c3d4-e5f6-4a5b-9c8d-7e6f5a4b3c2d"
+                Directory="WebViewFolder"
+            >
+                <!-- 确保文件夹被创建 -->
+                <CreateFolder>
+                    <!-- 设置所有人可读写权限 -->
+                    <Permission User="Everyone" GenericAll="yes" />
+                </CreateFolder>
+
+                <RemoveFolder Id="RemoveWebViewFolder" Directory="WebViewFolder" On="uninstall" />
+            </Component>
+
+            <!-- 包含所有的icon -->
+            <Files Include="icons/**" Directory="INSTALLFOLDER" Subdirectory="icons" />
+
+            <?if $(var.UI) = 1 ?>
+            <!-- UiFolder 组件 - 配置文件夹及权限 -->
+            <Component Id="UiDirectory"
+                Guid="a1b2c3d1-e5f6-4a5b-9c8d-7e6f5a4b3c2d"
+                Directory="UiFolder"
+            >
+                <CreateFolder>
+                    <Permission User="Everyone" Read="yes" GenericRead="yes" />
+                </CreateFolder>
+
+                <RemoveFolder Id="RemoveUiFolder" Directory="UiFolder" On="uninstall" />
+            </Component>
+
+            <Files Include="ui/**" Directory="INSTALLFOLDER" Subdirectory="ui" />
+            <?endif ?>
+        </ComponentGroup>
+
+        <!-- 可安装功能 -->
+        <Feature Id="App" AllowAbsent="no" ConfigurableDirectory="INSTALLFOLDER" >
+            <ComponentGroupRef Id="MainComponents" />
+        </Feature>
+    </Package>
+</Wix>

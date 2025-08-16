@@ -16,15 +16,15 @@ path = "src/main.rs"
 
 [features]
 default = ["dev"]
-dev = ["library-core/dev", "library-core/redirect"]
-uat = ["library-core/uat", "local-ui", "library-core/redirect"]
-prod = ["library-core/prod", "local-ui", "library-core/redirect"]
+dev = ["library-core/dev"]
+uat = ["library-core/uat", "local-ui"]
+prod = ["library-core/prod", "local-ui"]
 
 trace = ["library-web/trace", "library-core/trace", "wry/tracing"]
 local-ui = []
 
 [dependencies]
-library-core = { path = "../library-core" }
+library-core = { path = "../library-core", features = ["redirect"] }
 library-web = { path = "../library-web" }
 log = { workspace = true }
 # tauri 基础组件

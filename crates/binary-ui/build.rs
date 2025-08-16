@@ -27,7 +27,7 @@ fn win(profile: &str) {
     <assemblyIdentity
         version="{version}.0"
         name="{name}"
-        type="win32"
+        type=""
     />
     {manifest_addition}
 </assembly>

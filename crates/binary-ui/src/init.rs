@@ -251,7 +251,11 @@ fn init_db() {
 }
 
 fn check_update() -> Option<(String, String, DataSize)> {
-    updater::check().ok().flatten()
+    panic::catch_unwind(|| updater::check())
+        .ok()
+        .map(|r| r.ok())
+        .flatten()
+        .flatten()
 }
 
 fn update(version: String, url: String, size: DataSize) {
@@ -267,7 +271,14 @@ fn completed() {
         String::from("http://localhost:30000")
     } else {
         let app = get_app();
-        format!("file:///{}/index.html", app.ui_dir.to_str().unwrap())
+        // 优先使用外置ui
+        let mut path = app.ui_dir.join("index.html");
+        // 外置ui没有, 使用内置ui
+        if !path.exists() {
+            path = app.install_dir.join("ui").join("index.html");
+        }
+        log::info!("path: {}", path.display());
+        format!("file:///{}", path.to_str().unwrap())
     };
 
     dispatch(move |w, wv| {

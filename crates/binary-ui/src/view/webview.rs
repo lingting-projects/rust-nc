@@ -15,21 +15,17 @@ impl UiWebView {
         html: &str,
         with_page_load: fn(),
     ) -> AnyResult<UiWebView> {
+        let mut devtools = false;
+        if cfg!(not(feature = "prod")) {
+            devtools = true;
+        }
+
         // 创建webview
-        let mut builder = WebViewBuilder::new()
+        let builder = WebViewBuilder::new()
             .with_html(html)
             .with_autoplay(false)
+            .with_devtools(devtools)
             .with_on_page_load_handler(move |_, _| with_page_load());
-
-        #[cfg(not(feature = "prod"))]
-        {
-            builder = builder.with_devtools(true);
-        }
-
-        #[cfg(feature = "prod")]
-        {
-            builder = builder.with_devtools(false);
-        }
 
         let app = get_app();
         let dir = app.cache_dir.join("webview");
