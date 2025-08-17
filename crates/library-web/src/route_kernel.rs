@@ -9,8 +9,6 @@ use library_core::app_config::AppConfig;
 use library_core::core::AnyResult;
 use library_core::file;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
-use std::sync::{LazyLock, Mutex};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -24,7 +22,10 @@ pub struct KernelState {
     pub ui: String,
 }
 
-fn _default_start(config: TblConfig, work_dir: PathBuf) -> AnyResult<()> {
+pub(crate) fn start(config: TblConfig) -> AnyResult<()> {
+    TblSettingRun::set_selected(&config.id)?;
+    let work_dir = get_app().cache_dir.join("sing_box");
+    file::create_dir(&work_dir)?;
     let json = config.sing_box_json();
     singbox::start(&json, &work_dir)
 }
@@ -51,26 +52,10 @@ async fn state() -> R<KernelState> {
     _state().into()
 }
 
-static _start: LazyLock<
-    Mutex<Box<dyn Fn(TblConfig, PathBuf) -> AnyResult<()> + 'static + Send + Sync>>,
-> = LazyLock::new(|| Mutex::new(Box::new(_default_start)));
-
-pub fn set_start<F: Fn(TblConfig, PathBuf) -> AnyResult<()> + 'static + Send + Sync>(
-    f: F,
-) -> AnyResult<()> {
-    *_start.lock().unwrap() = Box::new(f);
-    Ok(())
-}
-
-async fn start(Json(po): Json<IdPo>) -> R<()> {
+async fn _start(Json(po): Json<IdPo>) -> R<()> {
     let id = po.id.expect("必须指定启动配置!");
     let config = TblConfig::find(&id).unwrap().expect("未找到对应配置!");
-    TblSettingRun::set_selected(&id).unwrap();
-    let work_dir_path = get_app()        .cache_dir
-        .join("sing_box");
-    file::create_dir(&work_dir_path).unwrap();
-    let func = _start.lock().unwrap();
-    func(config, work_dir_path).into()
+    start(config).into()
 }
 
 async fn stop() -> R<()> {
@@ -80,6 +65,6 @@ async fn stop() -> R<()> {
 pub fn fill(router: Router) -> Router {
     router
         .route("/kernel/state", get(state))
-        .route("/kernel/start", post(start))
+        .route("/kernel/start", post(_start))
         .route("/kernel/stop", post(stop))
 }

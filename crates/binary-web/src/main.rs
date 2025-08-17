@@ -8,6 +8,7 @@ use std::sync::Mutex;
 #[tokio::main]
 async fn main() -> AnyResult<()> {
     library_core::app::init()?;
+    library_web::init()?;
     webserver::wake()?;
     log::debug!("构建服务!");
     let (port, server) = webserver::build().await?;

@@ -73,6 +73,7 @@ async fn main() -> AnyResult<()> {
     }
 
     library_core::app::init()?;
+    library_web::init()?;
     let app = get_app();
     let lock_path = app.cache_dir.join("single.lock");
     let mut o_single = create_single(lock_path)?;

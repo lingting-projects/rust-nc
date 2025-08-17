@@ -103,6 +103,7 @@ impl TblSettingRun {
     pub fn set_selected(id: &str) -> AnyResult<()> {
         AppConfig::set(Self::key_selected, id)
     }
+
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

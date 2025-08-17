@@ -1,3 +1,6 @@
+use crate::tbl_config::TblConfig;
+use crate::tbl_setting::TblSettingRun;
+use crate::{route_kernel, settings};
 use library_core::core::{AnyResult, BizError};
 use library_sing_box::{SingBox, State};
 use std::path::Path;
@@ -46,4 +49,18 @@ pub fn json_to_srs(json_path: &Path, srs_path: &Path) -> AnyResult<()> {
             Err(Box::new(BizError::SingBoxInit))
         }
     }
+}
+
+pub(crate) fn init() -> AnyResult<()> {
+    let run = TblSettingRun::get()?;
+    if run.auto
+        && let Some(config_id) = run.selected
+        && !config_id.is_empty()
+    {
+        if let Some(config) = TblConfig::find(&config_id)? {
+            route_kernel::start(config)?
+        }
+    }
+
+    Ok(())
 }

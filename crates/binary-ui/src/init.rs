@@ -187,7 +187,7 @@ fn init_system() -> AnyResult<()> {
     )?;
 
     dispatch(move |w, _| {
-        if !*settings::is_minimize {
+        if !*settings::start_minimize {
             w.set_visible(true)
         }
         w.set_window_icon(Some(icon));
