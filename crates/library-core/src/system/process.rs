@@ -7,7 +7,8 @@ use std::time::Duration;
 
 pub struct Process {
     child: Child,
-    pub charset: String,
+    charset: String,
+    id: u32,
     status: Option<ExitStatus>,
 }
 
@@ -25,12 +26,15 @@ impl Process {
             cmd.creation_flags(0x08000000);
         }
         let child = cmd.spawn()?;
+        let id = child.id();
         Ok(Self {
             child,
             charset,
+            id,
             status: None,
         })
     }
+
     pub fn new_pipe(cmd: Command) -> AnyResult<Self> {
         let charset = system::charset::get_system()?;
         Self::new_pipe_charset(cmd, charset)
@@ -126,6 +130,18 @@ impl Process {
 
         Ok(None)
     }
+
+    // region basic
+
+    pub fn charset(&self) -> String {
+        self.charset.clone()
+    }
+
+    pub fn id(&self) -> u32 {
+        self.id
+    }
+
+    // endregion
 }
 
 impl Drop for Process {

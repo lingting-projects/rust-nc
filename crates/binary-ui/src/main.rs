@@ -103,6 +103,12 @@ async fn main() -> AnyResult<()> {
                     if let Some(single) = o {
                         release_single(single)
                     }
+                    match library_web::stop() {
+                        Ok(_) => {}
+                        Err(e) => {
+                            log::error!("关闭前停止SingBox异常! {}", e)
+                        }
+                    }
                     *control_flow = ControlFlow::Exit;
                 }
             }

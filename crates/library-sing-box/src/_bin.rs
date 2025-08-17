@@ -75,7 +75,8 @@ impl SingBox for BinSingBox {
                 Err(e) => {
                     // 没结束, 放回去
                     self.process = Some(c);
-                    log::error!("singbox结束进程异常! {}", e)
+                    log::error!("singbox结束进程异常! {}", e);
+                    return Err(e);
                 }
             }
         }
@@ -107,4 +108,10 @@ pub fn new() -> AnyResult<BinSingBox> {
         error: false,
         reason: None,
     })
+}
+
+impl Drop for BinSingBox {
+    fn drop(&mut self) {
+        let _ = self.stop();
+    }
 }

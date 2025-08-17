@@ -16,3 +16,5 @@ mod startup;
 pub mod updater;
 
 pub use crate::route_kernel::set_start;
+pub use crate::singbox::start;
+pub use crate::singbox::stop;
