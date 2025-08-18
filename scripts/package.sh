@@ -66,7 +66,7 @@ fi
 if [ $_tar = true ]; then
   echo "生成压缩包"
   cd $DIR_TAR
-  tar zcvf $NAME.tar.gz icons/ $NAME $NAME.exe $NAME-singbox libsingbox.* ui/
+  tar zcf $NAME.tar.gz icons/ $NAME $NAME.exe $NAME-singbox libsingbox.* ui/
   mv $NAME.tar.gz ../
 fi
 
