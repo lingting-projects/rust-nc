@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-and-test:
+  build:
     # 在不同操作系统上运行
     runs-on: ${{ matrix.os }}
     strategy:
@@ -53,4 +53,6 @@ jobs:
             ui/yarn.lock
 
       - name: 构建项目
-        run: npm install -g tyarn && sh package.sh -b -i -t
+        run: |
+          npm install -g tyarn
+          sh package.sh -b -t

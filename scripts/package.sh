@@ -1,6 +1,6 @@
 #!/bin/bash
 
-DIR_ROOT=$(cd "$(dirname "$0")" && pwd)
+DIR_ROOT=$(cd "$(dirname "$0")" && cd .. && pwd)
 DIR_TAR="$DIR_ROOT/target/tar"
 
 NAME="lingting-nc"
@@ -20,12 +20,15 @@ echo "  描述: $DESC"
 _build=false
 _ui=false
 _tar=false
+# 是否编译当前平台特定的包
+_special=false
 _args=()
 while [ "$#" -gt 0 ]; do
     case "$1" in
         -b) _build=true; shift 1 ;;
         -i) _ui=true; shift 1 ;;
         -t) _tar=true; shift 1 ;;
+        -s) _special=true; shift 1 ;;
         *) _args+=("$1"); shift ;;
     esac
 done
@@ -33,7 +36,7 @@ done
 if [ $_build = true ]; then
   echo "编译主程序"
   cd "$DIR_ROOT"
-  bash build.sh "${_args[@]}"
+  bash scripts/build.sh "${_args[@]}"
   _bc=$?
 
   if [ $_bc -ne 0 ]; then
@@ -64,6 +67,10 @@ if [ $_tar = true ]; then
   cd $DIR_TAR
   tar zcvf $NAME.tar.gz icons/ $NAME $NAME.exe $NAME-singbox libsingbox.* ui/
   mv $NAME.tar.gz ../
+fi
+
+if [ $_special != true ]; then
+  exit 0
 fi
 
 if [ "$OS" != "Windows_NT" ]; then

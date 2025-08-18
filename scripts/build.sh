@@ -1,5 +1,7 @@
 #!/bin/bash
 
+DIR_ROOT=$(cd "$(dirname "$0")" && cd .. && pwd)
+
 profile="prod"
 features=()
 clean=false
@@ -28,6 +30,8 @@ if [ ${#features[@]} -gt 0 ]; then
 fi
 
 build_cmd="cargo build -p binary-ui --release --no-default-features $feature_args"
+
+cd "$DIR_ROOT"
 
 if [ "$clean" = true ]; then
     echo "cargo clean"
