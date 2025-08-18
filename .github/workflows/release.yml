@@ -36,8 +36,17 @@ jobs:
           }
           # 禁用驱动签名强制（仅当前会话有效）
           bcdedit /set testsigning on
-          # 静默安装Wix（不显示界面，安装到默认路径）
-          msiexec /i ${{ env.WIX_MSI_PATH }} /quiet /norestart
+          echo "开始安装WiX..."
+          $installProcess = Start-Process -FilePath msiexec.exe `
+            -ArgumentList "/i `"$path`" /quiet /norestart /l*v `"${{ runner.temp }}\wix-install.log`"" `
+            -Wait -PassThru -Verb RunAs  # 以管理员权限运行
+            
+          if ($installProcess.ExitCode -ne 0) {
+            Write-Error "WiX安装失败，退出代码: $($installProcess.ExitCode)"
+            # 输出安装日志（方便调试）
+            Get-Content "${{ runner.temp }}\wix-install.log" | Write-Error
+            exit 1
+          }
           wix -version
 
       - name: 缓存 Rust
