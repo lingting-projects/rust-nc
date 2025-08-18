@@ -16,6 +16,37 @@ jobs:
       - name: 拉取代码
         uses: actions/checkout@v4
 
+      - name: 缓存 Wix
+        if: ${{ matrix.os == 'windows-latest' }}
+        uses: actions/cache@v4
+        id: cache-wix
+        with:
+          path: C:\Program Files (x86)\WiX Toolset v6.0
+          key: ${{ runner.os }}-wix
+      - name: 安装 Wix
+        if: ${{ matrix.os == 'windows-latest' && steps.cache-wix.outputs.cache-hit != 'true'}}
+        shell: pwsh
+        run: |
+          $wixMsiUrl = "https://github.com/wixtoolset/wix/releases/download/v6.0.1/wix-cli-x64.msi"
+          New-Item -ItemType Directory -Path ~\wix -Force | Out-Null
+          Invoke-WebRequest -Uri $wixMsiUrl -OutFile ~\wix6-installer.msi
+          Write-Host "Wix MSI下载完成"
+          
+          # 静默安装Wix（不显示界面，安装到默认路径）
+          msiexec /i ~\wix6-installer.msi /quiet /norestart
+
+          # 验证安装是否成功
+          $wixInstallPath = "C:\Program Files\WiX Toolset v6.0\bin"
+          if (-not (Test-Path "$wixInstallPath\wix.exe")) {
+            Write-Error "Wix 安装失败"
+            exit 1
+          }
+      - name: 设置 Wix 环境
+        if: ${{ matrix.os == 'windows-latest' }}
+        shell: pwsh
+        run: |
+          echo "$wixInstallPath" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
       - name: 缓存 Rust
         uses: actions/cache@v4
         id: cache-rust
@@ -24,7 +55,6 @@ jobs:
             ~/.cargo
             ./target
           key: rust-${{ runner.os }}-1.88.0
-
       - name: 安装 Rust
         uses: dtolnay/rust-toolchain@master
         if: steps.cache-rust.outputs.cache-hit != 'true'
@@ -43,7 +73,6 @@ jobs:
         with:
           repository: lingting-projects/rust-nc-ui
           path: ui
-
       - name: 安装 Node
         uses: actions/setup-node@v4
         with:
@@ -51,39 +80,6 @@ jobs:
           cache: 'yarn'
           cache-dependency-path: |
             ui/yarn.lock
-
-      - name: 缓存 Wix
-        if: ${{ matrix.os == 'windows-latest' }}
-        uses: actions/cache@v4
-        id: cache-wix
-        with:
-          path: C:\Program Files (x86)\WiX Toolset v6.0
-          key: ${{ runner.os }}-wix
-
-      - name: 安装 Wix
-        if: ${{ matrix.os == 'windows-latest' && steps.cache-wix.outputs.cache-hit != 'true'}}
-        shell: pwsh
-        run: |
-          $wixMsiUrl = "https://github.com/wixtoolset/wix/releases/download/v6.0.1/wix-cli-x64.msi"
-          New-Item -ItemType Directory -Path ~\wix -Force | Out-Null
-          Invoke-WebRequest -Uri $wixMsiUrl -OutFile ~\wix6-installer.msi
-          Write-Host "Wix MSI下载完成"
-          
-          # 静默安装Wix（不显示界面，安装到默认路径）
-          msiexec /i ~\wix6-installer.msi /quiet /norestart /log ~\wix-install.log
-
-          # 验证安装是否成功
-          $wixInstallPath = "C:\Program Files\WiX Toolset v6.0\bin"
-          if (-not (Test-Path "$wixInstallPath\wix.exe")) {
-            Write-Error "Wix 安装失败"
-            exit 1
-          }
-
-      - name: 设置 Wix 环境
-        if: ${{ matrix.os == 'windows-latest' }}
-        shell: pwsh
-        run: |
-          echo "$wixInstallPath" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: 构建项目
         run: |
