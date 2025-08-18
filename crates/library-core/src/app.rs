@@ -17,8 +17,22 @@ static OWNER: &'static str = "lingting-projects";
 static REPO: &'static str = "rust-nc";
 
 static START_ID: LazyLock<String> = LazyLock::new(|| next_str());
+
+static DIR_INSTALL: LazyLock<PathBuf> = LazyLock::new(|| {
+    env::current_exe()
+        .expect("Failed to get executable path")
+        .parent()
+        .expect("Failed to get parent directory of executable")
+        .to_path_buf()
+});
 static DIR_GLOBAL: LazyLock<PathBuf> = LazyLock::new(|| {
-    let dir = if cfg!(windows) {
+    let dir = if (cfg!(debug_assertions)) {
+        DIR_INSTALL
+            .join("runtime")
+            .to_str()
+            .expect("failed get debug runtime dir")
+            .to_string()
+    } else if cfg!(windows) {
         env::var("ALLUSERSPROFILE").expect("ALLUSERSPROFILE environment variable not set")
     } else if cfg!(target_os = "linux") {
         "/usr/local/share/".to_string()
@@ -26,12 +40,18 @@ static DIR_GLOBAL: LazyLock<PathBuf> = LazyLock::new(|| {
         "/Library/Application Support/".to_string()
     };
 
-    let path = PathBuf::from(dir).join(ID);
+    let mut path = PathBuf::from(dir);
+    if (cfg!(not(debug_assertions))) {
+        path = path.join(ID)
+    }
 
     file::create_dir(&path).expect("Failed to create global directory");
     path
 });
 static DIR_TEMP: LazyLock<PathBuf> = LazyLock::new(|| {
+    if cfg!(debug_assertions) {
+        return DIR_GLOBAL.join("temp");
+    }
     let tmp_dir = env::temp_dir();
     let path = tmp_dir.join(ID);
     file::create_dir(&path).expect("Failed to create tmp directory");
@@ -80,7 +100,7 @@ pub struct Application {
     /// 运行目录
     pub startup_dir: PathBuf,
     /// 安装目录
-    pub install_dir: PathBuf,
+    pub install_dir: &'static PathBuf,
 
     // 配置属性
     pub is_dev: bool,
@@ -89,17 +109,9 @@ pub struct Application {
 
 impl Application {
     pub fn new() -> Self {
-        // 获取启动目录和安装目录
+        log::trace!("安装目录: {}", DIR_INSTALL.display());
         let startup_dir = env::current_dir().expect("Failed to get current directory");
         log::trace!("运行目录: {}", startup_dir.display());
-        let install_dir = {
-            env::current_exe()
-                .expect("Failed to get executable path")
-                .parent()
-                .expect("Failed to get parent directory of executable")
-                .to_path_buf()
-        };
-        log::trace!("安装目录: {}", install_dir.display());
 
         // 计算属性
         let mut is_dev = true;
@@ -129,7 +141,7 @@ impl Application {
             logs_dir: &*DIR_LOGS,
             ui_dir: &*DIR_UI,
             startup_dir,
-            install_dir,
+            install_dir: &*DIR_INSTALL,
             is_dev,
             run_on_root,
         }
@@ -174,7 +186,7 @@ fn log_simple() {
 }
 
 fn _init() -> AnyResult<()> {
-    #[cfg(feature = "redirect")]
+    #[cfg(all(feature = "redirect", not(debug_assertions)))]
     crate::redirect::redirect_dir(&*DIR_LOGS)?;
     #[cfg(feature = "simple_logger")]
     log_simple();

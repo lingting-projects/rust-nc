@@ -215,8 +215,10 @@ impl Snowflake {
     }
 }
 
-static DEFAULT: LazyLock<Mutex<Snowflake>> =
-    LazyLock::new(|| Mutex::new(Snowflake::with_default_params(0, 0).unwrap()));
+static DEFAULT: LazyLock<Mutex<Snowflake>> = LazyLock::new(|| {
+    let worker_id = if cfg!(debug_assertions) { 0 } else { 1 };
+    Mutex::new(Snowflake::with_default_params(worker_id, 0).unwrap())
+});
 
 /// 直接设置默认的 Snowflake 实例
 pub fn set_default(snowflake: Snowflake) {

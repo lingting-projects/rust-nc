@@ -95,9 +95,7 @@ pub fn panic_msg(p: Box<dyn Any + Send>) -> String {
 #[cfg(target_os = "windows")]
 pub fn is_root() -> bool {
     let (tx, rx) = mpsc::channel();
-
     thread::spawn(move || {
-        // 捕获线程内的恐慌
         let result = std::panic::catch_unwind(|| {
             // 构建命令
             let mut cmd = Command::new("cmd");
@@ -113,7 +111,6 @@ pub fn is_root() -> bool {
             }
         });
 
-        // 发送结果（无论是否恐慌）
         let _ = tx.send(result);
     });
 
