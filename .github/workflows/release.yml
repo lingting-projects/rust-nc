@@ -85,8 +85,8 @@ jobs:
             cd ..
           fi
           sh scripts/package.sh -b -t -i
-          cd ${{ github.workspace }}
-          ls -lh .
+          echo "当前目录: $(pwd)"
+          ls -lht
 #          mkdir -p artifacts
 #          cp -f target/lingting-nc.tar.gz artifacts/${{ runner.os }}-lingting-nc.tar.gz
 #          if [ -f target/lingting-nc.msi ]; then
