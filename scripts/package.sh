@@ -43,7 +43,7 @@ if [ $_build = true ]; then
     echo "编译异常! code: $c"
     exit 1
   fi
-  echo "分发编译结果"
+  echo "分发主程序编译结果"
   cd "$DIR_ROOT/target"
   cp -f release/$NAME $DIR_TAR/$NAME
   cp -f release/$NAME.exe $DIR_TAR/$NAME.exe
@@ -51,7 +51,7 @@ if [ $_build = true ]; then
 fi
 
 if [ $_ui = true ]; then
-  echo "编译ui"
+  echo "编译UI"
   cd "$DIR_ROOT/ui"
   tyarn build:prod
   _uc=$?
@@ -59,6 +59,7 @@ if [ $_ui = true ]; then
     echo "编译异常! code: $c"
     exit 1
   fi
+  echo "分发UI编译结果"
   cp -rf dist "$DIR_TAR/ui"
 fi
 

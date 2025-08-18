@@ -84,7 +84,7 @@ jobs:
             tyarn install
             cd ..
           fi
-          sh scripts/package.sh -b -t -i -s
+          sh scripts/package.sh -b -t -i
           mkdir -p artifacts
           cp -f lingting-nc.tar.gz artifacts/${{ runner.os }}-lingting-nc.tar.gz
           cp -f lingting-nc.msi artifacts/${{ runner.os }}-lingting-nc.msi
