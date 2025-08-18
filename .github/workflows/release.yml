@@ -31,15 +31,6 @@ jobs:
         with:
           toolchain: ${{ matrix.rust }}
 
-      - name: 缓存 Rust
-        uses: actions/cache@v4
-        id: cache-rust
-        with:
-          path: |
-            ~/.go
-            ./target
-          key: rust-${{ runner.os }}-1.88.0
-
       - name: 安装 Go
         uses: actions/setup-go@v5
         with:
