@@ -85,46 +85,44 @@ jobs:
             cd ..
           fi
           sh scripts/package.sh -b -t -i
-          echo "当前目录: $(pwd)"
-          ls -lht
-#          mkdir -p artifacts
-#          cp -f target/lingting-nc.tar.gz artifacts/${{ runner.os }}-lingting-nc.tar.gz
-#          if [ -f target/lingting-nc.msi ]; then
-#            cp -f target/lingting-nc.msi artifacts/${{ runner.os }}-lingting-nc.msi
-#          fi
+          mkdir -p artifacts
+          cp -f target/lingting-nc.tar.gz artifacts/${{ runner.os }}-lingting-nc.tar.gz
+          if [ -f target/lingting-nc.msi ]; then
+            cp -f target/lingting-nc.msi artifacts/${{ runner.os }}-lingting-nc.msi
+          fi
 
-#      - name: 上传
-#        uses: actions/upload-artifact@v4
-#        with:
-#          name: BUILD
-#          path: artifacts/*
-#
-#  release:
-#    name: Release
-#    runs-on: ubuntu-latest
-#    needs: build
-#    steps:
-#      - name: 设置参数
-#        run: |
-#          VERSION=$(grep "version =" Cargo.toml | head -n 1 | cut -d '"' -f 2)
-#          echo "TAG_NAME=$VERSION" >> $GITHUB_ENV
-#          echo "RELEASE_NAME=$VERSION" >> $GITHUB_ENV
-#
-#      - name: 下载
-#        uses: actions/download-artifact@v4
-#        with:
-#          name: BUILD
-#          path: artifacts
-#
-#      - name: 发布
-#        uses: softprops/action-gh-release@v2
-#        env:
-#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#        with:
-#          tag_name: ${{ env.TAG_NAME }}
-#          name: ${{ env.RELEASE_NAME }}
-#          body: ""
-#          draft: false
-#          prerelease: false
-#          files: |
-#            artifacts/*
+      - name: 上传
+        uses: actions/upload-artifact@v4
+        with:
+          name: BUILD
+          path: artifacts/*
+
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: 设置参数
+        run: |
+          VERSION=$(grep "version =" Cargo.toml | head -n 1 | cut -d '"' -f 2)
+          echo "TAG_NAME=$VERSION" >> $GITHUB_ENV
+          echo "RELEASE_NAME=$VERSION" >> $GITHUB_ENV
+
+      - name: 下载
+        uses: actions/download-artifact@v4
+        with:
+          name: BUILD
+          path: artifacts
+
+      - name: 发布
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ env.TAG_NAME }}
+          name: ${{ env.RELEASE_NAME }}
+          body: ""
+          draft: false
+          prerelease: false
+          files: |
+            artifacts/*
