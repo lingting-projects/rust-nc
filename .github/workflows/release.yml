@@ -38,5 +38,19 @@ jobs:
           cache-dependency-path: |
             crates/library-sing-box/go.sum
 
+      - name: 拉取UI代码
+        uses: actions/checkout@v4
+        with:
+          repository: lingting-projects/rust-nc-ui
+          path: ui
+
+      - name: 安装 Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18.20.3
+          cache: 'yarn'
+          cache-dependency-path: |
+            ui/yarn.lock
+
       - name: 构建项目
-        run: sh package.sh -b -i -t
+        run: npm install -g tyarn && sh package.sh -b -i -t
