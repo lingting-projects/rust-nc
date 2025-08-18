@@ -55,4 +55,4 @@ jobs:
       - name: 构建项目
         run: |
           npm install -g tyarn
-          sh package.sh -b -t
+          sh scripts/package.sh -b -t
