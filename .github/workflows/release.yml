@@ -1,0 +1,51 @@
+name: Release Ci
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    # 在不同操作系统上运行
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ windows-latest ]
+        rust: [ stable ]
+
+    steps:
+      - name: 拉取代码
+        uses: actions/checkout@v4
+
+      - name: 缓存 Rust
+        uses: actions/cache@v4
+        id: cache-rust
+        with:
+          path: |
+            ~/.cargo
+            ./target
+          key: rust-${{ runner.os }}-1.88.0
+
+      - name: 安装 Rust
+        uses: dtolnay/rust-toolchain@master
+        if: steps.cache-rust.outputs.cache-hit != 'true'
+        with:
+          toolchain: ${{ matrix.rust }}
+
+      - name: 缓存 Rust
+        uses: actions/cache@v4
+        id: cache-rust
+        with:
+          path: |
+            ~/.go
+            ./target
+          key: rust-${{ runner.os }}-1.88.0
+
+      - name: 安装 Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ~1.24
+          cache-dependency-path: |
+            crates/library-sing-box/go.sum
+
+      - name: 构建项目
+        run: sh package.sh -b -i -t
