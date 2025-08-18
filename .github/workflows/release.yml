@@ -19,15 +19,14 @@ jobs:
       - name: 拉取代码
         uses: actions/checkout@v4
 
-      - name: 下载 Wix
-        if: ${{ runner.os == 'Windows' && steps.cache-wix.outputs.cache-hit != 'true'}}
+      - name: 设置 Wix 环境
+        if: ${{ runner.os == 'Windows' }}
         shell: pwsh
         run: |
           $url = "https://github.com/wixtoolset/wix/releases/download/v6.0.1/wix-cli-x64.msi"
           $path = "${{ runner.temp }}\wix.msi"
           echo "WIX_MSI_PATH=$path" >> $env:GITHUB_ENV
           Invoke-WebRequest -Uri $url -OutFile $path -UseBasicParsing
-          Write-Host "Wix MSI下载完成"
           $expectedHash = "b45393bb6069c5a52545c4c194b198ba72f3df30f74e278012b88265a6912490"
           $actualHash = (Get-FileHash $path -Algorithm SHA256).Hash
           echo "Wix MSI下载完成, SHA256: $actualHash"
@@ -35,14 +34,11 @@ jobs:
             Write-Error "安装包哈希校验失败"
             exit 1
           }
-      - name: 设置 Wix 环境
-        if: ${{ runner.os == 'Windows' }}
-        shell: pwsh
-        run: |
           # 禁用驱动签名强制（仅当前会话有效）
           bcdedit /set testsigning on
           # 静默安装Wix（不显示界面，安装到默认路径）
           msiexec /i ${{ env.WIX_MSI_PATH }} /quiet /norestart
+          wix -version
 
       - name: 缓存 Rust
         uses: actions/cache@v4
@@ -93,7 +89,7 @@ jobs:
             tyarn install
             cd ..
           fi
-          sh scripts/package.sh -b -t -i
+          sh scripts/package.sh -b -t -i -s
           mkdir -p artifacts
           cp -f target/lingting-nc.tar.gz artifacts/${{ runner.os }}-lingting-nc.tar.gz
           if [ -f target/lingting-nc.msi ]; then
