@@ -76,6 +76,7 @@ jobs:
             ui/yarn.lock
 
       - name: 构建项目
+        shell: bash
         run: |
           npm install -g tyarn
           if [ -d ui ]; then
