@@ -7,8 +7,6 @@ jobs:
   build:
     name: Build
     runs-on: ${{ matrix.os }}
-    env:
-      WIX_MSI_PATH: ${{ runner.temp }}\wix.msi
     strategy:
       matrix:
         os: [ windows-2025 ]
@@ -18,17 +16,11 @@ jobs:
       - name: 拉取代码
         uses: actions/checkout@v4
 
-      - name: 缓存 Wix
-        if: ${{ runner.os == 'Windows' }}
-        uses: actions/cache@v4
-        id: cache-wix
-        with:
-          path: ${{ env.WIX_MSI_PATH }}
-          key: ${{ runner.os }}-wix
       - name: 下载 Wix
         if: ${{ runner.os == 'Windows' && steps.cache-wix.outputs.cache-hit != 'true'}}
         shell: pwsh
         run: |
+          echo "WIX_MSI_PATH=${{ runner.temp }}\wix-cli-x64.msi" >> $env:GITHUB_ENV
           $url = "https://github.com/wixtoolset/wix/releases/download/v6.0.1/wix-cli-x64.msi"
           $path = "${{ env.WIX_MSI_PATH }}"
           Invoke-WebRequest -Uri $url -OutFile $path -UseBasicParsing
