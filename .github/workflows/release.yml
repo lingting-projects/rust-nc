@@ -20,9 +20,9 @@ jobs:
         if: ${{ runner.os == 'Windows' && steps.cache-wix.outputs.cache-hit != 'true'}}
         shell: pwsh
         run: |
-          echo "WIX_MSI_PATH=${{ runner.temp }}\wix-cli-x64.msi" >> $env:GITHUB_ENV
           $url = "https://github.com/wixtoolset/wix/releases/download/v6.0.1/wix-cli-x64.msi"
-          $path = "${{ env.WIX_MSI_PATH }}"
+          $path = "${{ runner.temp }}\wix.msi"
+          echo "WIX_MSI_PATH=$path" >> $env:GITHUB_ENV
           Invoke-WebRequest -Uri $url -OutFile $path -UseBasicParsing
           Write-Host "Wix MSI下载完成"
           $expectedHash = "b45393bb6069c5a52545c4c194b198ba72f3df30f74e278012b88265a6912490"
@@ -39,7 +39,7 @@ jobs:
           # 禁用驱动签名强制（仅当前会话有效）
           bcdedit /set testsigning on
           # 静默安装Wix（不显示界面，安装到默认路径）
-          msiexec /i $path /quiet /norestart
+          msiexec /i ${{ env.WIX_MSI_PATH }} /quiet /norestart
 
       - name: 缓存 Rust
         uses: actions/cache@v4
