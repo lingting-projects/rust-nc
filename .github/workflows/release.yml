@@ -84,14 +84,14 @@ jobs:
             tyarn install
             cd ..
           fi
-          ls -lh .
           sh scripts/package.sh -b -t -i
           cd ${{ github.workspace }}
-          mkdir -p artifacts
-          cp -f target/lingting-nc.tar.gz artifacts/${{ runner.os }}-lingting-nc.tar.gz
-          if [ -f target/lingting-nc.msi ]; then
-            cp -f target/lingting-nc.msi artifacts/${{ runner.os }}-lingting-nc.msi
-          fi
+          ls -lh .
+#          mkdir -p artifacts
+#          cp -f target/lingting-nc.tar.gz artifacts/${{ runner.os }}-lingting-nc.tar.gz
+#          if [ -f target/lingting-nc.msi ]; then
+#            cp -f target/lingting-nc.msi artifacts/${{ runner.os }}-lingting-nc.msi
+#          fi
 
 #      - name: 上传
 #        uses: actions/upload-artifact@v4
