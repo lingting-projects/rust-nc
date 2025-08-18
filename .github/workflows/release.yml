@@ -27,18 +27,25 @@ jobs:
         if: ${{ runner.os == 'Windows' && steps.cache-wix.outputs.cache-hit != 'true'}}
         shell: pwsh
         run: |
-          $wixMsiUrl = "https://github.com/wixtoolset/wix/releases/download/v6.0.1/wix-cli-x64.msi"
-          New-Item -ItemType Directory -Path ~\wix -Force | Out-Null
-          Invoke-WebRequest -Uri $wixMsiUrl -OutFile ~\wix6-installer.msi
+          $url = "https://github.com/wixtoolset/wix/releases/download/v6.0.1/wix-cli-x64.msi"
+          $path = "${{ runner.temp }}\wix.msi"
+          Invoke-WebRequest -Uri $url -OutFile $path -UseBasicParsing
           Write-Host "Wix MSI下载完成"
+          $expectedHash = "b45393bb6069c5a52545c4c194b198ba72f3df30f74e278012b88265a6912490"
+          $actualHash = (Get-FileHash $path -Algorithm SHA256).Hash
+          echo "Wix MSI下载完成, SHA256: $actualHash"
+          if ($actualHash -ne $expectedHash) {
+            Write-Error "安装包哈希校验失败"
+            exit 1
+          }
           # 禁用驱动签名强制（仅当前会话有效）
           bcdedit /set testsigning on
           # 静默安装Wix（不显示界面，安装到默认路径）
-          msiexec /i ~\wix6-installer.msi /quiet /norestart
+          msiexec /i $path /quiet /norestart
 
           # 验证安装是否成功
-          $wixInstallPath = "C:\Program Files\WiX Toolset v6.0\bin"
-          if (-not (Test-Path "$wixInstallPath\wix.exe")) {
+          $installDir = "C:\Program Files\WiX Toolset v6.0\bin"
+          if (-not (Test-Path "$installDir\wix.exe")) {
             Write-Error "Wix 安装失败"
             exit 1
           }
