@@ -29,7 +29,6 @@ jobs:
           
           tar zxf $path
           $wixBinPath = "$(pwd)\WixV6\bin"
-          echo "WIX_BIN=$wixBinPath" >> $GITHUB_ENV
           $env:Path += ";$wixBinPath"
           echo "添加WiX路径到环境变量: $wixBinPath"
           wix -version
@@ -85,7 +84,7 @@ jobs:
             tyarn install
             cd ..
           fi
-          $wixBinPath = "${{ env.WIX_BIN }}"
+          $wixBinPath = "$(pwd)\WixV6\bin"
           echo "添加WiX路径到环境变量: $wixBinPath"
           $env:Path += ";$wixBinPath"
           sh scripts/package.sh -b -t -i -s
