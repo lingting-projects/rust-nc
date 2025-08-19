@@ -1,4 +1,5 @@
 use crate::{SingBox, State};
+use library_core::app::get_app;
 use library_core::core::{AnyResult, BizError};
 use library_core::system;
 use library_core::system::process::Process;
@@ -7,7 +8,8 @@ use std::process::{Child, Command, ExitStatus};
 use std::sync::{Arc, LazyLock, Mutex};
 
 static BIN: LazyLock<String> = LazyLock::new(|| {
-    let path = PathBuf::from(env!("SING_BOX_DIR")).join("lingting-nc-singbox");
+    let app = get_app();
+    let path = app.install_dir.join("lingting-nc-singbox");
     let ps = path.to_str().expect("failed load sing box bin path");
     log::info!("load sing box bin from {}", ps);
     ps.to_string()

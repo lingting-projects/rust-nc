@@ -26,7 +26,7 @@ static DIR_INSTALL: LazyLock<PathBuf> = LazyLock::new(|| {
         .to_path_buf()
 });
 static DIR_GLOBAL: LazyLock<PathBuf> = LazyLock::new(|| {
-    let dir = if (cfg!(debug_assertions)) {
+    let dir = if cfg!(debug_assertions) {
         DIR_INSTALL
             .join("runtime")
             .to_str()
@@ -41,7 +41,7 @@ static DIR_GLOBAL: LazyLock<PathBuf> = LazyLock::new(|| {
     };
 
     let mut path = PathBuf::from(dir);
-    if (cfg!(not(debug_assertions))) {
+    if cfg!(not(debug_assertions)) {
         path = path.join(ID)
     }
 

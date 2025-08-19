@@ -1,16 +1,31 @@
 use crate::SingBox;
 use libloading::{Library, Symbol};
+use library_core::app::get_app;
 use library_core::core::{AnyResult, BizError};
+use std::env;
 use std::ffi::CString;
 use std::os::raw::{c_char, c_int};
 use std::path::{Path, PathBuf};
-use std::sync::OnceLock;
+use std::sync::{LazyLock, OnceLock};
+
+static lib_name: LazyLock<String> = LazyLock::new(|| {
+    let target = env::var("TARGET").unwrap();
+    if target.contains("windows") {
+        "libsingbox.dll"
+    } else if target.contains("apple") {
+        "libsingbox.dylib"
+    } else {
+        "libsingbox.so"
+    }
+    .to_string()
+});
 
 static LIB: OnceLock<Library> = OnceLock::new();
 
 fn load_lib() {
     LIB.get_or_init(|| {
-        let path = PathBuf::from(env!("SING_BOX_DIR"));
+        let app = get_app();
+        let path = app.install_dir.join(lib_name);
         log::info!("load sing box lib from {}", path.display());
         unsafe { Library::new(path).expect("unload sing box lib") }
     });
@@ -34,7 +49,6 @@ fn get<T>(symbol: &[u8]) -> Symbol<T> {
 pub struct LibSingBox {}
 
 impl SingBox for LibSingBox {
-
     fn start(&self, config_path: &Path, work_dir: &Path) -> AnyResult<()> {
         let config_path_c = path_to_c_string(config_path)?;
         let work_dir_c = path_to_c_string(work_dir)?;

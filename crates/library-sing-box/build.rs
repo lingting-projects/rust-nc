@@ -5,7 +5,6 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::LazyLock;
 
-// 确定输出文件名
 static lib_name: LazyLock<String> = LazyLock::new(|| {
     let target = env::var("TARGET").unwrap();
     if target.contains("windows") {
@@ -22,45 +21,39 @@ static bin_name: &'static str = "lingting-nc-singbox";
 
 fn main() {
     let target = env::var("TARGET").expect("env TARGET err");
-    let out_dir = env::var("OUT_DIR").expect("env OUT_DIR err");
-    let manifest_dir = env::var("CARGO_MANIFEST_DIR").expect("env CARGO_MANIFEST_DIR err");
-    let lib_path = Path::new(&out_dir).join(&*lib_name);
-    let bin_path = Path::new(&out_dir).join(&*bin_name);
+    let dir_out = env::var("OUT_DIR").expect("env OUT_DIR err");
+    let dir_manifest = env::var("CARGO_MANIFEST_DIR").expect("env CARGO_MANIFEST_DIR err");
+    let path_lib = Path::new(&dir_out).join(&*lib_name);
+    let path_bin = Path::new(&dir_out).join(&*bin_name);
 
-    println!("cargo:rustc-env=SING_BOX_DIR={}", out_dir);
     println!("cargo-lib={}", &*lib_name);
     println!("cargo-bin={}", &*bin_name);
     println!("cargo-platform={target}");
-    println!("cargo-out={out_dir}");
-    println!("cargo-manifest={manifest_dir}");
+    println!("cargo-out={dir_out}");
+    println!("cargo-manifest={dir_manifest}");
 
-    if bin_path.exists() {
-        remove_file(&bin_path).expect("failed remove bin");
-    }
-    if lib_path.exists() {
-        remove_file(&lib_path).expect("failed remove lib");
-    }
     // 构建Go库
-    build_go(&target, &lib_path, &bin_path, Path::new(&manifest_dir));
+    build_go(&target, &path_lib, &path_bin, Path::new(&dir_manifest));
 
-    let target_dir = lib_path.ancestors().nth(5).expect("target dir err");
-    println!("cargo-target={}", target_dir.display());
-    let tar_dir = target_dir.join("tar");
+    // 构建的输出根文件夹
+    let dir_build = path_lib.ancestors().nth(4).expect("target dir err");
+    println!("cargo-dir={}", dir_build.display());
+    let dir_target = dir_build.parent().expect("target dir err");
+    println!("cargo-target={}", dir_target.display());
+    let dir_tar = dir_target.join("tar");
     // 分发 lib
-    if !tar_dir.exists() {
-        create_dir_all(&tar_dir).expect("create tar dir err");
+    if !dir_tar.exists() {
+        create_dir_all(&dir_tar).expect("create tar dir err");
     }
-    let tar_lib_path = tar_dir.join(&*lib_name);
-    if lib_path.exists() {
-        copy(lib_path, tar_lib_path).expect("copy lib err");
+    if path_lib.exists() {
+        copy(&path_lib, dir_tar.join(&*lib_name)).expect("copy lib err");
+        copy(&path_lib, dir_build.join(&*lib_name)).expect("copy lib err");
     }
-    let tar_bin_path = tar_dir.join(&*bin_name);
-    if bin_path.exists() {
-        copy(bin_path, tar_bin_path).expect("copy bin err");
+    if path_bin.exists() {
+        copy(&path_bin, dir_tar.join(&*bin_name)).expect("copy bin err");
+        copy(&path_bin, dir_build.join(&*bin_name)).expect("copy bin err");
     }
 
-    // 告诉Cargo在哪里可以找到库
-    println!("cargo:rustc-link-search=native={}", out_dir);
     // 确保重新构建的条件
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed=main.go");
