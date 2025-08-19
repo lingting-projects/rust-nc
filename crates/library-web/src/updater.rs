@@ -21,28 +21,16 @@ struct Release {
     assets: Vec<Asset>,
 }
 
-pub fn check() -> AnyResult<Option<(String, String, DataSize)>> {
-    if cfg!(any(debug_assertions, not(target_os = "windows"))) {
-        return Ok(None);
-    }
+pub async fn check_async() -> AnyResult<Option<(String, String, DataSize)>> {
     let version = env!("CARGO_PKG_VERSION");
     let app = get_app();
     let url = format!(
         "https://api.github.com/repos/{}/{}/releases/latest",
         app.owner, app.repo
     );
-    let fast = fast(&url);
 
-    let runtime = tokio::runtime::Builder::new_multi_thread()
-        .enable_io()
-        .enable_time()
-        .build()?;
-
-    let json = runtime.block_on(async {
-        let r = http::get(&fast).await;
-        let response = r.expect(&format!("failed request: {}", url));
-        return response.read_text().await;
-    })?;
+    let response = http::get(&url).await?;
+    let json = response.read_text().await?;
 
     let release: Release = serde_json::from_str(&json)?;
     if !release.tag_name.eq(version) {
@@ -58,6 +46,15 @@ pub fn check() -> AnyResult<Option<(String, String, DataSize)>> {
     }
 
     Ok(None)
+}
+
+pub fn check() -> AnyResult<Option<(String, String, DataSize)>> {
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .enable_io()
+        .enable_time()
+        .build()?;
+
+    runtime.block_on(check_async())
 }
 
 pub struct UpdateListener {

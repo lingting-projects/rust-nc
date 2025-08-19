@@ -18,7 +18,7 @@ pub fn fill(router: Router) -> Router {
     router.route_layer(cors)
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct R<T> {
     pub code: i32,

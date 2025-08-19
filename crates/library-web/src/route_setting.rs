@@ -51,11 +51,15 @@ async fn state() -> R<UpdateState> {
 }
 
 async fn update_check() -> R<bool> {
-    let mut guard = STATE.lock().expect("failed get state");
-    if guard.running() {
+    let is_running = {
+        // 不能放在外面, 放在外卖由于有多个 future, 可能会跨线程. 但是这个实现不是线程安全, 会报错
+        let guard = STATE.lock().expect("failed get state");
+        guard.running()
+    };
+    if is_running {
         return true.into();
     }
-    match updater::check() {
+    match updater::check_async().await {
         Ok(Some((version, url, size))) => {
             let mut state = UpdateState::default();
             state.new = true;
@@ -63,7 +67,7 @@ async fn update_check() -> R<bool> {
             state.new_url = Some(url);
             state.new_size = Some(size.display());
 
-            *guard = state;
+            *STATE.lock().expect("failed get state") = state;
             true.into()
         }
         Ok(None) => false.into(),
