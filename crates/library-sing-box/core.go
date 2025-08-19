@@ -162,7 +162,7 @@ func Start(configPath string, workDir string) SingBoxError {
 			instance = _i
 			err := instance.Start()
 			if err != nil {
-				log.Error("实例启动异常: ", _e)
+				log.Error("实例启动异常: ", err)
 				return StartError
 			}
 		}
