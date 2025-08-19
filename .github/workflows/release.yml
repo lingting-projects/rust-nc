@@ -23,12 +23,12 @@ jobs:
         if: ${{ runner.os == 'Windows' }}
         shell: pwsh
         run: |
-          $url = "https://github.com/lingting/wix/releases/download/6.0.1/WixV6.tar.gz"
+          $url = "https://github.com/lingting/wix/releases/download/6.0.1/Wix.tar.gz"
           $path = "${{ runner.temp }}\wix.tar.gz"
           Invoke-WebRequest -Uri $url -OutFile $path -UseBasicParsing
           
           tar zxf $path
-          $wixBinPath = "$(pwd)\WixV6\bin"
+          $wixBinPath = "$(pwd)\Wix\bin"
           $env:Path += ";$wixBinPath"
           echo "添加WiX路径到环境变量: $wixBinPath"
           wix -version
@@ -79,7 +79,7 @@ jobs:
         shell: bash
         run: |
           if [ "${{ runner.os }}" = "Windows" ]; then
-            wixBinPath="$(pwd)/WixV6/bin"
+            wixBinPath="$(pwd)/Wix/bin"
             echo "添加WiX路径到环境变量: $wixBinPath"
             export PATH="$PATH:$wixBinPath"
             wix -version
