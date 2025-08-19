@@ -23,30 +23,14 @@ jobs:
         if: ${{ runner.os == 'Windows' }}
         shell: pwsh
         run: |
-          $url = "https://github.com/wixtoolset/wix/releases/download/v6.0.1/wix-cli-x64.msi"
-          $path = "${{ runner.temp }}\wix.msi"
-          echo "WIX_MSI_PATH=$path" >> $env:GITHUB_ENV
+          $url = "https://github.com/lingting/wix/releases/download/6.0.1/WixV6.tar.gz"
+          $path = "${{ runner.temp }}\wix.tar.gz"
           Invoke-WebRequest -Uri $url -OutFile $path -UseBasicParsing
-          $expectedHash = "b45393bb6069c5a52545c4c194b198ba72f3df30f74e278012b88265a6912490"
-          $actualHash = (Get-FileHash $path -Algorithm SHA256).Hash
-          echo "Wix MSI下载完成, SHA256: $actualHash"
-          if ($actualHash -ne $expectedHash) {
-            Write-Error "安装包哈希校验失败"
-            exit 1
-          }
-          # 禁用驱动签名强制（仅当前会话有效）
-          bcdedit /set testsigning on
-          echo "开始安装WiX..."
-          $installProcess = Start-Process -FilePath msiexec.exe `
-            -ArgumentList "/i `"$path`" /quiet /norestart /l*v `"${{ runner.temp }}\wix-install.log`"" `
-            -Wait -PassThru -Verb RunAs  # 以管理员权限运行
-            
-          if ($installProcess.ExitCode -ne 0) {
-            Write-Error "WiX安装失败，退出代码: $($installProcess.ExitCode)"
-            # 输出安装日志（方便调试）
-            Get-Content "${{ runner.temp }}\wix-install.log" | Write-Error
-            exit 1
-          }
+          
+          tar zxf $path
+          $wixBinPath = "$(pwd)\WixV6\bin"
+          $env:Path += ";$wixBinPath"
+          echo "添加WiX路径到环境变量: $wixBinPath"
           wix -version
 
       - name: 缓存 Rust
