@@ -109,7 +109,7 @@ impl TblRuleRefreshDTO {
     pub fn need_refresh() -> AnyResult<Vec<Self>> {
         let millis = current_millis();
         let sql = format!(
-            "{} where `refresh_time`+`interval` <= cast(? as INTEGER)",
+            "{} where interval > 0 and `refresh_time`+`interval` <= cast(? as INTEGER)",
             Self::sql_where_before.clone(),
         );
         let args = vec![millis];
