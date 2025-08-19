@@ -104,5 +104,4 @@ echo "编译msi"
 # 当前平台格式的安装包
 wix build product.wxs \
   -o "$DIR_ROOT/target/$NAME.msi" \
-  -ext WixToolset.UI.wixext \
   ${wix_args[@]}
