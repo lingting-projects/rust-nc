@@ -84,9 +84,12 @@ jobs:
             tyarn install
             cd ..
           fi
-          $wixBinPath = "$(pwd)\WixV6\bin"
-          echo "添加WiX路径到环境变量: $wixBinPath"
-          $env:Path += ";$wixBinPath"
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            $wixBinPath = "$(pwd)\WixV6\bin"
+            echo "添加WiX路径到环境变量: $wixBinPath"
+            $env:Path += ";$wixBinPath"
+            wix -version
+          fi
           sh scripts/package.sh -b -t -i -s
           mkdir -p artifacts
           cp -f target/lingting-nc.tar.gz artifacts/${{ runner.os }}-lingting-nc.tar.gz
