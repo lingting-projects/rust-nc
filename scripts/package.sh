@@ -47,6 +47,7 @@ if [ $_build = true ]; then
   cd "$DIR_ROOT/target"
   cp -f release/$NAME $DIR_TAR/$NAME
   cp -f release/$NAME.exe $DIR_TAR/$NAME.exe
+  rm -rf icons
   cp -rf ../icons $DIR_TAR
 fi
 
@@ -60,7 +61,8 @@ if [ $_ui = true ]; then
     exit 1
   fi
   echo "分发UI编译结果"
-  cp -rf dist "$DIR_TAR/ui"
+  rm -rf "$DIR_TAR/ui"
+  cp -r dist "$DIR_TAR/ui"
 fi
 
 if [ $_tar = true ]; then
