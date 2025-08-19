@@ -39,8 +39,9 @@ jobs:
         with:
           path: |
             ~/.cargo
-            ${{ github.workspace }}/target
+            target
           key: rust-${{ runner.os }}-1.88.0
+          restore-keys: rust-${{ runner.os }}
       - name: 安装 Rust
         uses: dtolnay/rust-toolchain@master
         if: steps.cache-rust.outputs.cache-hit != 'true'
@@ -70,8 +71,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            ${{ github.workspace }}/ui/node_modules
+            ui/node_modules
           key: node-${{ runner.os }}-18.20.3
+          restore-keys: node-${{ runner.os }}
 
       - name: 构建项目
         shell: bash
