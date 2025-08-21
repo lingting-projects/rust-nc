@@ -246,11 +246,8 @@ fn init_db() {
 }
 
 fn check_update() -> Option<(String, String, DataSize)> {
-    panic::catch_unwind(|| updater::check())
-        .ok()
-        .map(|r| r.ok())
-        .flatten()
-        .flatten()
+    // 启动时不再做更新检测
+    None
 }
 
 fn update(version: String, url: String, size: DataSize) {
