@@ -41,7 +41,7 @@ pub async fn check_async() -> AnyResult<Option<(String, String, DataSize)>> {
         let option = release
             .assets
             .into_iter()
-            .find(|asset| asset.name.eq("lingting-nc.msi"));
+            .find(|asset| asset.name.eq("Windows-lingting-nc.msi"));
 
         if let Some(asset) = option {
             let size = DataSize::of_bytes(asset.size);
