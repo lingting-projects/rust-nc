@@ -1,4 +1,4 @@
-use crate::window::view::{View, ViewWrapper};
+use crate::window::view::{common_on_page_load, View, ViewWrapper};
 use crate::window::view_webview::WebView;
 use crate::window::{dispatch, view, NcWindowEvent};
 use crate::UserEvent;
@@ -31,18 +31,16 @@ fn on_page_load() {
         "#,
                     api, api, api
                 );
-                v.eval(&js).expect("failed set request prefix");
+                match v.eval(&js) {
+                    Ok(_) => {}
+                    Err(e) => {
+                        log::error!("主窗口请求前缀设置异常! {}",e)
+                    }
+                }
             }
         }
-
-        let js_basic = r#"
-        document.addEventListener('contextmenu', (e) => {
-            e.preventDefault();
-            return false;
-        });
-    "#;
-
-        v.eval(js_basic).expect("failed eval basic js");
+        
+        common_on_page_load(v);
     }));
     match result {
         Ok(_) => {}

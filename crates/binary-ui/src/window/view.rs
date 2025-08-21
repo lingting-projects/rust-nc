@@ -32,6 +32,22 @@ impl View for ViewWrapper {
 
 pub type OnPageLoad = dyn Fn() + 'static;
 
+pub fn common_on_page_load<V: View>(v: &V) {
+    let js_basic = r#"
+        document.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            return false;
+        });
+    "#;
+
+    match v.eval(js_basic) {
+        Ok(_) => {}
+        Err(e) => {
+            log::error!("通用页面加载js执行异常!")
+        }
+    }
+}
+
 pub fn with_html(
     window: &Window,
     html: &str,

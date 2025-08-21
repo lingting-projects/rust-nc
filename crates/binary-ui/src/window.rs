@@ -3,7 +3,7 @@ pub mod view;
 mod view_webview;
 
 use crate::init::FIRST;
-use crate::window::view::{OnPageLoad, View, ViewWrapper};
+use crate::window::view::{common_on_page_load, OnPageLoad, View, ViewWrapper};
 use crate::{icon, tray, UserEvent};
 use library_core::core::{AnyResult, BizError, Exit};
 use std::collections::HashMap;
@@ -252,6 +252,7 @@ fn on_kernel_page_load(w: &tao::window::Window, v: &ViewWrapper) -> AnyResult<()
     "#
     );
     v.eval(&js)?;
+    common_on_page_load(v);
     Ok(())
 }
 
