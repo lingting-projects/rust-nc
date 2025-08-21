@@ -237,22 +237,25 @@ fn builder_window(size: PhysicalSize<i32>, title: &str) -> WindowBuilder {
 }
 
 fn on_kernel_page_load(w: &tao::window::Window, v: &ViewWrapper) -> AnyResult<()> {
+    let js = format!(
+        // 覆盖节点设置, 主题仅在不存在时设置
+        r#"
+        let exists = localStorage.endpointList
+        localStorage.setItem('endpointList', '[{{"id":"55f9cc9d-3523-414a-bbe1-f9ec747fbf1e","url":"http://127.0.0.1:9090","secret":""}}]');
+        localStorage.setItem('selectedEndpoint','"55f9cc9d-3523-414a-bbe1-f9ec747fbf1e"');
+        !localStorage.theme && localStorage.setItem('theme','"corporate"');
+        !exists && location.reload();
+    "#
+    );
+    v.eval(&js)?;
+    common_on_page_load(v);
+
     w.set_window_icon(Some(icon::tao()?));
 
     let size = PhysicalSize::new(1620, 810);
     w.set_inner_size(size);
     w.set_min_inner_size(Some(size));
     w.focus_show();
-    let js = format!(
-        // 覆盖节点设置, 主题仅在不存在时设置
-        r#"
-        localStorage.setItem('endpointList', '[{{"id":"55f9cc9d-3523-414a-bbe1-f9ec747fbf1e","url":"http://127.0.0.1:9090","secret":""}}]');
-        localStorage.setItem('selectedEndpoint','"55f9cc9d-3523-414a-bbe1-f9ec747fbf1e"');
-        !localStorage.theme&&localStorage.setItem('theme','"corporate"');
-    "#
-    );
-    v.eval(&js)?;
-    common_on_page_load(v);
     Ok(())
 }
 
