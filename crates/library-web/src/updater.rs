@@ -22,6 +22,10 @@ struct Release {
 }
 
 pub async fn check_async() -> AnyResult<Option<(String, String, DataSize)>> {
+    if cfg!(debug_assertions) {
+        return Ok(None);
+    }
+
     let version = env!("CARGO_PKG_VERSION");
     let app = get_app();
     let url = format!(

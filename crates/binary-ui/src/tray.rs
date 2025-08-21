@@ -1,4 +1,4 @@
-use crate::window::WindowManager;
+use crate::window::Window;
 use crate::{icon, UserEvent};
 use library_core::core::AnyResult;
 use tao::event_loop::EventLoop;
@@ -32,15 +32,15 @@ pub fn create(event_loop: &EventLoop<UserEvent>) -> AnyResult<TrayIcon> {
     Ok(tray)
 }
 
-pub fn handler_icon(manager: &WindowManager, e: TrayIconEvent) {
+pub fn handler_icon(window: &Window, e: TrayIconEvent) {
     match e {
         TrayIconEvent::Click { .. } => {
-            manager.show();
+            window.show(window.main);
         }
         _ => {}
     }
 }
 
-pub fn handler_menu(manager: &WindowManager, e: MenuEvent) {
+pub fn handler_menu(window: &Window, e: MenuEvent) {
     // 比对事件id, 实现对应的事件
 }

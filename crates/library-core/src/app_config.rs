@@ -63,6 +63,11 @@ impl AppConfig {
         Ok(v)
     }
 
+    pub fn get_else(key: &str, default: fn() -> String) -> AnyResult<String> {
+        let v = Self::get(key)?.unwrap_or_else(default);
+        Ok(v)
+    }
+
     pub fn set(key: &str, v: &str) -> AnyResult<()> {
         let sql = "replace into app_config(`key`,`value`) VALUES (?,?)";
         let args = vec![key.into(), v.into()];

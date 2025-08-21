@@ -103,7 +103,6 @@ impl TblSettingRun {
     pub fn set_selected(id: &str) -> AnyResult<()> {
         AppConfig::set(Self::key_selected, id)
     }
-
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -253,5 +252,9 @@ impl TblSettingKernel {
             &serde_json::Value::from(self.dns_proxy.clone()),
         )?));
         Ok(())
+    }
+
+    pub fn ui() -> AnyResult<String> {
+        AppConfig::get_else(Self::key_ui, || Self::default.ui.clone())
     }
 }

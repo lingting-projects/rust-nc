@@ -15,8 +15,10 @@ mod tbl_subscribe;
 pub mod updater;
 pub mod webserver;
 
+pub use crate::route_kernel::set_open;
 pub use crate::singbox::start;
 pub use crate::singbox::stop;
+
 use library_core::core::AnyResult;
 
 pub fn init() -> AnyResult<()> {

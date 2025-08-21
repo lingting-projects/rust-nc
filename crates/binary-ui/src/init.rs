@@ -1,17 +1,18 @@
 use crate::icon;
-use crate::view::UiView;
-use crate::window::dispatch;
+use crate::window::view::View;
+use crate::window::{dispatch, Window};
 use library_core::app::get_app;
 use library_core::core::{AnyResult, BizError, Exit};
 use library_core::data_size::DataSize;
 use library_web::webserver::{WebServer, SERVER};
 use library_web::{settings, updater, webserver};
+use std::ops::Deref;
 use std::process::exit;
-use std::sync::{Mutex, OnceLock};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::{panic, thread};
 use tao::dpi::PhysicalSize;
 use tao::platform::windows::IconExtWindows;
-use tao::window::{Icon, Window};
+use tao::window::Icon;
 use wry::WebView;
 
 #[derive(Clone, Copy, PartialEq)]
@@ -90,9 +91,8 @@ fn emit(state: LoadingState) {
         INIT_ERROR.get_or_init(|| false);
     }
     log::debug!("[初始化] 提交事件: {}", state.title());
-    let closure = move |w: &Window, wv: &dyn UiView| {
+    if let Err(e) = dispatch(Box::new(move |w, v| {
         w.set_title(state.window_title());
-
         let js_code = format!(
             "window.to({}, '{}', '{}', '{}');",
             state.progress(),
@@ -100,16 +100,14 @@ fn emit(state: LoadingState) {
             state.message(),
             "info"
         );
-        match wv.eval(&js_code) {
+        match v.eval(&js_code) {
             Ok(_) => {}
             Err(e) => {
                 log::error!("执行js异常! {}", e);
                 exit(Exit::WebViewEvaluateJsError.code())
             }
         }
-    };
-
-    if let Err(e) = dispatch(closure) {
+    })) {
         log::error!("前端加载事件提交异常! state: {}; {}", state.title(), e);
         exit(Exit::UiEmitError.code())
     }
@@ -181,17 +179,14 @@ fn _init() -> AnyResult<()> {
 }
 
 fn init_system() -> AnyResult<()> {
-    let icon = Icon::from_path(
-        icon::path,
-        Some(PhysicalSize::new(icon::width, icon::height)),
-    )?;
+    let icon = icon::tao()?;
 
-    dispatch(move |w, _| {
+    dispatch(Box::new(move |w, _| {
         if !*settings::start_minimize {
             w.set_visible(true)
         }
         w.set_window_icon(Some(icon));
-    })?;
+    }))?;
 
     webserver::wake()?;
     start_web()?;
@@ -281,12 +276,12 @@ fn completed() {
         format!("file:///{}", path.to_str().unwrap())
     };
 
-    dispatch(move |w, wv| {
+    dispatch(Box::new(move |w, v| {
         w.set_title("NC");
-        match wv.load(&url) {
+        match v.load(&url) {
             Ok(_) => {}
             Err(_) => emit(LoadingState::UiError),
         }
-    })
+    }))
     .unwrap()
 }

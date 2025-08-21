@@ -6,9 +6,10 @@ use axum::routing::{get, post};
 use axum::{Json, Router};
 use library_core::app::get_app;
 use library_core::app_config::AppConfig;
-use library_core::core::AnyResult;
+use library_core::core::{AnyResult, BizError};
 use library_core::file;
 use serde::{Deserialize, Serialize};
+use std::sync::{LazyLock, LockResult, Mutex};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -62,9 +63,34 @@ async fn stop() -> R<()> {
     singbox::stop().into()
 }
 
+static _open: LazyLock<Mutex<Box<dyn Fn(String) -> AnyResult<()> + 'static + Send + Sync>>> =
+    LazyLock::new(|| Mutex::new(Box::new(|_| Err(Box::new(BizError::Unsupported)))));
+
+pub fn set_open<F: Fn(String) -> AnyResult<()> + 'static + Send + Sync>(f: F) -> AnyResult<()> {
+    *_open.lock().unwrap() = Box::new(f);
+    Ok(())
+}
+
+fn _open_run() -> AnyResult<()> {
+    let ui = TblSettingKernel::ui()?;
+    let url = format!("http://{ui}");
+    match _open.lock() {
+        Ok(f) => f(url),
+        Err(_) => {
+            log::error!("获取内核界面打开实现异常!");
+            Err(Box::new(BizError::Unsupported))
+        }
+    }
+}
+
+async fn open() -> R<()> {
+    _open_run().into()
+}
+
 pub fn fill(router: Router) -> Router {
     router
         .route("/kernel/state", get(state))
         .route("/kernel/start", post(_start))
         .route("/kernel/stop", post(stop))
+        .route("/kernel/open", post(open))
 }

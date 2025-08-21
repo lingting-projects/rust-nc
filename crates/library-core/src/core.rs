@@ -54,6 +54,10 @@ pub enum BizError {
     StartupOperation,
     #[error("字符集识别异常")]
     CharsetReadErr,
+    #[error("暂不支持此行为")]
+    Unsupported,
+    #[error("事件发送失败: {0}")]
+    EventSend(String),
 }
 
 pub enum Exit {

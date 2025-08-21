@@ -7,5 +7,5 @@ rustflags = [
     # 忽略未使用的变量
     "-A", "unused_variables",
     # 忽略驼峰
-    "-A", "non_snake_case"
+    "-A", "non_snake_case",
 ]
