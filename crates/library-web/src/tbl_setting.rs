@@ -119,26 +119,18 @@ impl TblSettingSoftware {
     pub const default: LazyLock<TblSettingSoftware> = LazyLock::new(|| TblSettingSoftware {
         startup: false,
         minimize: false,
-        version: "0.0.0".to_string(),
+        version: env!("CARGO_PKG_VERSION").to_string(),
         fast_github: FAST_GItHUB_PREFIX.clone(),
         test_url: test_url.into(),
     });
 
     pub const key_minimize: &'static str = "setting:software:minimize";
-    pub const key_version: &'static str = AppConfig::key_version;
 
     pub fn get() -> AnyResult<Self> {
-        let map = AppConfig::keys(vec![Self::key_minimize, Self::key_version])?;
         let software = TblSettingSoftware {
             startup: startup::is_startup()?,
-            minimize: map
-                .get(Self::key_minimize)
-                .map(|v| is_true(v))
-                .unwrap_or(Self::default.minimize),
-            version: map
-                .get(Self::key_version)
-                .map(|v| v.clone())
-                .unwrap_or(Self::default.version.clone()),
+            minimize: Self::is_minimize(),
+            version: Self::default.version.clone(),
             fast_github: Self::default.fast_github.clone(),
             test_url: Self::default.test_url.clone(),
         };
