@@ -134,20 +134,7 @@ impl Window {
                 event: WindowEvent::CloseRequested,
                 window_id,
                 ..
-            } => {
-                // 隐藏要移除的窗口
-                self.consumer(window_id, |w, _| w.set_visible(false));
-                // 移除子窗口
-                if window_id != self.main {
-                    self.map.remove(&window_id);
-                }
-                // 移除主窗口
-                else {
-                    self.map.clear();
-                    self.tray.take();
-                    return ControlFlow::Exit;
-                }
-            }
+            } => return self.on_close_window(window_id),
             Event::WindowEvent {
                 event: WindowEvent::Focused(focused),
                 window_id,
@@ -210,11 +197,28 @@ impl Window {
                     self.consumer(id, |w, v| c(w, v))
                 }
             }
+            Event::UserEvent(UserEvent::EXIT()) => return self.on_close_window(self.main),
 
             _ => {}
         }
 
         ControlFlow::Wait
+    }
+
+    fn on_close_window(&mut self, window_id: WindowId) -> ControlFlow {
+        // 隐藏要移除的窗口
+        self.consumer(window_id, |w, _| w.set_visible(false));
+        // 移除子窗口
+        if window_id != self.main {
+            self.map.remove(&window_id);
+            ControlFlow::Wait
+        }
+        // 移除主窗口
+        else {
+            self.map.clear();
+            self.tray.take();
+            ControlFlow::Exit
+        }
     }
 }
 

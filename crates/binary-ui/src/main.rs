@@ -25,6 +25,7 @@ mod window;
 
 pub enum UserEvent {
     EMPTY(),
+    EXIT(),
     NcWindowEvent(NcWindowEvent),
     TrayIconEvent(TrayIconEvent),
     MenuEvent(tray_icon::menu::MenuEvent),
@@ -78,11 +79,10 @@ fn main() -> AnyResult<()> {
     let lock_path = app.cache_dir.join("single.lock");
     let mut o_single = create_single(lock_path)?;
     let event_loop = EventLoopBuilder::<UserEvent>::with_user_event().build();
-    let _proxy = event_loop.create_proxy();
-    let mut window = window::Window::new(&event_loop)?;
 
+    let proxy_open = event_loop.create_proxy();
     library_web::set_open(move |ui| {
-        match _proxy.send_event(UserEvent::NcWindowEvent(NcWindowEvent::OpenKernel(ui))) {
+        match proxy_open.send_event(UserEvent::NcWindowEvent(NcWindowEvent::OpenKernel(ui))) {
             Ok(_) => Ok(()),
             Err(e) => {
                 log::error!("发布打开内核界面事件异常! {}", e);
@@ -90,6 +90,8 @@ fn main() -> AnyResult<()> {
             }
         }
     })?;
+
+    let mut window = window::Window::new(&event_loop)?;
 
     thread::spawn(move || {
         thread::sleep(Duration::from_millis(500));
