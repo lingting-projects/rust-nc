@@ -240,11 +240,10 @@ fn on_kernel_page_load(w: &tao::window::Window, v: &ViewWrapper) -> AnyResult<()
     let js = format!(
         // 覆盖节点设置, 主题仅在不存在时设置
         r#"
-        let exists = localStorage.endpointList
         localStorage.setItem('endpointList', '[{{"id":"55f9cc9d-3523-414a-bbe1-f9ec747fbf1e","url":"http://127.0.0.1:9090","secret":""}}]');
         localStorage.setItem('selectedEndpoint','"55f9cc9d-3523-414a-bbe1-f9ec747fbf1e"');
         !localStorage.theme && localStorage.setItem('theme','"corporate"');
-        !exists && location.reload();
+        location.reload();
     "#
     );
     v.eval(&js)?;

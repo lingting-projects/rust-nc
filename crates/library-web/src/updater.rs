@@ -21,12 +21,49 @@ struct Release {
     assets: Vec<Asset>,
 }
 
+struct Version {
+    major: u16,
+    minor: u16,
+    patch: u16,
+}
+
+impl Version {
+    pub fn resolver(str: &str) -> Option<Self> {
+        // 按点分割版本号组件
+        let parts: Vec<&str> = str.split('.').collect();
+
+        // 检查组件数量是否正确
+        if parts.len() != 3 {
+            return None;
+        }
+
+        let major = parts[0].parse().ok();
+        let minor = parts[1].parse().ok();
+        let patch = parts[2].parse().ok();
+
+        if major.is_none() || minor.is_none() || patch.is_none() {
+            return None;
+        }
+
+        Some(Version {
+            major: major.unwrap(),
+            minor: minor.unwrap(),
+            patch: patch.unwrap(),
+        })
+    }
+
+    /// 当前版本是否大于目标版本
+    pub fn is_gt(&self, t: &Self) -> bool {
+        self.major > t.major || self.minor > t.minor || self.patch > t.patch
+    }
+}
+
 pub async fn check_async() -> AnyResult<Option<(String, String, DataSize)>> {
     if cfg!(debug_assertions) {
         return Ok(None);
     }
 
-    let version = env!("CARGO_PKG_VERSION");
+    let version = Version::resolver(env!("CARGO_PKG_VERSION")).unwrap();
     let app = get_app();
     let url = format!(
         "https://api.github.com/repos/{}/{}/releases/latest",
@@ -37,15 +74,18 @@ pub async fn check_async() -> AnyResult<Option<(String, String, DataSize)>> {
     let json = response.read_text().await?;
 
     let release: Release = serde_json::from_str(&json)?;
-    if !release.tag_name.eq(version) {
-        let option = release
-            .assets
-            .into_iter()
-            .find(|asset| asset.name.eq("Windows-lingting-nc.msi"));
+    let last = Version::resolver(&release.tag_name);
+    if let Some(v) = last {
+        if v.is_gt(&version) {
+            let option = release
+                .assets
+                .into_iter()
+                .find(|asset| asset.name.eq("Windows-lingting-nc.msi"));
 
-        if let Some(asset) = option {
-            let size = DataSize::of_bytes(asset.size);
-            return Ok(Some((release.tag_name, asset.browser_download_url, size)));
+            if let Some(asset) = option {
+                let size = DataSize::of_bytes(asset.size);
+                return Ok(Some((release.tag_name, asset.browser_download_url, size)));
+            }
         }
     }
 
