@@ -11,7 +11,7 @@ members = [
 resolver = "2"
 
 [workspace.package]
-version = "25.7.180"
+version = "25.7.181"
 edition = "2024"
 rust-version = "1.88.0"
 authors = ["lingting"]
