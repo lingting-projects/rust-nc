@@ -7,6 +7,7 @@ use library_nc::core::fast;
 use serde::{Deserialize, Serialize};
 use std::os::windows::process::CommandExt;
 use std::process::{exit, Command};
+use std::sync::{LazyLock, Mutex};
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 struct Asset {
@@ -137,5 +138,14 @@ pub fn update(listener: UpdateListener) -> AnyResult<()> {
         .creation_flags(0x00000200)
         .spawn()?;
 
-    exit(0);
+    let guard = _exit.lock().unwrap();
+    guard(0);
+    Ok(())
+}
+
+static _exit: LazyLock<Mutex<Box<dyn Fn(i32) + 'static + Send + Sync>>> =
+    LazyLock::new(|| Mutex::new(Box::new(|i| exit(i))));
+
+pub fn set_exit<F: Fn(i32) + 'static + Send + Sync>(f: F) {
+    *_exit.lock().unwrap() = Box::new(f)
 }

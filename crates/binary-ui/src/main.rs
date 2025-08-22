@@ -91,6 +91,15 @@ fn main() -> AnyResult<()> {
         }
     })?;
 
+    let proxy_exit = event_loop.create_proxy();
+    library_web::updater::set_exit(move |i| match proxy_exit.send_event(UserEvent::EXIT()) {
+        Ok(_) => {}
+        Err(e) => {
+            log::error!("程序退出时发布关闭事件异常! {}", e);
+            exit(i)
+        }
+    });
+
     let mut window = window::Window::new(&event_loop)?;
 
     thread::spawn(move || {
