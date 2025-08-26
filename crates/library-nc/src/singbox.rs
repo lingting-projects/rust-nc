@@ -156,6 +156,7 @@ impl Outbound {
                 || k == "skip-cert-verify"
                 || k == "peer"
                 || k == "sni"
+                || k == "alpn"
             {
                 return;
             }
