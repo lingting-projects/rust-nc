@@ -4,6 +4,7 @@ use library_core::core::{AnyResult, BizError};
 use library_core::system;
 use library_core::system::process::Process;
 use std::path::{Path, PathBuf};
+use std::process;
 use std::process::{Child, Command, ExitStatus};
 use std::sync::{Arc, LazyLock, Mutex};
 
@@ -55,11 +56,13 @@ impl SingBox for BinSingBox {
             return Ok(());
         }
 
+        let pid = process::id();
         let mut cmd = Command::new(BIN.clone());
         cmd.arg("start")
             .current_dir(work_dir)
             .arg(config_path.to_str().expect("failed get config path"))
-            .arg(work_dir.to_str().expect("failed get work dir"));
+            .arg(work_dir.to_str().expect("failed get work dir"))
+            .arg(pid.to_string());
 
         let process = Process::new(cmd)?;
 

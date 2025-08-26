@@ -8,10 +8,11 @@ import "C"
 import core "github.com/lingting-projects/rust-nc"
 
 //export SingBoxStart
-func SingBoxStart(config_path_ptr *C.char, work_dir_ptr *C.char) C.int {
+func SingBoxStart(config_path_ptr *C.char, work_dir_ptr *C.char, pid_ptr *C.int) C.int {
 	configPath := C.GoString(config_path_ptr)
 	workDir := C.GoString(work_dir_ptr)
-	e := core.Start(configPath, workDir)
+	pid := C.GoInt(pid_ptr)
+	e := core.Start(configPath, workDir, pid)
 	return C.int(e.ToInt())
 }
 

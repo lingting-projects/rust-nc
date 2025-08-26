@@ -4,7 +4,9 @@ import (
 	"errors"
 	"fmt"
 	core "github.com/lingting-projects/rust-nc"
+	"github.com/sagernet/sing-box/log"
 	"os"
+	"strconv"
 )
 
 func main() {
@@ -26,10 +28,21 @@ func main() {
 }
 
 func handleStart() {
+	pid := 0
+
 	configPath := os.Args[2]
 	workDir := os.Args[3]
+	argPid := os.Args[4]
+	if len(os.Args) >= 5 && argPid != "" {
+		pidInt, err := strconv.Atoi(argPid)
+		if err != nil {
+			log.Warn("传入的Pid值异常! ", argPid)
+		} else {
+			pid = pidInt
+		}
+	}
 
-	err := core.Start(configPath, workDir)
+	err := core.Start(configPath, workDir, pid)
 	if !errors.Is(core.Nil, err) {
 		fmt.Printf("启动失败: %s\n", err.Error())
 		os.Exit(err.ToInt())

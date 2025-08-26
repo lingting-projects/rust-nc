@@ -2,11 +2,11 @@ use crate::SingBox;
 use libloading::{Library, Symbol};
 use library_core::app::get_app;
 use library_core::core::{AnyResult, BizError};
-use std::env;
 use std::ffi::CString;
 use std::os::raw::{c_char, c_int};
 use std::path::{Path, PathBuf};
 use std::sync::{LazyLock, OnceLock};
+use std::{env, process};
 
 static lib_name: LazyLock<String> = LazyLock::new(|| {
     let target = env::var("TARGET").unwrap();
@@ -32,7 +32,7 @@ fn load_lib() {
 }
 
 type SingBoxStart =
-    unsafe extern "system" fn(config_path_ptr: *mut c_char, work_dir_ptr: *mut c_char) -> c_int;
+    unsafe extern "system" fn(config_path_ptr: *mut c_char, work_dir_ptr: *mut c_char, work_dir_ptr: *mut c_int) -> c_int;
 
 type SingBoxJsonToSrs =
     unsafe extern "system" fn(json_path_ptr: *mut c_char, srs_path_ptr: *mut c_char) -> c_int;
@@ -50,8 +50,10 @@ pub struct LibSingBox {}
 
 impl SingBox for LibSingBox {
     fn start(&self, config_path: &Path, work_dir: &Path) -> AnyResult<()> {
+        let pid = process::id();
         let config_path_c = path_to_c_string(config_path)?;
         let work_dir_c = path_to_c_string(work_dir)?;
+        let pid_c = CInt::new(pid);
         let config_path_ptr = config_path_c.as_ptr() as *mut _;
         let work_dir_ptr = work_dir_c.as_ptr() as *mut _;
         let i = unsafe {

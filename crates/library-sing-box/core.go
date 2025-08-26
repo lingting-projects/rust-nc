@@ -6,7 +6,9 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"runtime"
 	"runtime/debug"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -64,6 +66,25 @@ const (
 	FileWriteError
 	RuleReadError
 )
+
+func isAlive(pid int) bool {
+	if pid < 1 {
+		return true
+	}
+
+	p, e := os.FindProcess(pid)
+	if e != nil || p == nil {
+		log.Debug("alive: false! ", e)
+		return false
+	}
+	// unix 即使进程不存在，FindProcess也可能返回非nil的process
+	if runtime.GOOS != "windows" {
+		e = p.Signal(syscall.Signal(0))
+		log.Debug("alive: false! signal: ", e)
+		return e == nil
+	}
+	return true
+}
 
 func setLog(color bool) {
 	formatter := log.Formatter{
@@ -129,16 +150,31 @@ func create(configPath string, workDir string) (context.CancelFunc, *box.Box, er
 	return cancel, instance, err
 }
 
-func Start(configPath string, workDir string) SingBoxError {
+func Start(configPath string, workDir string, pid int) SingBoxError {
 	setLog(false)
 	osSignals := make(chan os.Signal, 1)
 	signal.Notify(osSignals, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
 	defer signal.Stop(osSignals)
 
 	var (
+		restart  atomic.Bool
+		stop     atomic.Bool
 		instance *box.Box
 		cancel   context.CancelFunc
 	)
+
+	go func() {
+		for sig := range osSignals {
+			switch sig {
+			case syscall.SIGHUP:
+				log.Info("收到 SIGHUP 信号，标记为需要重启")
+				restart.Store(true)
+			default:
+				log.Info("收到其他信号，标记为需要退出! ", sig)
+				stop.Store(true)
+			}
+		}
+	}()
 
 	for {
 		debug.FreeOSMemory()
@@ -167,9 +203,22 @@ func Start(configPath string, workDir string) SingBoxError {
 			}
 		}
 
-		osSignal := <-osSignals
-		// SIGHUP 刷新配置. 重启实例
-		if osSignal == syscall.SIGHUP {
+		for {
+			if stop.Load() || restart.Load() {
+				break
+			}
+
+			if !isAlive(pid) {
+				log.Error("父进程失活, 停止实例. ", pid)
+				stop.Store(true)
+				continue
+			}
+			time.Sleep(time.Second)
+		}
+
+		// 刷新配置. 重启实例
+		if !stop.Load() {
+			restart.Store(false)
 			continue
 		}
 		// 其他的关闭实例
