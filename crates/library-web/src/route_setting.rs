@@ -5,6 +5,7 @@ use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde::{Deserialize, Serialize};
 use std::sync::{LazyLock, Mutex};
+use std::thread;
 
 async fn _get() -> R<TblSetting> {
     TblSetting::get().into()
@@ -96,16 +97,30 @@ async fn update_install() -> R<bool> {
         return false.into();
     }
 
-    let listener = updater::UpdateListener {
-        url: guard.new_url.clone().expect("获取下载地址异常!"),
-        on_download: Box::new(on_download),
-        on_install: Box::new(on_install),
-    };
+    thread::spawn(move || {
+        let guard = STATE.lock().expect("failed get state");
+        let listener = updater::UpdateListener {
+            url: guard.new_url.clone().expect("获取下载地址异常!"),
+            on_download: Box::new(on_download),
+            on_install: Box::new(on_install),
+        };
+        drop(guard);
 
-    match updater::update(listener) {
-        Ok(_) => true.into(),
-        Err(e) => from_err_box(e),
-    }
+        match updater::update(listener) {
+            Ok(_) => {}
+            Err(e) => {
+                log::error!("更新异常! {}", e);
+                let mut state = UpdateState::default();
+                state.error = true;
+                state.reason = Some(e.to_string());
+                if let Ok(mut guard) = STATE.lock() {
+                    *guard = state
+                }
+            }
+        }
+    });
+
+    true.into()
 }
 
 pub fn fill(router: Router) -> Router {

@@ -118,18 +118,24 @@ pub fn update(listener: UpdateListener) -> AnyResult<()> {
     let app = get_app();
     let path = &app.tmp_dir.join(&sha256);
     let fast = fast(&url);
-
+    log::debug!("开始进行更新");
+    log::debug!("下载地址: {}", fast);
+    log::debug!("存储位置: {}", path.display());
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_io()
         .enable_time()
         .build()?;
+    log::debug!("触发下载事件");
     (listener.on_download)();
     runtime.block_on(async {
+        log::debug!("开始下载");
         let response = http::get(&fast).await.expect("文件下载请求异常!");
+        log::debug!("收到数据, 覆写到文件");
         response.overwrite(path).await
     })?;
-
+    log::debug!("触发安装事件");
     (listener.on_install)();
+    log::debug!("异步安装");
     let mut cmd = Command::new("msiexec");
     cmd.arg("/i")
         .arg(&path)
@@ -139,6 +145,7 @@ pub fn update(listener: UpdateListener) -> AnyResult<()> {
         .spawn()?;
 
     let guard = _exit.lock().unwrap();
+    log::debug!("退出当前进程");
     guard(0);
     Ok(())
 }
