@@ -24,10 +24,11 @@ redirect = ["libc", "winapi/processenv", "winapi/winbase", "winapi/handleapi", "
 log = ["simple_logger"]
 file = []
 json = ["serde_json"]
+yml=["serde_yaml"]
 db = ['sqlite']
 timer = ["tokio", "time", "futures"]
 app = ["time", "db", "log"]
-full = ["timer", "app", "file", "db", "json", "system", "data_size"]
+full = ["timer", "app", "file", "db", "json", "yml","system", "data_size"]
 
 [dependencies]
 log = { workspace = true, features = [] }
@@ -40,6 +41,7 @@ tokio = { workspace = true, features = ["sync", "time", "rt", "macros"], optiona
 time = { workspace = true, optional = true }
 sqlite = { workspace = true, optional = true }
 serde_json = { workspace = true, optional = true }
+serde_yaml = { workspace = true, features = [] , optional = true}
 encoding = { workspace = true, optional = true }
 byte-unit = { workspace = true, optional = true }
 regex = { workspace = true, optional = true }

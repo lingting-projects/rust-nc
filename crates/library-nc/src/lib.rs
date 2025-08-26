@@ -6,3 +6,4 @@ pub mod kernel;
 pub mod rule;
 pub mod singbox;
 pub mod subscribe;
+pub mod subscribe_yml;

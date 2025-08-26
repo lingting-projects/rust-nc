@@ -1,13 +1,15 @@
+use crate::area;
 use crate::area::{find, Area};
 use crate::core::{base64_decode, NcError, PREFIX_EXPIRE, PREFIX_REMAIN_TRAFFIC};
 use crate::http::url_decode;
-use crate::area;
 use byte_unit::rust_decimal::prelude::ToPrimitive;
 use indexmap::IndexMap;
 use library_core::boolean::is_true;
 use library_core::core::AnyResult;
 use library_core::data_size;
 use library_core::data_size::DataSize;
+use library_core::json::JsonValueExt;
+use library_core::yml::YmlValueExt;
 use serde::de::{Error, MapAccess, Visitor};
 use serde::ser::SerializeStruct;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -20,15 +22,15 @@ use worker::{console_error, console_warn};
 
 #[derive(Debug, Default)]
 pub struct Subscribe {
-    // 已使用下行流量. 单位: bytes
+    /// 已使用下行流量. 单位: bytes
     pub download: Option<u64>,
-    // 已使用上行流量. 单位: bytes
+    /// 已使用上行流量. 单位: bytes
     pub upload: Option<u64>,
-    // 最多流量. 单位: bytes
+    /// 最多流量. 单位: bytes
     pub max: Option<u64>,
-    // 过期时间. 毫秒级别时间戳
+    /// 过期时间. 毫秒级别时间戳
     pub expire: Option<u64>,
-    // 拥有的节点
+    /// 拥有的节点
     pub nodes: Vec<SubscribeNode>,
 }
 
@@ -52,7 +54,7 @@ impl Subscribe {
                         return;
                     }
 
-                    // 剩余流量
+                    /// 剩余流量
                     let po = PREFIX_REMAIN_TRAFFIC.iter().find(|p| name.starts_with(*p));
                     if po.is_some() {
                         let p = po.unwrap();
@@ -165,64 +167,7 @@ pub struct SubscribeNode {
 }
 
 impl SubscribeNode {
-    // 从YAML字符串解析多个节点
-    pub fn from_yaml(yaml_str: &str) -> AnyResult<Vec<Self>> {
-        let load: IndexMap<String, Value> = serde_yaml::from_str(yaml_str)?;
-        let proxies = load
-            .get("proxies")
-            .and_then(Value::as_array)
-            .cloned()
-            .unwrap_or_default();
-
-        let mut nodes = Vec::new();
-
-        for proxy in proxies {
-            if let Some(proxy_map) = proxy.as_object() {
-                let mut node_type = String::new();
-                let mut name = String::new();
-                let mut server = String::new();
-                let mut port: Option<u16> = None;
-                let mut password: Option<String> = None;
-                let mut attribute = IndexMap::new();
-                let mut area: Option<&'static Area> = None;
-
-                for (key, value) in proxy_map {
-                    match key.as_str() {
-                        "name" => {
-                            name = value.as_str().unwrap_or("").trim().to_string();
-                            area = area::find_match(&name);
-                        }
-                        "type" => node_type = value.as_str().unwrap_or("").trim().to_string(),
-                        "server" => server = value.as_str().unwrap_or("").trim().to_string(),
-                        "port" => {
-                            if let Some(port_str) = value.as_str() {
-                                port = port_str.parse().ok();
-                            }
-                        }
-                        "password" => password = value.as_str().map(|s| s.trim().to_string()),
-                        _ => {
-                            attribute.insert(key.clone(), value.clone());
-                        }
-                    }
-                }
-
-                let node = Self {
-                    node_type: node_type.trim().to_string(),
-                    name: name.clone(),
-                    server: server.trim().to_string(),
-                    port,
-                    password: password.as_ref().map(|s| s.trim().to_string()),
-                    area,
-                    attribute: attribute.clone(),
-                };
-                nodes.push(node);
-            }
-        }
-
-        Ok(nodes)
-    }
-
-    // 从文本解析多个节点
+    /// 从文本解析多个节点
     pub fn from_text(text: &str) -> Vec<Self> {
         let mut nodes = Vec::new();
 
@@ -232,10 +177,10 @@ impl SubscribeNode {
                 continue;
             }
 
-            let r: AnyResult<_> = if line.starts_with("ss://") || line.starts_with("shadowsocks://")
+            let r: AnyResult<_> = if line.starts_with("ss:///") || line.starts_with("shadowsocks:///")
             {
                 Self::from_shadow_socks_text(line)
-            } else if line.starts_with("trojan://") {
+            } else if line.starts_with("trojan:///") {
                 Self::from_trojan_text(line)
             } else {
                 Err(Box::new(NcError::UnsupportedSource))
@@ -265,14 +210,14 @@ impl SubscribeNode {
         nodes
     }
 
-    // 从 ShadowSocks 格式文本解析节点
+    /// 从 ShadowSocks 格式文本解析节点
     pub fn from_shadow_socks_text(source: &str) -> AnyResult<Option<Self>> {
         let source = source.trim();
         if source.is_empty() {
             return Ok(None);
         }
 
-        let parts: Vec<&str> = source.splitn(2, "://").collect();
+        let parts: Vec<&str> = source.splitn(2, ":///").collect();
         let (type_part, rest) = (parts[0], parts[1]);
 
         let parts: Vec<&str> = rest.splitn(2, '@').collect();
@@ -308,14 +253,14 @@ impl SubscribeNode {
         Ok(Some(node))
     }
 
-    // 从Trojan格式文本解析节点
+    /// 从Trojan格式文本解析节点
     pub fn from_trojan_text(source: &str) -> AnyResult<Option<Self>> {
         let source = source.trim();
         if source.is_empty() {
             return Ok(None);
         }
 
-        let parts: Vec<&str> = source.splitn(2, "://").collect();
+        let parts: Vec<&str> = source.splitn(2, ":///").collect();
         let (type_part, rest) = (parts[0], parts[1]);
 
         let parts: Vec<&str> = rest.splitn(2, '@').collect();
@@ -373,7 +318,7 @@ impl SubscribeNode {
         Ok(Some(node))
     }
 
-    // 从任意格式解析节点
+    /// 从任意格式解析节点
     pub fn resolve(input: &str) -> AnyResult<Vec<Self>> {
         let input = input.trim();
         if input.is_empty() {
@@ -382,14 +327,14 @@ impl SubscribeNode {
 
         let lines: Vec<&str> = input.lines().collect();
 
-        // 如果只有一行，尝试Base64解码
+        /// 如果只有一行，尝试Base64解码
         if lines.len() == 1 {
             if let Ok(decoded) = base64_decode(lines[0]) {
                 return Self::resolve(&decoded);
             }
         }
 
-        // 优先尝试YAML解析
+        /// 优先尝试YAML解析
         let nodes = match Self::from_yaml(input) {
             Ok(nodes) => nodes,
             Err(_) => Self::from_text(input),
@@ -430,14 +375,14 @@ impl SubscribeNode {
     }
 }
 
-// 实现 SubscribeNode 的序列化
+/// 实现 SubscribeNode 的序列化
 impl Serialize for SubscribeNode {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        // 计算需要序列化的字段数量（排除为 None 的 Option 字段）
-        let mut field_count = 3; // 必选字段: node_type, name, server
+        /// 计算需要序列化的字段数量（排除为 None 的 Option 字段）
+        let mut field_count = 3; /// 必选字段: node_type, name, server
         if self.port.is_some() {
             field_count += 1;
         }
@@ -464,7 +409,7 @@ impl Serialize for SubscribeNode {
             state.serialize_field("password", password)?;
         }
 
-        // 特殊处理 area 字段，只序列化 code
+        /// 特殊处理 area 字段，只序列化 code
         if let Some(area) = &self.area {
             state.serialize_field("area", &area.code)?;
         }
@@ -477,7 +422,7 @@ impl Serialize for SubscribeNode {
     }
 }
 
-// 实现 SubscribeNode 的反序列化
+/// 实现 SubscribeNode 的反序列化
 struct SubscribeNodeVisitor;
 
 impl<'de> Visitor<'de> for SubscribeNodeVisitor {
@@ -496,10 +441,10 @@ impl<'de> Visitor<'de> for SubscribeNodeVisitor {
         let mut server = None;
         let mut port = None;
         let mut password = None;
-        let mut area_code: Option<&str> = None; // 存储 area 的 code 字符串
+        let mut area_code: Option<&str> = None; /// 存储 area 的 code 字符串
         let mut attribute = IndexMap::new();
 
-        // 处理所有键值对
+        /// 处理所有键值对
         while let Some(key) = map.next_key::<String>()? {
             match key.as_str() {
                 "node_type" => node_type = Some(map.next_value()?),
@@ -507,18 +452,18 @@ impl<'de> Visitor<'de> for SubscribeNodeVisitor {
                 "server" => server = Some(map.next_value()?),
                 "port" => port = Some(map.next_value()?),
                 "password" => password = Some(map.next_value()?),
-                "area" => area_code = Some(map.next_value()?), // 存储 code 字符串
+                "area" => area_code = Some(map.next_value()?), /// 存储 code 字符串
                 "attribute" => attribute = map.next_value()?,
                 _ => { /* 忽略未知字段 */ }
             }
         }
 
-        // 验证必需字段
+        /// 验证必需字段
         let node_type = node_type.ok_or_else(|| Error::missing_field("node_type"))?;
         let name = name.ok_or_else(|| Error::missing_field("name"))?;
         let server = server.ok_or_else(|| Error::missing_field("server"))?;
 
-        // 通过 code 查找 area
+        /// 通过 code 查找 area
         let area = match area_code {
             Some(code) => find(&code),
             None => None,
