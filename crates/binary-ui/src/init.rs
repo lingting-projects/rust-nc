@@ -182,7 +182,7 @@ fn init_system() -> AnyResult<()> {
     let icon = icon::tao()?;
 
     dispatch(Box::new(move |w, _| {
-        if !*settings::start_minimize {
+        if cfg!(feature = "dev") || !*settings::start_minimize {
             w.set_visible(true)
         }
         w.set_window_icon(Some(icon));
