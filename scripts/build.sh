@@ -20,6 +20,10 @@ done
 # 添加环境profile作为feature
 features+=("$profile")
 
+if [ "$profile"="dev" ]; then
+    features+=("local-ui")
+fi
+
 # 去重feature列表
 features=($(printf "%s\n" "${features[@]}" | sort -u))
 
