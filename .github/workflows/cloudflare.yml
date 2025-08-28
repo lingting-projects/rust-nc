@@ -1,4 +1,4 @@
-name: Release Ci
+name: Cloudflare Ci
 
 on:
   workflow_dispatch:
