@@ -1,0 +1,53 @@
+name: Release Ci
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: 拉取代码
+        uses: actions/checkout@v4
+
+      - name: 缓存 Rust
+        uses: actions/cache@v4
+        id: cache-rust
+        with:
+          path: |
+            ~/.cargo
+            target
+          key: rust-${{ runner.os }}-1.88.0
+          restore-keys: rust-${{ runner.os }}
+      - name: 安装 Rust
+        uses: dtolnay/rust-toolchain@master
+        if: steps.cache-rust.outputs.cache-hit != 'true'
+        with:
+          toolchain: ${{ matrix.rust }}
+
+      - name: 安装 Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18.20.3
+          cache: 'npm'
+          cache-dependency-path: |
+            crates/binary-works-cloudflare/package-lock.json
+      - name: 缓存 Node
+        uses: actions/cache@v4
+        with:
+          path: |
+            crates/binary-works-cloudflare/node_modules
+            crates/binary-works-cloudflare/build
+          key: node-cloudflare-${{ runner.os }}-18.20.3
+          restore-keys: node-cloudflare-${{ runner.os }}
+
+      - name: 发布
+        shell: bash
+        run: |
+          sh scripts/cloudflare.sh
