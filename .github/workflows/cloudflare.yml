@@ -34,7 +34,7 @@ jobs:
       - name: 安装 Node
         uses: actions/setup-node@v4
         with:
-          node-version: 18.20.3
+          node-version: 22.17.0
           cache: 'npm'
           cache-dependency-path: |
             crates/binary-works-cloudflare/package-lock.json
@@ -44,10 +44,10 @@ jobs:
           path: |
             crates/binary-works-cloudflare/node_modules
             crates/binary-works-cloudflare/build
-          key: node-cloudflare-${{ runner.os }}-18.20.3
+          key: node-cloudflare-${{ runner.os }}-22.17.0
           restore-keys: node-cloudflare-${{ runner.os }}
 
       - name: 发布
         shell: bash
         run: |
-          sh scripts/cloudflare.sh
+          echo "deploy"
