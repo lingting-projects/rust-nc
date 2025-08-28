@@ -26,5 +26,7 @@ log = ["library-nc/wrangler"]
 [dependencies]
 library-core = { path = "../library-core", features = [] }
 library-nc = { path = "../library-nc" }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true, features = [] }
 worker = { workspace = true, features = [] }
 console_error_panic_hook = { version = "0.1.7" }

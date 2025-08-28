@@ -96,7 +96,12 @@ pub fn panic_msg(p: Box<dyn Any + Send>) -> String {
     }
 }
 
-#[cfg(target_os = "windows")]
+pub fn current_millis() -> AnyResult<u128> {
+    let millis = SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis();
+    Ok(millis)
+}
+
+#[cfg(all(feature = "app", target_os = "windows"))]
 pub fn is_root() -> bool {
     let (tx, rx) = mpsc::channel();
     thread::spawn(move || {
@@ -131,12 +136,12 @@ pub fn is_root() -> bool {
     }
 }
 
-#[cfg(not(target_os = "windows"))]
+#[cfg(all(feature = "app", not(target_os = "windows")))]
 pub fn is_root() -> bool {
     unsafe { libc::getuid() == 0 }
 }
 
-#[cfg(target_os = "windows")]
+#[cfg(all(feature = "app",target_os = "windows"))]
 fn start_root(path: &str, args: Vec<String>) {
     let args_str = args.join(" ");
     let ps_command = format!(
@@ -149,11 +154,12 @@ fn start_root(path: &str, args: Vec<String>) {
         .status();
 }
 
-#[cfg(not(target_os = "windows"))]
+#[cfg(all(feature = "app",not(target_os = "windows")))]
 fn start_root(path: &str, args: Vec<String>) {
     let _ = Command::new("sudo").arg(path).args(&args[1..]).status();
 }
 
+#[cfg(feature = "app")]
 pub fn restart_root() {
     let path = env::current_exe()
         .expect("get current bin path failed")
@@ -165,14 +171,10 @@ pub fn restart_root() {
     process::exit(-1)
 }
 
+#[cfg(feature = "app")]
 pub fn require_root() {
     if is_root() {
         return;
     }
     restart_root()
-}
-
-pub fn current_millis() -> AnyResult<u128> {
-    let millis = SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis();
-    Ok(millis)
 }

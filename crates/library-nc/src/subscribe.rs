@@ -54,14 +54,14 @@ impl Subscribe {
                         return;
                     }
 
-                    /// 剩余流量
+                    // 剩余流量
                     let po = PREFIX_REMAIN_TRAFFIC.iter().find(|p| name.starts_with(*p));
                     if po.is_some() {
                         let p = po.unwrap();
                         let bo = name.strip_prefix(p);
                         if bo.is_some() {
                             let b = bo.unwrap();
-                            if let Ok(size) = data_size::DataSize::parse(b) {
+                            if let Ok(size) = DataSize::parse(b) {
                                 max = Some(size.bytes)
                             }
                         }
@@ -177,14 +177,14 @@ impl SubscribeNode {
                 continue;
             }
 
-            let r: AnyResult<_> = if line.starts_with("ss:///") || line.starts_with("shadowsocks:///")
-            {
-                Self::from_shadow_socks_text(line)
-            } else if line.starts_with("trojan:///") {
-                Self::from_trojan_text(line)
-            } else {
-                Err(Box::new(NcError::UnsupportedSource))
-            };
+            let r: AnyResult<_> =
+                if line.starts_with("ss:///") || line.starts_with("shadowsocks:///") {
+                    Self::from_shadow_socks_text(line)
+                } else if line.starts_with("trojan:///") {
+                    Self::from_trojan_text(line)
+                } else {
+                    Err(Box::new(NcError::UnsupportedSource))
+                };
 
             match r {
                 Ok(o) => match o {
@@ -327,14 +327,14 @@ impl SubscribeNode {
 
         let lines: Vec<&str> = input.lines().collect();
 
-        /// 如果只有一行，尝试Base64解码
+        // 如果只有一行，尝试Base64解码
         if lines.len() == 1 {
             if let Ok(decoded) = base64_decode(lines[0]) {
                 return Self::resolve(&decoded);
             }
         }
 
-        /// 优先尝试YAML解析
+        // 优先尝试YAML解析
         let nodes = match Self::from_yaml(input) {
             Ok(nodes) => nodes,
             Err(_) => Self::from_text(input),
@@ -381,8 +381,9 @@ impl Serialize for SubscribeNode {
     where
         S: Serializer,
     {
-        /// 计算需要序列化的字段数量（排除为 None 的 Option 字段）
-        let mut field_count = 3; /// 必选字段: node_type, name, server
+        // 计算需要序列化的字段数量（排除为 None 的 Option 字段）
+        let mut field_count = 3;
+        // 必选字段: node_type, name, server
         if self.port.is_some() {
             field_count += 1;
         }
@@ -409,7 +410,7 @@ impl Serialize for SubscribeNode {
             state.serialize_field("password", password)?;
         }
 
-        /// 特殊处理 area 字段，只序列化 code
+        // 特殊处理 area 字段，只序列化 code
         if let Some(area) = &self.area {
             state.serialize_field("area", &area.code)?;
         }
@@ -441,10 +442,10 @@ impl<'de> Visitor<'de> for SubscribeNodeVisitor {
         let mut server = None;
         let mut port = None;
         let mut password = None;
-        let mut area_code: Option<&str> = None; /// 存储 area 的 code 字符串
+        let mut area_code: Option<&str> = None; // 存储 area 的 code 字符串
         let mut attribute = IndexMap::new();
 
-        /// 处理所有键值对
+        // 处理所有键值对
         while let Some(key) = map.next_key::<String>()? {
             match key.as_str() {
                 "node_type" => node_type = Some(map.next_value()?),
@@ -452,18 +453,19 @@ impl<'de> Visitor<'de> for SubscribeNodeVisitor {
                 "server" => server = Some(map.next_value()?),
                 "port" => port = Some(map.next_value()?),
                 "password" => password = Some(map.next_value()?),
-                "area" => area_code = Some(map.next_value()?), /// 存储 code 字符串
+                // 存储 code 字符串
+                "area" => area_code = Some(map.next_value()?),
                 "attribute" => attribute = map.next_value()?,
                 _ => { /* 忽略未知字段 */ }
             }
         }
 
-        /// 验证必需字段
+        // 验证必需字段
         let node_type = node_type.ok_or_else(|| Error::missing_field("node_type"))?;
         let name = name.ok_or_else(|| Error::missing_field("name"))?;
         let server = server.ok_or_else(|| Error::missing_field("server"))?;
 
-        /// 通过 code 查找 area
+        // 通过 code 查找 area
         let area = match area_code {
             Some(code) => find(&code),
             None => None,

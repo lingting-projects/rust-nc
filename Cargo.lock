@@ -222,6 +222,8 @@ dependencies = [
  "console_error_panic_hook",
  "library-core",
  "library-nc",
+ "serde",
+ "serde_json",
  "worker",
 ]
 

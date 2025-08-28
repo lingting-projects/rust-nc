@@ -66,10 +66,10 @@ pub async fn check_async() -> AnyResult<Option<(String, String, DataSize)>> {
 
     let version = Version::resolver(env!("CARGO_PKG_VERSION")).unwrap();
     let app = get_app();
-    let url = format!(
-        "https://api.github.com/repos/{}/{}/releases/latest",
-        app.owner, app.repo
-    );
+    let owner = app.owner;
+    let repo = app.repo;
+
+    let url = format!("https://api.github.com/repos/{owner}/{repo}/releases/latest",);
 
     let response = http::get(&url).await?;
     let json = response.read_text().await?;

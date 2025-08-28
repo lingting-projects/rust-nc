@@ -203,6 +203,7 @@ impl NodeContains {
 
     fn match_name_contains(&self, node: &SubscribeNode) -> bool {
         if self.name_contains.is_empty() {
+            #[cfg(feature = "binary")]
             log::trace!("[{}] 名称未设置, 名称匹配: {}", node.name, self.non_area);
             #[cfg(feature = "wrangler")]
             console_debug!("[{}] 名称未设置, 名称匹配: {}", node.name, self.non_area);

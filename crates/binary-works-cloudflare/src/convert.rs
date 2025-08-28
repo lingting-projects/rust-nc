@@ -1,4 +1,4 @@
-use crate::core::http_get;
+use crate::core::{http_get, RequestExt};
 use library_core::boolean::is_true;
 use library_core::core::AnyResult;
 use library_nc::http::pick_host;
@@ -12,7 +12,7 @@ use worker::wasm_bindgen::UnwrapThrowExt;
 use worker::Error::RustError;
 use worker::{console_debug, Request, Response};
 
-pub struct ConvertParams {
+struct ConvertParams {
     remote: String,
     tun: bool,
     ipv6: bool,
@@ -68,38 +68,7 @@ impl ConvertParams {
     }
 
     pub fn from_fetch(req: Request) -> AnyResult<Self> {
-        let url = req.url()?;
-        let query = url.query().unwrap_or("");
-        let mut source: HashMap<String, Vec<String>> = HashMap::new();
-
-        for item in query.split("&") {
-            if item.is_empty() {
-                continue;
-            }
-            let mut key = "";
-            let mut value = "".to_string();
-            let mut i = 0;
-            item.split("=").for_each(|arg| {
-                i += 1;
-                if i == 1 {
-                    key = arg;
-                } else if i == 2 {
-                    value = arg.to_string();
-                } else {
-                    value = format!("{}={}", value, arg);
-                }
-            });
-
-            let option = source.get_mut(key);
-            match option {
-                None => {
-                    source.insert(key.to_string(), vec![value]);
-                }
-                Some(vec) => vec.push(value),
-            }
-        }
-
-        Self::from_map(source)
+        Self::from_map(req.query_map()?)
     }
 
     pub fn from_map(source: HashMap<String, Vec<String>>) -> AnyResult<Self> {
@@ -154,7 +123,7 @@ impl ConvertParams {
             dns_cn: dns_default_cn.clone(),
             dns_proxy: dns_default_proxy.clone(),
         }
-            .with_default(&self.include, &self.exclude);
+        .with_default(&self.include, &self.exclude);
 
         Ok(config)
     }
