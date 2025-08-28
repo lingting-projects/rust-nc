@@ -15,5 +15,6 @@ echo "  版本: $VERSION"
 cd crates/binary-works-cloudflare
 # 替换配置
 sed -i "s/0.0.0/$VERSION/g" package.json
+npm install
 # 发布
 npm run deploy
