@@ -130,18 +130,19 @@ impl ConvertParams {
 }
 
 async fn subscribe(params: &ConvertParams) -> AnyResult<Subscribe> {
-    console_debug!("从远程获取数据: {}", &params.remote);
+    console_debug!("从远程[{}]获取数据", &params.remote);
     let mut response = http_get(&params.remote).await?;
     if response.status_code() != 200 {
         return Err(Box::new(RustError(format!(
-            "远程返回异常! {}",
+            "远程[{}]返回异常! {}",
+            &params.remote,
             response.status_code()
         ))));
     }
     let headers = response.headers();
     let info = headers.get(HEADER_INFO)?;
     let remote = response.text().await?;
-    console_debug!("解析远程数据: {}", &params.remote);
+    console_debug!("解析远程[{}]数据, 长度: {}", &params.remote, remote.len());
     Subscribe::resolve(&remote, info)
 }
 

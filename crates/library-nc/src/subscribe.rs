@@ -177,14 +177,14 @@ impl SubscribeNode {
                 continue;
             }
 
-            let r: AnyResult<_> =
-                if line.starts_with("ss:///") || line.starts_with("shadowsocks:///") {
-                    Self::from_shadow_socks_text(line)
-                } else if line.starts_with("trojan:///") {
-                    Self::from_trojan_text(line)
-                } else {
-                    Err(Box::new(NcError::UnsupportedSource))
-                };
+            let r: AnyResult<_> = if line.starts_with("ss://") || line.starts_with("shadowsocks://")
+            {
+                Self::from_shadow_socks_text(line)
+            } else if line.starts_with("trojan://") {
+                Self::from_trojan_text(line)
+            } else {
+                Err(Box::new(NcError::UnsupportedSource))
+            };
 
             match r {
                 Ok(o) => match o {
@@ -217,7 +217,7 @@ impl SubscribeNode {
             return Ok(None);
         }
 
-        let parts: Vec<&str> = source.splitn(2, ":///").collect();
+        let parts: Vec<&str> = source.splitn(2, "://").collect();
         let (type_part, rest) = (parts[0], parts[1]);
 
         let parts: Vec<&str> = rest.splitn(2, '@').collect();
@@ -260,7 +260,7 @@ impl SubscribeNode {
             return Ok(None);
         }
 
-        let parts: Vec<&str> = source.splitn(2, ":///").collect();
+        let parts: Vec<&str> = source.splitn(2, "://").collect();
         let (type_part, rest) = (parts[0], parts[1]);
 
         let parts: Vec<&str> = rest.splitn(2, '@').collect();

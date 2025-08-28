@@ -68,7 +68,11 @@ async fn _refresh(s: TblSubscribeRefreshDTO) -> AnyResult<()> {
         }
     }
 
-    log::debug!("[订阅] [{}] 序列化节点", s.name);
+    log::debug!(
+        "[订阅] [{}] 序列化节点, 数量: {}",
+        s.name,
+        &subscribe.nodes.len()
+    );
     let json_nodes = serde_json::to_string(&subscribe.nodes)?;
     let time = current_millis();
 
