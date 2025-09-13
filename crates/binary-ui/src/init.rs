@@ -1,6 +1,6 @@
 use crate::icon;
 use crate::window::view::View;
-use crate::window::{dispatch, Window, URL_MAIN};
+use crate::window::{dispatch, Window, URL_HIDDEN, URL_MAIN};
 use library_core::app::get_app;
 use library_core::core::{AnyResult, BizError, Exit};
 use library_core::data_size::DataSize;
@@ -181,9 +181,12 @@ fn _init() -> AnyResult<()> {
 fn init_system() -> AnyResult<()> {
     let icon = icon::tao()?;
 
-    dispatch(Box::new(move |w, _| {
-        if cfg!(feature = "dev") || !*settings::start_minimize {
+    dispatch(Box::new(move |w, v| {
+        let minimize = *settings::start_minimize;
+        if cfg!(feature = "dev") || !minimize {
             w.set_visible(true)
+        } else {
+            let _ = v.load(&URL_HIDDEN);
         }
         w.set_window_icon(Some(icon));
     }))?;
