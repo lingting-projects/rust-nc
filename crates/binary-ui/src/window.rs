@@ -20,7 +20,7 @@ use tao::window::{WindowBuilder, WindowId};
 use tray_icon::{TrayIcon, TrayIconEvent};
 
 pub static URL_MAIN: LazyLock<String> = LazyLock::new(|| {
-    if cfg!(not(feature = "local-ui")) {
+    let url = if cfg!(not(feature = "local-ui")) {
         String::from("http://localhost:30000")
     } else {
         let app = get_app();
@@ -30,13 +30,21 @@ pub static URL_MAIN: LazyLock<String> = LazyLock::new(|| {
         if !path.exists() {
             path = app.install_dir.join("ui").join("index.html");
         }
-        log::info!("path: {}", path.display());
         format!("file:///{}", path.to_str().unwrap())
-    }
+    };
+    log::debug!("url main: {}", url);
+    url
 });
 
-pub static URL_HIDDEN: LazyLock<String> =
-    LazyLock::new(|| format!("{}/#/hidden", URL_MAIN.clone()));
+pub static URL_HIDDEN: LazyLock<String> = LazyLock::new(|| {
+    let url = format!("{}#/hidden", URL_MAIN.clone());
+    log::debug!("url hidden: {}", url);
+    url
+});
+
+pub fn url_is_hidden(str: &str) -> bool {
+    str.ends_with("#/hidden")
+}
 
 type Callback = dyn FnOnce(&tao::window::Window, &ViewWrapper) + Send;
 
@@ -252,7 +260,7 @@ impl Window {
         self.consumer(id, |w, v| {
             w.focus_show();
             if let Ok(url) = v.url()
-                && url == *URL_HIDDEN
+                && url_is_hidden(&url)
             {
                 let _ = v.load(&URL_MAIN);
             }
