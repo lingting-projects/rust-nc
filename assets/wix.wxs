@@ -9,6 +9,9 @@
     <?ifndef UI ?>
       <?define UI = 0 ?>
     <?endif ?>
+    <?ifndef IconDesktop ?>
+      <?define IconDesktop = 0 ?>
+    <?endif ?>
 
     <!--
         语言: 2052 中文
@@ -75,6 +78,7 @@
                 Guid="9885f628-1b5f-4e3a-a219-01576e9b43b8"
                 Directory="INSTALLFOLDER"
             >
+                <?if $(var.IconDesktop) = 1 ?>
                 <Shortcut
                     Id="MainDesktopShortcut"
                     Name="_name"
@@ -85,6 +89,7 @@
                     IconIndex="0"
                     Directory="DesktopFolder"
                 />
+                <?endif ?>
 
                 <Shortcut
                     Id="MainStartMenuShortcut"

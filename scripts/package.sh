@@ -87,7 +87,10 @@ sed -i "s/_name/$NAME/g" product.wxs
 sed -i "s/_version/$VERSION/g" product.wxs
 sed -i "s/_desc/$DESC/g" product.wxs
 
-wix_args=()
+wix_args=(
+  # 不生成桌面图标, 后面做成参数
+  "-d" "IconDesktop=0"
+)
 
 if [ -f "$NAME-singbox" ]; then
   echo "singbox: bin"
