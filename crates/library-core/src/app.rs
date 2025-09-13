@@ -2,6 +2,7 @@ use crate::core::{is_root, panic_msg, restart_root, AnyResult};
 use crate::snowflake::next_str;
 use crate::{file, sqlite};
 use std::ops::Deref;
+use std::panic::PanicHookInfo;
 use std::sync::LazyLock;
 use std::{
     env,
@@ -9,6 +10,7 @@ use std::{
     fs, panic,
     path::{Path, PathBuf},
     sync::OnceLock,
+    thread,
 };
 
 static ID: &'static str = "live.lingting.nc.rust";
@@ -185,11 +187,38 @@ fn log_simple() {
     log::info!("完成日志初始化, 日志级别: {level}");
 }
 
+fn panic_hook(info: &PanicHookInfo) {
+    eprintln!("[崩溃] 触发崩溃hook");
+    let location = info
+        .location()
+        .map(|l| format!("文件: {}, 行号: {}", l.file(), l.line()))
+        .unwrap_or_else(|| "未知位置".to_string());
+    eprintln!("[崩溃] {}", location);
+
+    let message = info
+        .payload()
+        .downcast_ref::<&str>()
+        .copied()
+        .or_else(|| info.payload().downcast_ref::<String>().map(String::as_str))
+        .unwrap_or("未提供错误信息");
+    eprintln!("[崩溃] {}", message);
+
+    let thread = thread::current();
+    let thread_name = thread.name().unwrap_or("未知线程");
+    eprintln!(
+        "[崩溃] 线程名称: {}, 线程ID: {:?}",
+        thread_name,
+        thread.id()
+    );
+}
+
 fn _init() -> AnyResult<()> {
     #[cfg(all(feature = "redirect", not(debug_assertions)))]
     crate::redirect::redirect_dir(&*DIR_LOGS)?;
     #[cfg(feature = "simple_logger")]
     log_simple();
+
+    panic::set_hook(Box::new(panic_hook));
 
     log::debug!("初始化应用程序基础数据");
     APP.get_or_init(Application::new);
