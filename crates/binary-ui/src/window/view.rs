@@ -6,6 +6,7 @@ use tao::window::Window;
 pub trait View {
     fn load(&self, url: &str) -> AnyResult<()>;
     fn eval(&self, js: &str) -> AnyResult<()>;
+    fn url(&self)->AnyResult<String>;
 }
 pub struct ViewWrapper {
     instance: Box<dyn View>,
@@ -27,6 +28,10 @@ impl View for ViewWrapper {
 
     fn eval(&self, js: &str) -> AnyResult<()> {
         self.instance.eval(js)
+    }
+
+    fn url(&self) -> AnyResult<String> {
+        self.instance.url()
     }
 }
 

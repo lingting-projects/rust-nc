@@ -1,6 +1,6 @@
 use crate::icon;
 use crate::window::view::View;
-use crate::window::{dispatch, Window};
+use crate::window::{dispatch, Window, URL_MAIN};
 use library_core::app::get_app;
 use library_core::core::{AnyResult, BizError, Exit};
 use library_core::data_size::DataSize;
@@ -259,23 +259,9 @@ fn update(version: String, url: String, size: DataSize) {
 fn assets() {}
 
 fn completed() {
-    let url = if cfg!(not(feature = "local-ui")) {
-        String::from("http://localhost:30000")
-    } else {
-        let app = get_app();
-        // 优先使用外置ui
-        let mut path = app.ui_dir.join("index.html");
-        // 外置ui没有, 使用内置ui
-        if !path.exists() {
-            path = app.install_dir.join("ui").join("index.html");
-        }
-        log::info!("path: {}", path.display());
-        format!("file:///{}", path.to_str().unwrap())
-    };
-
     dispatch(Box::new(move |w, v| {
         w.set_title("NC");
-        match v.load(&url) {
+        match v.load(&URL_MAIN) {
             Ok(_) => {}
             Err(_) => emit(LoadingState::UiError),
         }

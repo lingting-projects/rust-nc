@@ -19,6 +19,11 @@ impl View for WebView {
         self.inner.evaluate_script(js)?;
         Ok(())
     }
+
+    fn url(&self) -> AnyResult<String> {
+        let url = self.inner.url()?;
+        Ok(url)
+    }
 }
 
 impl WebView {
@@ -32,11 +37,7 @@ impl WebView {
         let view = build(window, builder)?;
         Ok(Self { inner: view })
     }
-    pub fn with_url(
-        window: &Window,
-        url: &str,
-        on_page_load: Box<OnPageLoad>,
-    ) -> AnyResult<Self> {
+    pub fn with_url(window: &Window, url: &str, on_page_load: Box<OnPageLoad>) -> AnyResult<Self> {
         let builder = builder(on_page_load)?.with_url(url);
 
         let view = build(window, builder)?;

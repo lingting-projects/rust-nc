@@ -5,6 +5,7 @@ mod view_webview;
 use crate::init::FIRST;
 use crate::window::view::{common_on_page_load, OnPageLoad, View, ViewWrapper};
 use crate::{icon, tray, UserEvent};
+use library_core::app::get_app;
 use library_core::core::{AnyResult, BizError, Exit};
 use std::collections::HashMap;
 use std::process::exit;
@@ -17,6 +18,25 @@ use tao::event_loop::{
 };
 use tao::window::{WindowBuilder, WindowId};
 use tray_icon::{TrayIcon, TrayIconEvent};
+
+pub static URL_MAIN: LazyLock<String> = LazyLock::new(|| {
+    if cfg!(not(feature = "local-ui")) {
+        String::from("http://localhost:30000")
+    } else {
+        let app = get_app();
+        // 优先使用外置ui
+        let mut path = app.ui_dir.join("index.html");
+        // 外置ui没有, 使用内置ui
+        if !path.exists() {
+            path = app.install_dir.join("ui").join("index.html");
+        }
+        log::info!("path: {}", path.display());
+        format!("file:///{}", path.to_str().unwrap())
+    }
+});
+
+pub static URL_HIDDEN: LazyLock<String> =
+    LazyLock::new(|| format!("{}/#/hidden", URL_MAIN.clone()));
 
 type Callback = dyn FnOnce(&tao::window::Window, &ViewWrapper) + Send;
 
@@ -141,10 +161,11 @@ impl Window {
                 ..
             } => {
                 if window_id == self.main {
-                    self.consumer(window_id, |w, _| {
+                    self.consumer(window_id, |w, v| {
                         // 未选中主窗口且主窗口已经最小化
                         if !focused && w.is_minimized() {
-                            w.set_visible(false)
+                            w.set_visible(false);
+                            let _ = v.load(&URL_HIDDEN);
                         }
                     })
                 }
@@ -228,7 +249,14 @@ impl Window {
     }
 
     pub fn show(&self, id: WindowId) {
-        self.consumer(id, |w, _| w.focus_show());
+        self.consumer(id, |w, v| {
+            w.focus_show();
+            if let Ok(url) = v.url()
+                && url == *URL_HIDDEN
+            {
+                let _ = v.load(&URL_MAIN);
+            }
+        });
     }
 }
 
