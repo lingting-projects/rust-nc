@@ -257,13 +257,15 @@ impl Window {
     }
 
     pub fn show(&self, id: WindowId) {
-        self.consumer(id, |w, v| {
-            w.focus_show();
-            if let Ok(url) = v.url()
+        let main = self.main == id;
+        self.consumer(id, move |w, v| {
+            if main
+                && let Ok(url) = v.url()
                 && url_is_hidden(&url)
             {
                 let _ = v.load(&URL_MAIN);
             }
+            w.focus_show();
         });
     }
 }
