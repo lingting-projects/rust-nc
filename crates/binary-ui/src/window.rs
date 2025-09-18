@@ -42,8 +42,14 @@ pub static URL_HIDDEN: LazyLock<String> = LazyLock::new(|| {
     url
 });
 
+pub static HIDDEN: LazyLock<bool> = LazyLock::new(|| false);
+
 pub fn url_is_hidden(str: &str) -> bool {
-    str.ends_with("#/hidden")
+    if *HIDDEN {
+        str.ends_with("#/hidden")
+    } else {
+        false
+    }
 }
 
 type Callback = dyn FnOnce(&tao::window::Window, &ViewWrapper) + Send;
@@ -173,7 +179,9 @@ impl Window {
                         // 未选中主窗口且主窗口已经最小化
                         if !focused && w.is_minimized() {
                             w.set_visible(false);
-                            let _ = v.load(&URL_HIDDEN);
+                            if *HIDDEN {
+                                let _ = v.load(&URL_HIDDEN);
+                            }
                         }
                     })
                 }
