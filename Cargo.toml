@@ -34,7 +34,7 @@ zstd = "0.13"
 # tauri 基础组件
 wry = "0.52"
 tao = "0.34"
-tray-icon = "0.21"
+tray-icon = "0.21.0"
 # web
 axum = "0.8"
 tokio = "1.44"
