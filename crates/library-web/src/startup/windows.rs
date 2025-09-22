@@ -123,14 +123,20 @@ pub fn enable() -> AnyResult<bool> {
     let user_sid = user_sid()?;
     let _exe = env::current_exe()?;
     let bin = _exe.to_str().expect("get exe path err");
+    let worker = _exe
+        .parent()
+        .expect("get exe dir err")
+        .to_str()
+        .expect("get exe dir path err");
     let bytes = include_bytes!("../../../../assets/startup_windows.xml");
     let template = encoding::all::UTF_16BE.decode(bytes, DecoderTrap::Replace)?;
 
     let xml = template
         .replace("@author@", &author)
         .replace("@userid@", &user_sid)
-        .replace("@exe@", &bin);
-    let re =Regex::new(r"\r?\n")?;
+        .replace("@exe@", &bin)
+        .replace("@worker@", &worker);
+    let re = Regex::new(r"\r?\n")?;
     let xml_crlf = re.replace_all(&xml, "\r\n");
 
     file::overwrite(path, &xml_crlf)?;
