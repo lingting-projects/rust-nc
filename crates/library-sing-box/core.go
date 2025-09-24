@@ -6,7 +6,6 @@ import (
 	"io"
 	"os"
 	"os/signal"
-	"runtime"
 	"runtime/debug"
 	"sync/atomic"
 	"syscall"
@@ -19,6 +18,7 @@ import (
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing/common/json"
 	"github.com/sagernet/sing/service/filemanager"
+	"github.com/shirou/gopsutil/v4/process"
 )
 
 type SingBoxError int8
@@ -71,17 +71,15 @@ func isAlive(pid int) bool {
 	if pid < 1 {
 		return true
 	}
-
-	p, e := os.FindProcess(pid)
+	p, e := process.NewProcess(int32(pid))
 	if e != nil || p == nil {
 		log.Debug("alive: false! ", e)
 		return false
 	}
-	// unix 即使进程不存在，FindProcess也可能返回非nil的process
-	if runtime.GOOS != "windows" {
-		e = p.Signal(syscall.Signal(0))
-		log.Debug("alive: false! signal: ", e)
-		return e == nil
+	name, e := p.Name()
+	if e != nil || len(name) < 1 || (name != "lingting-nc" && name != "lingting-nc.exe") {
+		log.Debug("alive: false! name: ", name, e)
+		return false
 	}
 	return true
 }

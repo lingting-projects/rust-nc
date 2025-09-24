@@ -5,6 +5,7 @@ go 1.24.5
 require (
 	github.com/sagernet/sing v0.6.7
 	github.com/sagernet/sing-box v1.11.9
+	github.com/shirou/gopsutil/v4 v4.25.8
 )
 
 require (
@@ -13,6 +14,7 @@ require (
 	github.com/caddyserver/certmagic v0.20.0 // indirect
 	github.com/cloudflare/circl v1.3.7 // indirect
 	github.com/cretz/bine v0.2.0 // indirect
+	github.com/ebitengine/purego v0.8.4 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/go-chi/chi/v5 v5.2.1 // indirect
 	github.com/go-chi/render v1.0.3 // indirect
@@ -22,7 +24,7 @@ require (
 	github.com/gobwas/pool v0.2.1 // indirect
 	github.com/gofrs/uuid/v5 v5.3.2 // indirect
 	github.com/google/btree v1.1.3 // indirect
-	github.com/google/go-cmp v0.6.0 // indirect
+	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/pprof v0.0.0-20231101202521-4ca4178f5c7a // indirect
 	github.com/hashicorp/yamux v0.1.2 // indirect
 	github.com/insomniacslk/dhcp v0.0.0-20250109001534-8abf58130905 // indirect
@@ -33,6 +35,7 @@ require (
 	github.com/libdns/cloudflare v0.1.1 // indirect
 	github.com/libdns/libdns v0.2.2 // indirect
 	github.com/logrusorgru/aurora v2.0.3+incompatible // indirect
+	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
 	github.com/mdlayher/netlink v1.7.2 // indirect
 	github.com/mdlayher/socket v0.4.1 // indirect
 	github.com/metacubex/tfo-go v0.0.0-20241231083714-66613d49c422 // indirect
@@ -41,6 +44,7 @@ require (
 	github.com/onsi/ginkgo/v2 v2.9.7 // indirect
 	github.com/oschwald/maxminddb-golang v1.12.0 // indirect
 	github.com/pierrec/lz4/v4 v4.1.14 // indirect
+	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
 	github.com/quic-go/qpack v0.4.0 // indirect
 	github.com/quic-go/qtls-go1-20 v0.4.1 // indirect
 	github.com/sagernet/bbolt v0.0.0-20231014093535-ea5cb2fe9f0a // indirect
@@ -64,8 +68,11 @@ require (
 	github.com/sagernet/utls v1.6.7 // indirect
 	github.com/sagernet/wireguard-go v0.0.1-beta.7 // indirect
 	github.com/sagernet/ws v0.0.0-20231204124109-acfe8907c854 // indirect
+	github.com/tklauser/go-sysconf v0.3.15 // indirect
+	github.com/tklauser/numcpus v0.10.0 // indirect
 	github.com/u-root/uio v0.0.0-20230220225925-ffce2a382923 // indirect
 	github.com/vishvananda/netns v0.0.4 // indirect
+	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	github.com/zeebo/blake3 v0.2.3 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
@@ -75,7 +82,7 @@ require (
 	golang.org/x/mod v0.20.0 // indirect
 	golang.org/x/net v0.34.0 // indirect
 	golang.org/x/sync v0.10.0 // indirect
-	golang.org/x/sys v0.30.0 // indirect
+	golang.org/x/sys v0.35.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
 	golang.org/x/time v0.7.0 // indirect
 	golang.org/x/tools v0.24.0 // indirect
