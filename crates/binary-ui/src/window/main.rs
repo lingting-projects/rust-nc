@@ -8,11 +8,6 @@ use std::sync::Arc;
 use tao::event_loop::{EventLoop, EventLoopClosed, EventLoopProxy};
 use tao::window::{Window, WindowBuilder};
 
-pub fn build_window(l: &EventLoop<UserEvent>, builder: WindowBuilder) -> AnyResult<Window> {
-    let window = builder.build(l)?;
-    Ok(window)
-}
-
 fn on_page_load() {
     let result = dispatch(Box::new(|w, v| {
         match webserver::port() {
@@ -34,12 +29,12 @@ fn on_page_load() {
                 match v.eval(&js) {
                     Ok(_) => {}
                     Err(e) => {
-                        log::error!("主窗口请求前缀设置异常! {}",e)
+                        log::error!("主窗口请求前缀设置异常! {}", e)
                     }
                 }
             }
         }
-        
+
         common_on_page_load(v);
     }));
     match result {
@@ -50,9 +45,7 @@ fn on_page_load() {
     }
 }
 
-pub fn build_view(
-    window: &Window,
-) -> AnyResult<ViewWrapper> {
+pub fn build_view(window: &Window) -> AnyResult<ViewWrapper> {
     let view = view::with_html(
         window,
         include_str!("../../../../assets/loading.html"),

@@ -11,7 +11,7 @@ use std::collections::HashMap;
 use std::process::exit;
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::{mpsc, Arc, LazyLock, OnceLock};
-use tao::dpi::PhysicalSize;
+use tao::dpi::{PhysicalPosition, PhysicalSize};
 use tao::event::{Event, WindowEvent};
 use tao::event_loop::{
     ControlFlow, EventLoop, EventLoopClosed, EventLoopProxy, EventLoopWindowTarget,
@@ -127,7 +127,7 @@ impl Window {
             }
         }
         let size = PhysicalSize::new(1440, 1082);
-        let window = main::build_window(l, builder_window(size, FIRST.window_title()))?;
+        let window = builder_window(l, size, FIRST.window_title()).build(l)?;
         let id = window.id();
         let view = main::build_view(&window)?;
         let tray = tray::create(l)?;
@@ -151,7 +151,7 @@ impl Window {
         on_page_load: F,
     ) -> AnyResult<()> {
         let size = PhysicalSize::new(1280, 960);
-        let window = builder_window(size, title).build(l)?;
+        let window = builder_window(l, size, title).build(l)?;
         let id = window.id();
         let view = view::with_url(&window, &url, Box::new(move || on_page_load(id)))?;
         self.map.insert(window.id(), (window, view));
@@ -278,12 +278,28 @@ impl Window {
     }
 }
 
-fn builder_window(size: PhysicalSize<i32>, title: &str) -> WindowBuilder {
-    WindowBuilder::new()
+fn builder_window(
+    l: &EventLoopWindowTarget<UserEvent>,
+    size: PhysicalSize<i32>,
+    title: &str,
+) -> WindowBuilder {
+    let mut builder = WindowBuilder::new()
         .with_title(title)
         .with_visible(false)
         .with_inner_size(size)
-        .with_min_inner_size(size)
+        .with_min_inner_size(size);
+
+    if let Some(monitor) = l.primary_monitor() {
+        let monitor_pos = monitor.position();
+        let monitor_size = monitor.size();
+
+        let x = monitor_pos.x + (monitor_size.width as i32 - size.width) / 2;
+        let y = monitor_pos.y + (monitor_size.height as i32 - size.height) / 2;
+
+        builder = builder.with_position(PhysicalPosition::new(x, y));
+    }
+
+    builder
 }
 
 fn on_kernel_page_load(w: &tao::window::Window, v: &ViewWrapper) -> AnyResult<()> {
