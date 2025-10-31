@@ -114,7 +114,7 @@ func readConfig(ctx context.Context, path string) (option.Options, error) {
 }
 
 func create(configPath string, workDir string) (context.CancelFunc, *box.Box, error) {
-	_ctx := box.Context(context.Background(), include.InboundRegistry(), include.OutboundRegistry(), include.EndpointRegistry())
+	_ctx := box.Context(context.Background(), include.InboundRegistry(), include.OutboundRegistry(), include.EndpointRegistry(), include.DNSTransportRegistry(), include.ServiceRegistry())
 	ctx, cancel := context.WithCancel(_ctx)
 
 	if workDir != "" {

@@ -1,0 +1,329 @@
+{
+  "log": {
+    "level": "debug",
+    "timestamp": true
+  },
+  "experimental": {
+    "cache_file": {
+      "enabled": true,
+      "store_rdrc": true,
+      "store_fakeip": true
+    },
+    "clash_api": {
+      "external_controller": "127.0.0.1:9090",
+      "external_ui": "nc-sing",
+      "external_ui_download_url": "https://fastgh.lainbo.com/https://github.com/MetaCubeX/metacubexd/archive/refs/heads/gh-pages.zip",
+      "external_ui_download_detour": "直连",
+      "default_mode": "rule"
+    }
+  },
+  "inbounds": [
+    {
+      "type": "tun",
+      "tag": "tun-in",
+      "interface_name": "NcRustTunBySingBox",
+      "auto_route": true,
+      "strict_route": true,
+      "endpoint_independent_nat": false,
+      "udp_timeout": "5m",
+      "stack": "system",
+      "sniff_override_destination": false,
+      "address": [
+        "172.16.0.0/24",
+        "fd93:0d0b:4e8a:0::/64"
+      ],
+      "route_address": [
+        "172.20.0.0/14",
+        "fd93:0d0b:4e8a:2233::/64"
+      ],
+      "loopback_address": [
+        "127.0.0.2",
+        "::2"
+      ]
+    },
+    {
+      "type": "mixed",
+      "tag": "mixed-in",
+      "set_system_proxy": false,
+      "listen": "127.0.0.1",
+      "listen_port": 7890,
+      "tcp_fast_open": true,
+      "tcp_multi_path": true,
+      "udp_fragment": false
+    }
+  ],
+  "outbounds": [
+    {
+      "tag": "节点选择",
+      "type": "selector",
+      "interrupt_exist_connections": false,
+      "default": "[SG] 新加坡自动",
+      "outbounds": [
+        "直连",
+        "自动选择",
+        "[SG] 新加坡自动",
+        "套餐到期：长期有效",
+        "剩余流量：65.48 GB",
+        "🇸🇬[SG]Singapore01"
+      ]
+    },
+    {
+      "tag": "自动选择",
+      "type": "urltest",
+      "interrupt_exist_connections": false,
+      "url": "http://www.gstatic.com/generate_204",
+      "interval": "30s",
+      "tolerance": 150,
+      "outbounds": [
+        "[SG] 新加坡自动"
+      ]
+    },
+    {
+      "tag": "默认选择",
+      "type": "selector",
+      "interrupt_exist_connections": false,
+      "default": "直连",
+      "outbounds": [
+        "直连",
+        "自动选择",
+        "[SG] 新加坡自动",
+        "套餐到期：长期有效",
+        "剩余流量：65.48 GB",
+        "🇸🇬[SG]Singapore01"
+      ]
+    },
+    {
+      "tag": "[SG] 新加坡自动",
+      "type": "urltest",
+      "interrupt_exist_connections": false,
+      "url": "http://www.gstatic.com/generate_204",
+      "interval": "30s",
+      "tolerance": 150,
+      "outbounds": [
+        "🇸🇬[SG]Singapore01"
+      ]
+    },
+    {
+      "tag": "套餐到期：长期有效",
+      "type": "trojan",
+      "server": "tcdq.singbox.com",
+      "server_port": 22330,
+      "password": "5c22335a-f6f8-45e0-8611-37552b4221dc",
+      "tls": {
+        "enabled": true,
+        "insecure": false
+      }
+    },
+    {
+      "tag": "剩余流量：65.48 GB",
+      "type": "trojan",
+      "server": "syll..singbox.com",
+      "server_port": 22330,
+      "password": "5c22335a-f6f8-45e0-8611-37552b4221dc",
+      "tls": {
+        "enabled": true,
+        "insecure": false
+      }
+    },
+    {
+      "tag": "🇸🇬[SG]Singapore01",
+      "type": "trojan",
+      "server": "sg01t..singbox.com",
+      "server_port": 46201,
+      "password": "5c22335a-f6f8-45e0-8611-37552b4221dc",
+      "tls": {
+        "enabled": true,
+        "insecure": false
+      }
+    },
+    {
+      "tag": "直连",
+      "type": "direct",
+      "domain_resolver": "dns-cn"
+    }
+  ],
+  "route": {
+    "final": "默认选择",
+    "auto_detect_interface": true,
+    "rule_set": [
+      {
+        "tag": "reject_p",
+        "type": "local",
+        "format": "binary",
+        "path": "./reject_p"
+      },
+      {
+        "tag": "direct_p",
+        "type": "local",
+        "format": "binary",
+        "path": "./direct_p"
+      },
+      {
+        "tag": "proxy_p",
+        "type": "local",
+        "format": "binary",
+        "path": "./proxy_p"
+      },
+      {
+        "tag": "reject_o",
+        "type": "local",
+        "format": "binary",
+        "path": "./reject_o"
+      },
+      {
+        "tag": "direct_o",
+        "type": "local",
+        "format": "binary",
+        "path": "./direct_o"
+      },
+      {
+        "tag": "proxy_o",
+        "type": "local",
+        "format": "binary",
+        "path": "./proxy_o"
+      },
+      {
+        "tag": "reject_i",
+        "type": "local",
+        "format": "binary",
+        "path": "./reject_i_geo"
+      },
+      {
+        "tag": "direct_i_geo",
+        "type": "local",
+        "format": "binary",
+        "path": "./direct_i_geo"
+      },
+      {
+        "tag": "direct_i",
+        "type": "local",
+        "format": "binary",
+        "path": "./direct_i_geo"
+      },
+      {
+        "tag": "proxy_i",
+        "type": "local",
+        "format": "binary",
+        "path": "./proxy_i_geo"
+      }
+    ],
+    "rules": [
+      {
+        "action": "sniff",
+        "timeout": "1s"
+      },
+      {
+        "protocol": "dns",
+        "action": "hijack-dns"
+      },
+      {
+        "rule_set": "reject_p",
+        "action": "reject"
+      },
+      {
+        "rule_set": "reject_o",
+        "action": "reject"
+      },
+      {
+        "rule_set": "reject_i",
+        "action": "reject"
+      },
+      {
+        "rule_set": "direct_p",
+        "action": "route",
+        "outbound": "直连"
+      },
+      {
+        "rule_set": "proxy_p",
+        "action": "route",
+        "outbound": "节点选择"
+      },
+      {
+        "rule_set": "direct_o",
+        "action": "route",
+        "outbound": "直连"
+      },
+      {
+        "rule_set": "proxy_o",
+        "action": "route",
+        "outbound": "节点选择"
+      },
+      {
+        "rule_set": "direct_cn_i_geo",
+        "action": "route",
+        "outbound": "直连"
+      },
+      {
+        "rule_set": "direct_i",
+        "action": "route",
+        "outbound": "直连"
+      },
+      {
+        "rule_set": "proxy_i",
+        "action": "route",
+        "outbound": "节点选择"
+      }
+    ]
+  },
+  "dns": {
+    "final": "dns-cn",
+    "disable_cache": false,
+    "disable_expire": false,
+    "independent_cache": true,
+    "strategy": "prefer_ipv6",
+    "servers": [
+      {
+        "tag": "dns-cn",
+        "type": "https",
+        "server": "223.5.5.5",
+        "detour": "直连"
+      },
+      {
+        "tag": "dns-proxy",
+        "type": "https",
+        "server": "1.1.1.1",
+        "detour": "节点选择"
+      },
+      {
+        "tag": "dns-fake",
+        "type": "fakeip",
+        "inet4_range": "172.20.0.0/14",
+        "inet6_range": "fd93:0d0b:4e8a:2233::/64"
+      }
+    ],
+    "rules": [
+      {
+        "rule_set": "reject_p",
+        "action": "reject"
+      },
+      {
+        "rule_set": "reject_o",
+        "action": "reject"
+      },
+      {
+        "rule_set": "direct_p",
+        "server": "dns-cn"
+      },
+      {
+        "rule_set": "proxy_p",
+        "server": "dns-fake"
+      },
+      {
+        "rule_set": "proxy_p",
+        "server": "dns-proxy"
+      },
+      {
+        "rule_set": "direct_o",
+        "server": "dns-cn"
+      },
+      {
+        "rule_set": "proxy_o",
+        "server": "dns-fake"
+      },
+      {
+        "rule_set": "proxy_o",
+        "server": "dns-proxy"
+      }
+    ]
+  }
+}

@@ -1,5 +1,5 @@
 use crate::core::fast;
-use crate::kernel::key_direct;
+use crate::kernel::out_direct;
 use byte_unit::rust_decimal::prelude::ToPrimitive;
 use library_core::core::AnyResult;
 use serde::Serialize;
@@ -85,7 +85,7 @@ impl Rule {
                 format,
                 url: Some(self.path.to_string()),
                 path: None,
-                download_detour: Some(key_direct.into()),
+                download_detour: Some(out_direct.into()),
                 update_interval: Some("1d".into()),
             }
         } else {

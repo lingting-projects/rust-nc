@@ -119,7 +119,7 @@ impl KernelConfig {
             self.with_exclude(exclude, false)
                 .with_include(include, true)
         }
-            .with_sort()
+        .with_sort()
     }
 
     pub fn ip_strategy(&self) -> String {
@@ -254,10 +254,16 @@ pub const clash_ui_url: &str =
     "https://github.com/MetaCubeX/metacubexd/archive/refs/heads/gh-pages.zip";
 pub const test_url: &str = "http://www.gstatic.com/generate_204";
 
+/// 关键字
 pub const key_direct: &str = "direct";
 pub const key_proxy: &str = "proxy";
 pub const key_reject: &str = "reject";
 
+/// 直连出口名称
+pub const out_direct: &str = "直连";
+
+pub const loopback_ipv4: &str = "127.0.0.2";
+pub const loopback_ipv6: &str = "::2";
 pub const route_ipv4: &str = "0.0.0.0/1";
 pub const route_ipv6: &str = "::/1";
 // 172.20.0.0 - 172.23.0.0

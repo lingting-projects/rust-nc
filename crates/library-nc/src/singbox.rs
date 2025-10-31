@@ -1,8 +1,9 @@
 use crate::core::fast;
 use crate::kernel::{
     clash_ui_url, default_mixed_listen, default_mixed_port, default_ui, fake_ipv4, fake_ipv6,
-    inner_ipv4, inner_ipv6, key_direct, key_proxy, key_reject, route_ipv4, route_ipv6, tag_auto,
-    tag_fallback, tag_selector, test_url, virtual_ipv4, virtual_ipv6, KernelConfig,
+    inner_ipv4, inner_ipv6, key_direct, key_proxy, key_reject, loopback_ipv4, loopback_ipv6,
+    out_direct, route_ipv4, route_ipv6, tag_auto, tag_fallback, tag_selector, test_url,
+    virtual_ipv4, virtual_ipv6, KernelConfig,
 };
 use crate::rule::{Rule, RuleType, SingBoxRule};
 use crate::subscribe::SubscribeNode;
@@ -60,11 +61,11 @@ enum Inbound {
         udp_timeout: String,
         stack: String,
         sniff_override_destination: bool,
-        domain_strategy: String,
         #[serde(skip_serializing_if = "Option::is_none")]
         address: Option<Vec<String>>,
         #[serde(skip_serializing_if = "Option::is_none")]
         route_address: Option<Vec<String>>,
+        loopback_address: Vec<String>,
         #[serde(skip_serializing_if = "Option::is_none")]
         route_exclude_address: Option<Vec<String>>,
     },
@@ -182,10 +183,12 @@ impl Outbound {
         }
     }
 
-    pub fn _type(tag: &str, _type: &str) -> Self {
+    pub fn direct(tag: &str) -> Self {
+        let mut attributes = IndexMap::new();
+        attributes.insert("domain_resolver".into(), Value::from(tag_dns_cn));
         Self {
             tag: tag.into(),
-            type_: _type.into(),
+            type_: key_direct.into(),
             interrupt_exist_connections: None,
             default: None,
             url: None,
@@ -196,7 +199,7 @@ impl Outbound {
             server: None,
             password: None,
             tls: None,
-            attributes: Default::default(),
+            attributes,
         }
     }
 }
@@ -217,25 +220,55 @@ struct RouteConfig {
 }
 
 #[derive(Serialize)]
-#[serde(untagged)]
-enum RouteRule {
-    Action {
-        #[serde(skip_serializing_if = "Option::is_none")]
-        rule_set: Option<String>,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        inbound: Option<String>,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        protocol: Option<String>,
-        action: String,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        strategy: Option<String>,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        timeout: Option<String>,
-    },
-    Outbound {
-        rule_set: String,
-        outbound: String,
-    },
+struct RouteRule {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    rule_set: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    protocol: Option<String>,
+    action: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    timeout: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    outbound: Option<String>,
+}
+
+impl RouteRule {
+    pub fn sniff() -> Self {
+        Self {
+            rule_set: None,
+            protocol: None,
+            action: "sniff".into(),
+            timeout: Some("1s".into()),
+            outbound: None,
+        }
+    }
+    pub fn dns() -> Self {
+        Self {
+            rule_set: None,
+            protocol: Some("dns".into()),
+            action: "hijack-dns".into(),
+            timeout: None,
+            outbound: None,
+        }
+    }
+    pub fn reject(rule_set: String) -> Self {
+        Self {
+            rule_set: Some(rule_set),
+            protocol: None,
+            action: "reject".into(),
+            timeout: None,
+            outbound: None,
+        }
+    }
+    pub fn out(rule_set: String, out: String) -> Self {
+        Self {
+            rule_set: Some(rule_set),
+            protocol: None,
+            action: "route".into(),
+            timeout: None,
+            outbound: Some(out),
+        }
+    }
 }
 
 #[derive(Serialize)]
@@ -248,26 +281,71 @@ struct DnsConfig {
     strategy: String,
     servers: Vec<DnsServer>,
     rules: Vec<DnsRule>,
-    #[serde(rename = "fakeip")]
-    fake_ip: DnsFakeIp,
 }
 
 #[derive(Serialize)]
 struct DnsServer {
     tag: String,
-    address: String,
+    #[serde(rename = "type", skip_serializing_if = "Option::is_none")]
+    type_: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    server: Option<String>,
+    /// 临时留着用于兼容未适配的协议
+    #[deprecated]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    address: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     detour: Option<String>,
-    strategy: String,
-}
-
-#[derive(Serialize)]
-struct DnsFakeIp {
-    enabled: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     inet4_range: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     inet6_range: Option<String>,
+}
+
+impl DnsServer {
+    pub fn from(tag: String, address: String, detour: String) -> Self {
+        if address.starts_with("https") {
+            let scheme = address.strip_prefix("https://").expect("error address");
+            // 暂时不兼容指定path
+            return if let Some(slash_pos) = scheme.find('/') {
+                let server = &scheme[..slash_pos];
+                Self::https(tag, server.into(), detour)
+            } else {
+                Self::https(tag, scheme.into(), detour)
+            };
+        }
+        Self {
+            tag,
+            type_: None,
+            server: None,
+            address: Some(address),
+            detour: Some(detour),
+            inet4_range: None,
+            inet6_range: None,
+        }
+    }
+    pub fn https(tag: String, server: String, detour: String) -> Self {
+        Self {
+            tag,
+            type_: Some("https".into()),
+            server: Some(server),
+            address: None,
+            detour: Some(detour),
+            inet4_range: None,
+            inet6_range: None,
+        }
+    }
+    pub fn fake(tag: String, inet4_range: Option<String>, inet6_range: Option<String>) -> Self {
+        Self {
+            tag,
+            type_: Some("fakeip".into()),
+            server: None,
+            address: None,
+            detour: None,
+            inet4_range,
+            inet6_range,
+        }
+    }
 }
 
 #[derive(Serialize)]
@@ -284,8 +362,11 @@ impl DnsRule {
         Self {
             server: Some(server),
             rule_set,
-            action: None,
+            action: Some("route".into()),
         }
+    }
+    pub fn reject(rule_set: String) -> Self {
+        Self::action(rule_set, "reject".into())
     }
     pub fn action(rule_set: String, action: String) -> Self {
         Self {
@@ -347,7 +428,7 @@ impl KernelConfig {
             external_controller: ui.into(),
             external_ui: "nc-sing".into(),
             external_ui_download_url: fast(clash_ui_url),
-            external_ui_download_detour: key_direct.into(),
+            external_ui_download_detour: out_direct.into(),
             default_mode: "rule".into(),
         };
         ExperimentalConfig {
@@ -384,6 +465,11 @@ impl KernelConfig {
             (Some(r_ip), None, Some(ex_ip))
         };
 
+        let mut loopback_address: Vec<String> = vec![loopback_ipv4.to_string()];
+        if self.ipv6 {
+            loopback_address.push(loopback_ipv6.into())
+        }
+
         Inbound::Tun {
             kind: "tun".into(),
             tag: "tun-in".into(),
@@ -394,9 +480,9 @@ impl KernelConfig {
             udp_timeout: "5m".into(),
             stack: "system".into(),
             sniff_override_destination: false,
-            domain_strategy: self.ip_strategy(),
             address,
             route_address,
+            loopback_address,
             route_exclude_address,
         }
     }
@@ -424,7 +510,7 @@ impl KernelConfig {
         let default_selector = auto_area
             .first()
             .and_then(|g| Some(g.tag.clone()))
-            .unwrap_or_else(|| key_direct.into());
+            .unwrap_or_else(|| out_direct.into());
 
         // 节点选择
         let selector =
@@ -432,7 +518,7 @@ impl KernelConfig {
 
         // 构建fallback组
         let fallback =
-            self.sing_box_build_outbound_selector(tag_fallback, key_direct.into(), &auto_area);
+            self.sing_box_build_outbound_selector(tag_fallback, out_direct.into(), &auto_area);
 
         // 合并所有代理组
         let mut outbounds = vec![selector, auto, fallback];
@@ -440,8 +526,7 @@ impl KernelConfig {
         self.nodes
             .iter()
             .for_each(|node| outbounds.push(Outbound::node(node)));
-        outbounds.push(Outbound::_type(key_direct, key_direct));
-        outbounds.push(Outbound::_type("dns_out", "dns"));
+        outbounds.push(Outbound::direct(out_direct));
         outbounds
     }
 
@@ -477,7 +562,7 @@ impl KernelConfig {
         auto_area: &Vec<Outbound>,
     ) -> Outbound {
         let mut outbounds = Vec::new();
-        outbounds.push(key_direct.into());
+        outbounds.push(out_direct.into());
         outbounds.push(tag_auto.into());
 
         auto_area
@@ -531,53 +616,19 @@ impl KernelConfig {
         rule_set.extend(rules_other);
         rule_set.extend(rules_ip);
 
-        let mut rules = vec![
-            RouteRule::Action {
-                rule_set: None,
-                inbound: None,
-                protocol: None,
-                action: "sniff".into(),
-                strategy: None,
-                timeout: Some("1s".into()),
-            },
-            RouteRule::Action {
-                rule_set: None,
-                inbound: None,
-                protocol: Some("dns".into()),
-                action: "hijack-dns".into(),
-                strategy: None,
-                timeout: None,
-            },
-            RouteRule::Action {
-                rule_set: None,
-                inbound: Some("mixed-in".into()),
-                protocol: None,
-                action: "resolve".into(),
-                strategy: Some(self.ip_strategy()),
-                timeout: None,
-            },
-        ];
+        let mut rules = vec![RouteRule::sniff(), RouteRule::dns()];
 
         rule_set.iter().for_each(|rule| {
             let rr = if rule.tag.starts_with(key_reject) {
-                RouteRule::Action {
-                    rule_set: Some(rule.tag.clone()),
-                    inbound: None,
-                    protocol: None,
-                    action: "reject".into(),
-                    strategy: Some(self.ip_strategy()),
-                    timeout: None,
-                }
+                RouteRule::reject(rule.tag.clone())
             } else {
-                RouteRule::Outbound {
-                    rule_set: rule.tag.clone(),
-                    outbound: if rule.tag.starts_with(key_proxy) {
-                        tag_selector
-                    } else {
-                        key_direct
-                    }
-                    .into(),
+                let out = if rule.tag.starts_with(key_proxy) {
+                    tag_selector
+                } else {
+                    out_direct
                 }
+                .into();
+                RouteRule::out(rule.tag.clone(), out)
             };
 
             rules.push(rr)
@@ -625,27 +676,24 @@ impl KernelConfig {
 
     fn sing_box_build_dns(&self, route: &RouteConfig) -> DnsConfig {
         let mut servers = vec![
-            DnsServer {
-                tag: tag_dns_cn.into(),
-                address: self.dns_cn.get(0).unwrap().clone(),
-                detour: Some(key_direct.into()),
-                strategy: self.ip_strategy(),
-            },
-            DnsServer {
-                tag: tag_dns_proxy.into(),
-                address: self.dns_proxy.get(0).unwrap().clone(),
-                detour: Some(tag_selector.into()),
-                strategy: self.ip_strategy(),
-            },
+            DnsServer::from(
+                tag_dns_cn.into(),
+                self.dns_cn.get(0).unwrap().clone(),
+                out_direct.into(),
+            ),
+            DnsServer::from(
+                tag_dns_proxy.into(),
+                self.dns_proxy.get(0).unwrap().clone(),
+                tag_selector.into(),
+            ),
         ];
 
         if self.fake_ip {
-            servers.push(DnsServer {
-                tag: tag_dns_fake.into(),
-                address: "fakeip".into(),
-                detour: None,
-                strategy: self.ip_strategy(),
-            })
+            servers.push(DnsServer::fake(
+                tag_dns_fake.into(),
+                Some(fake_ipv4.into()),
+                Some(fake_ipv6.into()),
+            ));
         }
 
         let rules = route
@@ -668,7 +716,7 @@ impl KernelConfig {
                 } else if tag.starts_with(key_direct) {
                     vec.push(DnsRule::route(tag.into(), tag_dns_cn.into()));
                 } else {
-                    vec.push(DnsRule::action(tag.into(), key_reject.into()));
+                    vec.push(DnsRule::reject(tag.into()));
                 }
 
                 Some(vec)
@@ -684,11 +732,6 @@ impl KernelConfig {
             strategy: self.ip_strategy(),
             servers,
             rules,
-            fake_ip: DnsFakeIp {
-                enabled: self.fake_ip,
-                inet4_range: self.fake_ip.then(|| fake_ipv4.into()),
-                inet6_range: (self.fake_ip && self.ipv6).then(|| fake_ipv6.into()),
-            },
         }
     }
 }
