@@ -55,15 +55,17 @@ impl Version {
 
     /// 当前版本是否大于目标版本
     pub fn is_gt(&self, t: &Self) -> bool {
-        self.major > t.major || self.minor > t.minor || self.patch > t.patch
+        if self.major != t.major {
+            return self.major > t.major;
+        }
+        if self.minor != t.minor {
+            return self.minor > t.minor;
+        }
+        self.patch > t.patch
     }
 }
 
 pub async fn check_async() -> AnyResult<Option<(String, String, DataSize)>> {
-    if cfg!(debug_assertions) {
-        return Ok(None);
-    }
-
     let version = Version::resolver(env!("CARGO_PKG_VERSION")).unwrap();
     let app = get_app();
     let owner = app.owner;
