@@ -1,6 +1,7 @@
 mod convert;
 mod core;
 mod git;
+mod share;
 
 use worker::Error::RustError;
 use worker::*;
@@ -25,6 +26,9 @@ async fn main(req: Request, env: Env, ctx: Context) -> Result<Response> {
     } else if path.starts_with("/latest") {
         console_debug!("match: release_latest");
         git::release_latest(req).await
+    } else if path.starts_with("/s/") {
+        console_debug!("match: share");
+        share::redirect(req, env).await
     } else {
         None
     };

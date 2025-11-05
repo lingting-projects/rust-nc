@@ -28,7 +28,7 @@ pub enum BizError {
     RuleNotFound,
     #[error("未找到配置")]
     ConfigNotFound,
-    #[error("未找到文件! {0}")]
+    #[error("未找到文件: {0}!")]
     PathNotFound(PathBuf),
     #[error("未找到文件! {0}")]
     FileNotFound(String),
@@ -58,6 +58,10 @@ pub enum BizError {
     Unsupported,
     #[error("事件发送失败: {0}")]
     EventSend(String),
+    #[error("未找到key!")]
+    NotFoundKey(),
+    #[error("无效Key: {0}!")]
+    InvalidKey(String),
 }
 
 pub enum Exit {
