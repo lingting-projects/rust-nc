@@ -1,6 +1,7 @@
 use crate::core::{http_get, RequestExt};
+use crate::share;
 use library_core::boolean::is_true;
-use library_core::core::AnyResult;
+use library_core::core::{AnyResult, BizError};
 use library_nc::http::pick_host;
 use library_nc::kernel::{
     dns_default_cn, dns_default_proxy, exclude_default, include_main, KernelConfig, NodeContains,
@@ -10,7 +11,7 @@ use library_nc::subscribe::{Subscribe, HEADER_INFO};
 use std::collections::HashMap;
 use worker::wasm_bindgen::UnwrapThrowExt;
 use worker::Error::RustError;
-use worker::{console_debug, Request, Response};
+use worker::{console_debug, Env, Request, Response};
 
 struct ConvertParams {
     remote: String,
@@ -129,13 +130,33 @@ impl ConvertParams {
     }
 }
 
-async fn subscribe(params: &ConvertParams) -> AnyResult<Subscribe> {
+async fn subscribe(env: Env, params: &ConvertParams) -> AnyResult<Subscribe> {
+    let remote = &params.remote;
     console_debug!("从远程[{}]获取数据", &params.remote);
-    let mut response = http_get(&params.remote).await?;
+    let uo = if remote.starts_with("s:") {
+        let source = &remote[2..];
+        console_debug!("分享源: {}", source);
+        let segments: Vec<&str> = source.split('?').collect();
+        let key = segments[0];
+        let p = if segments.len() > 1 {
+            segments[1].to_string()
+        } else {
+            "".to_string()
+        };
+        share::find_url(env, key, Some(&p))
+    } else {
+        Some(remote.clone())
+    };
+    if uo == None {
+        return Err(Box::new(BizError::SubscribeNotFound))
+    }
+    let url = &uo.unwrap();
+
+    let mut response = http_get(url).await?;
     if response.status_code() != 200 {
         return Err(Box::new(RustError(format!(
             "远程[{}]返回异常! {}",
-            &params.remote,
+            url,
             response.status_code()
         ))));
     }
@@ -157,6 +178,7 @@ const gist_prefix: &str =
 
 async fn build_remote(
     req: Request,
+    env: Env,
     rules_direct: Vec<Rule>,
     rules_proxy: Vec<Rule>,
     rules_reject: Vec<Rule>,
@@ -166,7 +188,7 @@ async fn build_remote(
     console_debug!("解析远程地址: {}", &params.remote);
     let host = pick_host(&params.remote).expect_throw("invalid remote");
     console_debug!("远程域名: {}", &host);
-    let subscribe = subscribe(&params).await?;
+    let subscribe = subscribe(env, &params).await?;
     let info = subscribe.info();
     console_debug!("构造配置");
     let config = params.build_config(subscribe, rules_direct, rules_proxy, rules_reject)?;
@@ -179,9 +201,10 @@ async fn build_remote(
     })
 }
 
-pub async fn sing_box(req: Request) -> AnyResult<Response> {
+pub async fn sing_box(req: Request, env: Env) -> AnyResult<Response> {
     let remote = build_remote(
         req,
+        env,
         vec![
             Rule::from_remote(RuleType::Process, format!("{}sing.direct.p", gist_prefix)),
             Rule::from_remote(RuleType::Other, format!("{}sing.direct.np", gist_prefix)),
@@ -213,9 +236,10 @@ pub async fn sing_box(req: Request) -> AnyResult<Response> {
     Ok(builder.ok(json)?)
 }
 
-pub async fn clash(req: Request) -> AnyResult<Response> {
+pub async fn clash(req: Request, env: Env) -> AnyResult<Response> {
     let remote = build_remote(
         req,
+        env,
         vec![
             Rule::from_remote(RuleType::Other, format!("{}clash.direct", gist_prefix)),
             Rule::from_remote(RuleType::Ip, format!("{}clash.direct.ip", gist_prefix)),

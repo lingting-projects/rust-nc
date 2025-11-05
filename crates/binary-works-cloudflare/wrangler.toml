@@ -11,7 +11,7 @@ mode = "smart"
 
 [vars]
 isDev = true
-share = '{"bd":"https://www.baidu.com","pbd":{"p":"a1","url":"https://www.baidu.com"}}'
+share = '{"bd":"https://www.baidu.com","pbd":{"p":"a1","u":"https://www.baidu.com"}}'
 
 [env.prod.vars]
 isDev = false

@@ -13,10 +13,10 @@ async fn main(req: Request, env: Env, ctx: Context) -> Result<Response> {
     console_debug!("path: {path}");
     let r = if path == "/sing-box" {
         console_debug!("match: sing_box");
-        Some(convert::sing_box(req).await)
+        Some(convert::sing_box(req, env).await)
     } else if path == "/clash" {
         console_debug!("match: clash");
-        Some(convert::clash(req).await)
+        Some(convert::clash(req, env).await)
     } else if path.starts_with("/gist") {
         console_debug!("match: gist");
         git::gist(req).await
