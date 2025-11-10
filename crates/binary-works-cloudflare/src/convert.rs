@@ -11,7 +11,7 @@ use library_nc::subscribe::{Subscribe, HEADER_INFO};
 use std::collections::HashMap;
 use worker::wasm_bindgen::UnwrapThrowExt;
 use worker::Error::RustError;
-use worker::{console_debug, Env, Request, Response};
+use worker::{console_debug, Env, Request, Response, ResponseBuilder};
 
 struct ConvertParams {
     remote: String,
@@ -227,13 +227,9 @@ pub async fn sing_box(req: Request, env: Env) -> AnyResult<Response> {
     let json = config.sing_box_default()?;
     console_debug!("返回配置");
 
-    let mut builder = Response::builder().with_header("Content-Disposition", &disposition)?;
+    let builder = Response::builder().with_header("Content-Disposition", &disposition)?;
 
-    if let Some(v) = info {
-        builder = builder.with_header("Subscription-Userinfo", &v)?
-    }
-
-    Ok(builder.ok(json)?)
+    ok(builder, info, "application/json", json)
 }
 
 pub async fn clash(req: Request, env: Env) -> AnyResult<Response> {
@@ -258,14 +254,27 @@ pub async fn clash(req: Request, env: Env) -> AnyResult<Response> {
     let disposition = remote.disposition;
     let info = remote.info;
     console_debug!("配置转换");
-    let json = config.clash_default()?;
+    let yml = config.clash_default()?;
     console_debug!("返回配置");
 
-    let mut builder = Response::builder().with_header("Content-Disposition", &disposition)?;
+    let builder = Response::builder().with_header("Content-Disposition", &disposition)?;
+
+    ok(builder, info, "application/yaml", yml)
+}
+
+fn ok(
+    mut builder: ResponseBuilder,
+    info: Option<String>,
+    content_type: &str,
+    body: String,
+) -> AnyResult<Response> {
+    let _type = format!("{}; charset=utf-8", content_type);
 
     if let Some(v) = info {
         builder = builder.with_header("Subscription-Userinfo", &v)?
     }
 
-    Ok(builder.ok(json)?)
+    builder = builder.with_header("content-type", &_type)?;
+    let r = builder.fixed(body.into_bytes());
+    Ok(r)
 }
