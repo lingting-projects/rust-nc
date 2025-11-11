@@ -268,8 +268,8 @@ fn ok(
     ext: &str,
     body: String,
 ) -> AnyResult<Response> {
-    let _type = format!("application/{}; charset=utf-8", ext);
-    let disposition = format!("inline; filename={}.{}", remote.filename, ext);
+    let _type = format!("application/{}", ext);
+    let disposition = format!("inline; filename=\"{}.{}\"", remote.filename, ext);
     builder = builder.with_header("Content-Disposition", &disposition)?;
 
     if let Some(v) = &remote.info {
