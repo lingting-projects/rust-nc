@@ -167,6 +167,8 @@ pub struct SubscribeNode {
 }
 
 impl SubscribeNode {
+    pub const VLESS_UUID_KEY: &'static str = "uuid";
+
     /// 从文本解析多个节点
     pub fn from_text(text: &str) -> Vec<Self> {
         let mut nodes = Vec::new();
@@ -181,6 +183,10 @@ impl SubscribeNode {
             {
                 Self::from_shadow_socks_text(line)
             } else if line.starts_with("trojan://") {
+                Self::from_trojan_text(line)
+            } else if line.starts_with("vless://") {
+                Self::from_vless_text(line)
+            } else if line.starts_with("hysteria2://") {
                 Self::from_trojan_text(line)
             } else {
                 Err(Box::new(NcError::UnsupportedSource))
@@ -277,6 +283,59 @@ impl SubscribeNode {
         let host_parts: Vec<&str> = host_part.split(':').collect();
         let server = host_parts[0].trim().to_string();
         let port = if host_parts.len() > 1 {
+            host_parts[1].replace("/", "").parse::<u16>()?
+        } else {
+            443
+        };
+
+        let (param_part, name_encoded) = if rest_part.contains('#') {
+            let parts: Vec<&str> = rest_part.splitn(2, '#').collect();
+            (parts[0], parts[1])
+        } else {
+            ("", rest_part)
+        };
+
+        let attribute = Self::_params(param_part);
+
+        let name = url_decode(name_encoded)?;
+        let area = area::find_match(&name);
+
+        let node = Self {
+            node_type: type_part.trim().to_string(),
+            name,
+            server,
+            port: Some(port),
+            password: Some(password.trim().to_string()),
+            area,
+            attribute,
+        };
+        Ok(Some(node))
+    }
+
+    /// 从 Vless 格式文本解析
+    pub fn from_vless_text(source: &str) -> AnyResult<Option<Self>> {
+        let source = source.trim();
+        if source.is_empty() {
+            return Ok(None);
+        }
+
+        let parts: Vec<&str> = source.splitn(2, "://").collect();
+        let (type_part, rest) = (parts[0], parts[1]);
+
+        let parts: Vec<&str> = rest.splitn(2, '@').collect();
+        let (uuid, rest) = (parts[0], parts[1]);
+
+        let (host_part, rest_part) = if rest.contains('?') {
+            let parts: Vec<&str> = rest.splitn(2, '?').collect();
+            (parts[0], parts[1])
+        } else {
+            let parts: Vec<&str> = rest.splitn(2, '#').collect();
+            (parts[0], parts[1])
+        };
+
+        let host_parts: Vec<&str> = host_part.split(':').collect();
+        let server = host_parts[0].trim().to_string();
+        let port = if host_parts.len() > 1 {
             host_parts[1].parse::<u16>()?
         } else {
             443
@@ -289,19 +348,11 @@ impl SubscribeNode {
             ("", rest_part)
         };
 
-        let mut attribute = IndexMap::new();
-
-        for param in param_part.split('&') {
-            if param.is_empty() {
-                continue;
-            }
-
-            let parts: Vec<&str> = param.splitn(2, '=').collect();
-            if parts.len() == 2 {
-                let (key, value) = (parts[0], parts[1]);
-                attribute.insert(key.to_string(), Value::String(value.to_string()));
-            }
-        }
+        let mut attribute = Self::_params(param_part);
+        attribute.insert(
+            Self::VLESS_UUID_KEY.to_string(),
+            Value::String(uuid.to_string()),
+        );
 
         let name = url_decode(name_encoded)?;
         let area = area::find_match(&name);
@@ -311,7 +362,7 @@ impl SubscribeNode {
             name,
             server,
             port: Some(port),
-            password: Some(password.trim().to_string()),
+            password: None,
             area,
             attribute,
         };
@@ -341,6 +392,26 @@ impl SubscribeNode {
         };
 
         Ok(nodes)
+    }
+
+    fn _params(source: &str) -> IndexMap<String, Value> {
+        let mut map = IndexMap::new();
+        if source.is_empty() {
+            return map;
+        }
+
+        for param in source.split('&') {
+            if param.is_empty() {
+                continue;
+            }
+
+            let parts: Vec<&str> = param.splitn(2, '=').collect();
+            if parts.len() == 2 {
+                let (key, value) = (parts[0], parts[1]);
+                map.insert(key.to_string(), Value::String(value.to_string()));
+            }
+        }
+        map
     }
 
     pub fn json_v_string(v: &Value) -> Option<String> {

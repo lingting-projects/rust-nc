@@ -1,7 +1,7 @@
 // rust/build.rs
 use std::env;
-use std::fs::{copy, create_dir_all, remove_file};
-use std::path::{Path, PathBuf};
+use std::fs::{copy, create_dir_all};
+use std::path::Path;
 use std::process::Command;
 use std::sync::LazyLock;
 
@@ -69,7 +69,7 @@ fn build_go(target: &str, lib_path: &Path, bin_path: &Path, manifest_dir: &Path)
         .arg("build")
         .arg("-v")
         .arg("-trimpath")
-        .arg("-tags=with_clash_api")
+        .arg("-tags=with_clash_api,with_utls,with_quic")
         .arg("-ldflags=-s -buildid=");
 
     if cfg!(feature = "bin") {

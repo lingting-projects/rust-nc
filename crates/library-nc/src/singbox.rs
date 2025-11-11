@@ -158,11 +158,82 @@ impl Outbound {
                 || k == "peer"
                 || k == "sni"
                 || k == "alpn"
+                || k == "mport"
+                || k == "insecure"
             {
                 return;
             }
+
+            if node.node_type == "vless" {
+                if k == "encryption"
+                    || k == "host"
+                    || k == "path"
+                    || k == "headerType"
+                    || k == "quicSecurity"
+                    || k == "serviceName"
+                    || k == "security"
+                    || k == "fp"
+                    || k == "pbk"
+                    || k == "sid"
+                {
+                    return;
+                }
+            }
             attributes.insert(k.clone(), v.clone());
         });
+
+        let mut tls_attributes = IndexMap::new();
+
+        let map = &node.attribute;
+
+        if let Some(Value::String(sni)) = map.get("sni") {
+            tls_attributes.insert("server_name".to_string(), Value::String(sni.clone()));
+        }
+
+        if let Some(fp) = map.get("fp") {
+            let mut utls = serde_json::value::Map::new();
+            utls.insert("enabled".to_string(), Value::Bool(true));
+            utls.insert("fingerprint".to_string(), fp.clone());
+            tls_attributes.insert("utls".to_string(), Value::Object(utls));
+        }
+
+        if let Some(Value::String(security)) = map.get("security") {
+            if security == "reality" {
+                let mut reality = serde_json::value::Map::new();
+                reality.insert("enabled".to_string(), Value::Bool(true));
+
+                if let Some(pbk) = map.get("pbk") {
+                    reality.insert("public_key".to_string(), pbk.clone());
+                }
+
+                if let Some(sid) = map.get("sid") {
+                    reality.insert("short_id".to_string(), sid.clone());
+                }
+
+                tls_attributes.insert("reality".to_string(), Value::Object(reality));
+            }
+        }
+
+        // if let Some(Value::String(mport)) = map.get("mport") {
+        //     let vec: Vec<&str> = mport.split("-").collect();
+        //     let min = vec[0].parse::<u16>().unwrap();
+        //     let max = vec[1].parse::<u16>().unwrap();
+        //     attributes.insert(
+        //         "hop_port_range".to_string(),
+        //         Value::Array(vec![min.into(), max.into()]),
+        //     );
+        // }
+
+        let tls = OutboundTls {
+            enabled: true,
+            insecure: if node.node_type == "vless" {
+                None
+            } else {
+                Some(node.disable_ssl())
+            },
+            attributes: tls_attributes,
+        };
+
         Self {
             tag: node.name.clone(),
             type_: node.node_type.clone(),
@@ -175,10 +246,7 @@ impl Outbound {
             port: node.port,
             server: Some(node.server.clone()),
             password: node.password.clone(),
-            tls: Some(OutboundTls {
-                enabled: true,
-                insecure: node.disable_ssl(),
-            }),
+            tls: Some(tls),
             attributes,
         }
     }
@@ -207,7 +275,10 @@ impl Outbound {
 #[derive(Serialize)]
 struct OutboundTls {
     enabled: bool,
-    insecure: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    insecure: Option<bool>,
+    #[serde(flatten)]
+    attributes: IndexMap<String, Value>,
 }
 
 #[derive(Serialize)]
