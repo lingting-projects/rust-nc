@@ -34,7 +34,7 @@
         <Property Id="ARPPRODUCTICON" Value="MainIcon" />
 
         <!-- 禁止降级, 升级的前先卸载低版本 -->
-        <MajorUpgrade DowngradeErrorMessage="当前应用已存在更高版本, 无法安装当前版本!" />
+        <MajorUpgrade AllowSameVersionUpgrades="yes" DowngradeErrorMessage="当前应用已存在更高版本, 无法安装当前版本!" />
 
         <!-- 定义安装程序的目录结构 -->
         <StandardDirectory Id="ProgramFiles64Folder">
