@@ -2,10 +2,12 @@ use library_core::core::AnyResult;
 use std::collections::HashMap;
 use worker::{Fetch, Method, Request, Response};
 
+static UA: &'static str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36 Worker/RustCloudflare";
+
 pub async fn http_get(url: &str) -> AnyResult<Response> {
     let mut request = Request::new(url, Method::Get)?;
     let headers = request.headers_mut()?;
-    headers.set("User-Agent", "lingting rust work cloudflare")?;
+    headers.set("User-Agent", UA)?;
     let fetch = Fetch::Request(request);
     let response = fetch.send().await?;
     Ok(response)

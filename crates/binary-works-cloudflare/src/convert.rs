@@ -154,6 +154,12 @@ async fn subscribe(params: &ConvertParams) -> AnyResult<Subscribe> {
     console_debug!("从远程[{}]获取数据", remote);
     let mut response = http_get(remote).await?;
     if response.status_code() != 200 {
+        match response.text().await {
+            Ok(body) => {
+                console_debug!("远程返回内容: {}", body)
+            }
+            Err(_) => {}
+        }
         return Err(Box::new(RustError(format!(
             "远程[{}]返回异常! {}",
             remote,
