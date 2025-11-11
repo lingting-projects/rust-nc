@@ -438,11 +438,16 @@ impl SubscribeNode {
     }
 
     pub fn disable_ssl(&self) -> bool {
-        let skip = self.attr_bool("skip-cert-verify").unwrap_or(false);
-        if skip {
+        if self.attr_bool("skip-cert-verify").unwrap_or(false) {
             return true;
         }
-        self.attr_bool("allowInsecure").unwrap_or(false)
+        if self.attr_bool("allowInsecure").unwrap_or(false) {
+            return true;
+        }
+        if self.attr_bool("insecure").unwrap_or(false) {
+            return true;
+        }
+        false
     }
 }
 

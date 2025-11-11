@@ -214,15 +214,9 @@ impl Outbound {
             }
         }
 
-        // if let Some(Value::String(mport)) = map.get("mport") {
-        //     let vec: Vec<&str> = mport.split("-").collect();
-        //     let min = vec[0].parse::<u16>().unwrap();
-        //     let max = vec[1].parse::<u16>().unwrap();
-        //     attributes.insert(
-        //         "hop_port_range".to_string(),
-        //         Value::Array(vec![min.into(), max.into()]),
-        //     );
-        // }
+        if node.node_type == "hysteria2" {
+            attributes.insert("hop_interval".to_string(), "10s".into());
+        }
 
         let tls = OutboundTls {
             enabled: true,
