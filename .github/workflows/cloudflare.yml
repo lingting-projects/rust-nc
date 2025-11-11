@@ -50,4 +50,4 @@ jobs:
       - name: 发布
         shell: bash
         run: |
-          sh scripts/cloudflare.sh
+          sh scripts/cloudflare.sh -p

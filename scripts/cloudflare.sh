@@ -11,10 +11,26 @@ fi
 echo "配置:"
 echo "  版本: $VERSION"
 
+_publish=false
+
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        -p) _publish=true; shift 1 ;;
+        -d) _publish=false; shift 1 ;;
+        *) shift 1;;
+    esac
+done
+
 # 工作目录到 cloudflare
 cd crates/binary-works-cloudflare
-# 替换配置
-sed -i "s/0.0.0/$VERSION/g" package.json
-npm install
-# 发布
-npm run deploy
+
+if [ $_publish = true ]; then
+    # 替换配置
+    sed -i "s/0.0.0/$VERSION/g" package.json
+    npm install
+    # 发布
+    npm run deploy
+    exit 0
+fi
+
+npx wrangler dev

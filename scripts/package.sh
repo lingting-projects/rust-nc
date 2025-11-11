@@ -29,7 +29,7 @@ while [ "$#" -gt 0 ]; do
         -i) _ui=true; shift 1 ;;
         -t) _tar=true; shift 1 ;;
         -s) _special=true; shift 1 ;;
-        *) _args+=("$1"); shift ;;
+        *) _args+=("$1"); shift 1;;
     esac
 done
 
