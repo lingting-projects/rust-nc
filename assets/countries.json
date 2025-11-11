@@ -584,11 +584,11 @@
     "phoneFormat": "06 03 12 34"
   },
   "MO": {
-    "enName": "China/Macau",
-    "localName": "中国澳门",
+    "enName": "Macau",
+    "localName": "澳门",
     "code": "MO",
     "dialCode": "853",
-    "name": "中国澳门",
+    "name": "澳门",
     "phoneFormat": "6612 3456"
   },
   "LU": {
@@ -672,11 +672,11 @@
     "phoneFormat": "099 123 4567"
   },
   "TW": {
-    "enName": "China/Taiwan",
-    "localName": "中国台湾",
+    "enName": "Taiwan",
+    "localName": "台湾",
     "code": "TW",
     "dialCode": "886",
-    "name": "中国台湾",
+    "name": "台湾",
     "phoneFormat": "0912 345 678"
   },
   "MD": {
@@ -812,7 +812,7 @@
     "localName": "中国",
     "code": "CN",
     "dialCode": "86",
-    "name": "中华人民共和国",
+    "name": "中国",
     "phoneFormat": "131 2345 6789"
   },
   "MQ": {
@@ -1312,11 +1312,11 @@
     "phoneFormat": "8312 3456"
   },
   "HK": {
-    "enName": "China/Hong Kong",
-    "localName": "中国香港",
+    "enName": "Hong Kong",
+    "localName": "香港",
     "code": "HK",
     "dialCode": "852",
-    "name": "中国香港",
+    "name": "香港",
     "phoneFormat": "5123 4567"
   },
   "VN": {
