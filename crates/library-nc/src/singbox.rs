@@ -158,26 +158,21 @@ impl Outbound {
                 || k == "peer"
                 || k == "sni"
                 || k == "alpn"
+                // 2025 11 11
                 || k == "mport"
                 || k == "insecure"
+                || k == "encryption"
+                || k == "host"
+                || k == "path"
+                || k == "headerType"
+                || k == "quicSecurity"
+                || k == "serviceName"
+                || k == "security"
+                || k == "fp"
+                || k == "pbk"
+                || k == "sid"
             {
                 return;
-            }
-
-            if node.node_type == "vless" {
-                if k == "encryption"
-                    || k == "host"
-                    || k == "path"
-                    || k == "headerType"
-                    || k == "quicSecurity"
-                    || k == "serviceName"
-                    || k == "security"
-                    || k == "fp"
-                    || k == "pbk"
-                    || k == "sid"
-                {
-                    return;
-                }
             }
             attributes.insert(k.clone(), v.clone());
         });

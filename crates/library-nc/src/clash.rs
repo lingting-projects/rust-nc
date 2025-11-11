@@ -3,11 +3,11 @@ use crate::kernel::{
     tag_auto, tag_fallback, tag_selector, test_url, KernelConfig,
 };
 use crate::rule::{ClashRule, Rule, RuleType};
-use crate::subscribe::SubscribeNode;
 use indexmap::IndexMap;
 use library_core::core::AnyResult;
+use library_core::json::JsonValueExt;
 use serde::Serialize;
-use serde_yaml::Value;
+use serde_yaml::{Mapping, Value};
 use std::sync::LazyLock;
 
 const URL_GEOIP: &str =
@@ -407,7 +407,22 @@ impl KernelConfig {
             .map(|node| {
                 let mut attributes = IndexMap::new();
                 node.attribute.iter().for_each(|(k, v)| {
-                    if k == "type" || k == "allowInsecure" || k == "skip-cert-verify" {
+                    if k == "type"
+                        || k == "allowInsecure"
+                        || k == "skip-cert-verify"
+                        // 2025 11 11
+                        || k == "insecure"
+                        || k == "encryption"
+                        || k == "host"
+                        || k == "path"
+                        || k == "headerType"
+                        || k == "quicSecurity"
+                        || k == "serviceName"
+                        || k == "security"
+                        || k == "fp"
+                        || k == "pbk"
+                        || k == "sid"
+                    {
                         return;
                     }
                     let value = if v.is_array() {
@@ -415,16 +430,40 @@ impl KernelConfig {
                             v.as_array()
                                 .unwrap()
                                 .iter()
-                                .filter_map(|i| SubscribeNode::json_v_string(i).map(Value::String))
+                                .filter_map(|i| i.string().map(Value::String))
                                 .collect(),
                         )
                     } else {
-                        SubscribeNode::json_v_string(v)
-                            .map(Value::String)
-                            .unwrap_or(Value::Null)
+                        v.string().map(Value::String).unwrap_or(Value::Null)
                     };
                     attributes.insert(k.clone(), value);
                 });
+
+                let map = &node.attribute;
+
+                if let Some(fp) = map.get("fp") {
+                    attributes.insert("client-fingerprint".to_string(), fp.yml());
+                }
+
+                if let Some(serde_json::Value::String(security)) = map.get("security") {
+                    if security == "reality" {
+                        let mut reality = Mapping::new();
+
+                        if let Some(pbk) = map.get("pbk") {
+                            reality.insert("public-key".into(), pbk.yml());
+                        }
+
+                        if let Some(sid) = map.get("sid") {
+                            reality.insert("short-id".into(), sid.yml());
+                        }
+
+                        attributes.insert("reality-opts".to_string(), Value::Mapping(reality));
+                    }
+                }
+
+                if let Some(mport) = map.get("mport") {
+                    attributes.insert("ports".into(), mport.yml());
+                }
 
                 Proxy {
                     name: node.name.clone(),

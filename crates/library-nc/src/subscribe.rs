@@ -414,23 +414,15 @@ impl SubscribeNode {
         map
     }
 
-    pub fn json_v_string(v: &Value) -> Option<String> {
-        match v {
-            Value::Null => None,
-            Value::String(v) => Some(v.clone()),
-            v => Some(v.to_string()),
-        }
-    }
-
     pub fn attr_vec(&self, key: &str) -> Option<Vec<String>> {
         let v = self.attribute.get(key)?;
         let array = v.as_array()?;
-        array.iter().map(|i| Self::json_v_string(i)).collect()
+        array.iter().map(|i| i.string()).collect()
     }
 
     pub fn attr_string(&self, key: &str) -> Option<String> {
         let v = self.attribute.get(key)?;
-        Self::json_v_string(v)
+        v.string()
     }
 
     pub fn attr_bool(&self, key: &str) -> Option<bool> {
