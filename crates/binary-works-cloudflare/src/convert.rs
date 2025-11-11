@@ -169,7 +169,7 @@ async fn subscribe(params: &ConvertParams) -> AnyResult<Subscribe> {
 
 struct Remote {
     pub config: KernelConfig,
-    pub disposition: String,
+    pub filename: String,
     pub info: Option<String>,
 }
 
@@ -193,10 +193,9 @@ async fn build_remote(
     console_debug!("构造配置");
     let config = params.build_config(subscribe, rules_direct, rules_proxy, rules_reject)?;
 
-    let disposition = format!("inline; filename={}.json", &host);
     Ok(Remote {
         config,
-        disposition,
+        filename: host,
         info,
     })
 }
@@ -220,16 +219,14 @@ pub async fn sing_box(req: Request, env: Env) -> AnyResult<Response> {
         ],
     )
     .await?;
-    let config = remote.config;
-    let disposition = remote.disposition;
-    let info = remote.info;
+    let config = &remote.config;
     console_debug!("配置转换");
     let json = config.sing_box_default()?;
     console_debug!("返回配置");
 
-    let builder = Response::builder().with_header("Content-Disposition", &disposition)?;
+    let builder = Response::builder();
 
-    ok(builder, info, "application/json", json)
+    ok(builder, remote, "json", json)
 }
 
 pub async fn clash(req: Request, env: Env) -> AnyResult<Response> {
@@ -250,28 +247,27 @@ pub async fn clash(req: Request, env: Env) -> AnyResult<Response> {
         ],
     )
     .await?;
-    let config = remote.config;
-    let disposition = remote.disposition;
-    let info = remote.info;
+    let config = &remote.config;
     console_debug!("配置转换");
     let yml = config.clash_default()?;
     console_debug!("返回配置");
 
-    let builder = Response::builder().with_header("Content-Disposition", &disposition)?;
-
-    ok(builder, info, "application/yaml", yml)
+    let builder = Response::builder();
+    ok(builder, remote, "yaml", yml)
 }
 
 fn ok(
     mut builder: ResponseBuilder,
-    info: Option<String>,
-    content_type: &str,
+    remote: Remote,
+    ext: &str,
     body: String,
 ) -> AnyResult<Response> {
-    let _type = format!("{}; charset=utf-8", content_type);
+    let _type = format!("application/{}; charset=utf-8", ext);
+    let disposition = format!("inline; filename={}.{}", remote.filename, ext);
+    builder = builder.with_header("Content-Disposition", &disposition)?;
 
-    if let Some(v) = info {
-        builder = builder.with_header("Subscription-Userinfo", &v)?
+    if let Some(v) = &remote.info {
+        builder = builder.with_header("Subscription-Userinfo", v)?
     }
 
     builder = builder.with_header("content-type", &_type)?;
