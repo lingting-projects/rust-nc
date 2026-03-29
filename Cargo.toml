@@ -63,7 +63,7 @@ percent-encoding = "2.1"
 byte-unit = "5.1"
 encoding = "0.2"
 # cloud flare worker
-worker = "0.6"
+worker = "0.7.5"
 # lib
 libloading = "0.8"
 libc = "0.2"
