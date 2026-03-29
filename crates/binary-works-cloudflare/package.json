@@ -1,6 +1,6 @@
 {
   "name": "lingting-nc",
-  "version": "0.0.0",
+  "version": "25.9.290",
   "scripts": {
     "deploy": "wrangler deploy --env prod",
     "dev": "wrangler dev --env dev",
