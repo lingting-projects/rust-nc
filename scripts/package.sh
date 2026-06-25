@@ -54,7 +54,7 @@ fi
 if [ $_ui = true ]; then
   echo "编译UI"
   cd "$DIR_ROOT/ui"
-  tyarn build:prod
+  yarn build:prod
   _uc=$?
   if [ $_uc -ne 0 ]; then
     echo "编译异常! code: $c"

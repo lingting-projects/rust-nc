@@ -171,6 +171,8 @@ impl Outbound {
                 || k == "fp"
                 || k == "pbk"
                 || k == "sid"
+                // 2026 06 25
+                || k=="pinSHA256"
             {
                 return;
             }

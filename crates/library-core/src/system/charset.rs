@@ -21,6 +21,11 @@ pub fn get_system() -> AnyResult<String> {
     Ok(str.to_string())
 }
 
+#[cfg(not(target_os = "windows"))]
+pub fn get_system() -> AnyResult<String> {
+    Ok("UTF-8".to_string())
+}
+
 pub fn convert(bytes: Vec<u8>, charset: &str) -> AnyResult<String> {
     let encoding: &dyn Encoding = match charset {
         "utf-8" => encoding::all::UTF_8,
