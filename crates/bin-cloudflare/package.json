@@ -1,0 +1,12 @@
+{
+  "name": "lingting-nc",
+  "version": "26.6.251-rc",
+  "scripts": {
+    "deploy": "wrangler deploy --env prod",
+    "dev": "wrangler dev --env dev",
+    "start": "npm run dev"
+  },
+  "devDependencies": {
+    "wrangler": "^4.23.0"
+  }
+}

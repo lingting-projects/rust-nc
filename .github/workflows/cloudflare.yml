@@ -37,13 +37,13 @@ jobs:
           node-version: 22.17.0
           cache: 'npm'
           cache-dependency-path: |
-            crates/binary-works-cloudflare/package-lock.json
+            crates/bin-cloudflare/package-lock.json
       - name: 缓存 Node
         uses: actions/cache@v4
         with:
           path: |
-            crates/binary-works-cloudflare/node_modules
-            crates/binary-works-cloudflare/build
+            crates/bin-cloudflare/node_modules
+            crates/bin-cloudflare/build
           key: node-cloudflare-${{ runner.os }}-22.17.0
           restore-keys: node-cloudflare-${{ runner.os }}
 

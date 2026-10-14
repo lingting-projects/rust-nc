@@ -35,3 +35,8 @@ bin/
 
 ### Mac OS ###
 .DS_Store
+
+# >>> magpie: library skills placed here (magpie adds and removes these lines) >>>
+/.agents/skills/gpui-kit
+/.agents/skills/gpui-kit-design-guides
+# <<< magpie <<<

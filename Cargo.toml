@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "crates/bin-cloudflare",
     "crates/lib-converter",
     "crates/lib-core",
     "crates/lib-db",
@@ -73,15 +74,15 @@ windows = "0.61"
 # build
 winres = "0.1"
 
-framework-core = { version = "26.8.150" }
-framework-datetime = { version = "26.8.150" }
-framework-region = { version = "26.8.150" }
-framework-proc-auto = { version = "26.8.150" }
-framework-proc-core = { version = "26.8.150" }
-framework-proc-ts = { version = "26.8.150" }
-framework-proc-web = { version = "26.8.150" }
-framework-web = { version = "26.8.150" }
-framework-web-axum = { version = "26.8.150" }
+framework-core = { path = "../../lingting-rust-framework/framework-core" }
+framework-datetime = { path = "../../lingting-rust-framework/framework-datetime" }
+framework-region = { path = "../../lingting-rust-framework/framework-region" }
+framework-proc-auto = { path = "../../lingting-rust-framework/framework-proc-auto" }
+framework-proc-core = { path = "../../lingting-rust-framework/framework-proc-core" }
+framework-proc-ts = { path = "../../lingting-rust-framework/framework-proc-ts" }
+framework-proc-web = { path = "../../lingting-rust-framework/framework-proc-web" }
+framework-web = { path = "../../lingting-rust-framework/framework-web" }
+framework-web-axum = { path = "../../lingting-rust-framework/framework-web-axum" }
 
 aes = { version = "0.8" }
 base64 = { version = "0.22" }

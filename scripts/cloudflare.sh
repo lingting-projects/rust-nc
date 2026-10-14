@@ -22,7 +22,7 @@ while [ "$#" -gt 0 ]; do
 done
 
 # 工作目录到 cloudflare
-cd crates/binary-works-cloudflare
+cd crates/bin-cloudflare
 
 if [ $_publish = true ]; then
     # 替换配置

@@ -11,7 +11,7 @@ cmd /c mklink /J ui $UI
 #### cloudflare works
 
 ```shell
-cd crates/binary-works-cloudflare
+cd crates/bin-cloudflare
 # 手动更新配置
 pnpm wrangler secret put share --env prod
 ```

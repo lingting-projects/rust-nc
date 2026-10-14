@@ -1,0 +1,33 @@
+[package]
+name = "bin-cloudflare"
+version.workspace = true
+authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
+categories.workspace = true
+license.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "cloudflare works"
+
+[package.metadata.release]
+release = false
+
+# https://github.com/rustwasm/wasm-pack/issues/1247
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+lib-converter = { workspace = true }
+lib-core = { workspace = true }
+lib-fetch = { workspace = true }
+lib-pick = { workspace = true }
+
+anyhow = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true, features = [] }
+worker = { workspace = true, features = [] }
+console_error_panic_hook = { version = "0.1.7" }

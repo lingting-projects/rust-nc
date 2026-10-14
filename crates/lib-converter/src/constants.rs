@@ -1,10 +1,10 @@
 //! 通用常量。
 //!
-//! 远程地址的域名提取与 github 加速由 lib-fetch 提供, 此处转发以便内部使用。
+//! 远程地址的域名提取与 github 加速由 lib-core 提供, 此处转发以便内部使用。
 
 use std::sync::LazyLock;
 
-pub use lib_fetch::url::fast;
+pub use lib_core::url::fast;
 
 /// 关键字: 直连
 pub const KEY_DIRECT: &str = "direct";

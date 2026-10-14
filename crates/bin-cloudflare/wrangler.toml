@@ -1,0 +1,17 @@
+name = "lingting-nc"
+main = "build/worker/shim.mjs"
+compatibility_date = "2024-06-19"
+workers_dev = false
+
+[build]
+command = "cargo install -q worker-build@0.7.5 && worker-build --release"
+
+[placement]
+mode = "smart"
+
+[vars]
+isDev = true
+share = '{"bd":"https://www.baidu.com","pbd":{"p":"a1","u":"https://www.baidu.com"}}'
+
+[env.prod.vars]
+isDev = false
