@@ -45,7 +45,9 @@ pub enum AppConfigKey {
     SettingKernelDnsProxy,
 }
 
-/// 应用配置, 对应 app_config 表
+/// 应用配置, 对应 app_config 表。
+///
+/// `key` 取值见 [`AppConfigKey`]。
 #[auto_type(default = false)]
 pub struct AppConfig {
     pub key: String,

@@ -1,6 +1,8 @@
 use framework_proc_auto::auto_type;
 
-/// 内核使用的配置, 对应 tbl_config
+/// 内核使用的配置, 对应 tbl_config。
+///
+/// 规则 id 集合与区域、关键字集合在库中以 JSON 数组文本存储。
 #[auto_type(default = false)]
 pub struct Config {
     pub id: String,

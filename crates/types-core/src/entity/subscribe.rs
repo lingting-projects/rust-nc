@@ -1,6 +1,9 @@
 use framework_proc_auto::auto_type;
 
-/// 订阅, 对应 tbl_subscribe
+/// 订阅, 对应 tbl_subscribe。
+///
+/// `nodes` 为订阅解析后的节点 JSON 文本, 结构由订阅解析逻辑决定。
+/// `download`、`upload`、`max` 单位为 Bytes, 时间字段为毫秒级时间戳。
 #[auto_type(default = false)]
 pub struct Subscribe {
     pub id: String,

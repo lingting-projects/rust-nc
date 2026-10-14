@@ -1,0 +1,23 @@
+[package]
+name = "service-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+description.workspace = true
+license.workspace = true
+
+[lib]
+crate-type = ["rlib"]
+
+[dependencies]
+lib-core = { workspace = true }
+lib-db = { workspace = true }
+lib-system = { workspace = true }
+types-core = { workspace = true }
+
+anyhow = { workspace = true }
+log = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sqlx = { workspace = true }

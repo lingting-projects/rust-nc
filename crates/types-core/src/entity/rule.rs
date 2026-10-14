@@ -28,7 +28,10 @@ impl RuleType {
     }
 }
 
-/// 规则, 对应 tbl_rule
+/// 规则, 对应 tbl_rule。
+///
+/// `url` 为空表示本地规则, 此时 `content` 为本地编辑内容。
+/// `count` 为可用规则总数, 另按 [`RuleType`] 分别记录数量。
 #[auto_type(default = false)]
 pub struct Rule {
     pub id: String,

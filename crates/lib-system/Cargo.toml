@@ -1,0 +1,25 @@
+[package]
+name = "lib-system"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+description.workspace = true
+license.workspace = true
+
+[dependencies]
+lib-core = { workspace = true }
+
+anyhow = { workspace = true }
+encoding = { workspace = true }
+log = { workspace = true }
+regex = { workspace = true }
+
+[target.'cfg(target_os="windows")'.dependencies]
+winapi = { workspace = true, features = ["winnls"] }
+windows = { workspace = true, features = [
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_Security_Authorization",
+    "Win32_System_Threading",
+] }

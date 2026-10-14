@@ -2,6 +2,9 @@
 members = [
     "crates/lib-core",
     "crates/lib-db",
+    "crates/lib-singbox",
+    "crates/lib-system",
+    "crates/service-core",
     "crates/types-core",
 ]
 resolver = "2"
@@ -21,6 +24,9 @@ description = "lingting network control"
 
 lib-core = { path = "crates/lib-core" }
 lib-db = { path = "crates/lib-db" }
+lib-singbox = { path = "crates/lib-singbox" }
+lib-system = { path = "crates/lib-system" }
+service-core = { path = "crates/service-core" }
 types-core = { path = "crates/types-core" }
 
 simple_logger = "5.0"
