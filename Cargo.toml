@@ -22,22 +22,24 @@ license = "Apache-2.0"
 description = "lingting network control"
 
 [workspace.dependencies]
-# 日志
-log = "0.4"
+
+library-core = { path = "crates/library-core" }
+library-nc = { path = "crates/library-nc" }
+library-web = { path = "crates/library-web" }
+binary-ui = { path = "crates/binary-ui" }
+binary-web = { path = "crates/binary-web" }
+binary-works-cloudflare = { path = "crates/binary-works-cloudflare" }
+library-sing-box = { path = "crates/library-sing-box" }
+
 simple_logger = "5.0"
-tracing = "0.1"
-tracing-subscriber = "0.3"
 time = "0.3"
 thiserror = "2.0"
 lazy_static = "1.5"
 zstd = "0.13"
 # tauri 基础组件
 wry = "0.52"
-tao = "0.34"
 tray-icon = "0.21.0"
 # web
-axum = "0.8"
-tokio = "1.44"
 tower-http = "0.6"
 reqwest = "0.12"
 tower = "0.5"
@@ -48,17 +50,11 @@ indexmap = "2.10"
 sqlite = "0.37"
 futures = "0.3"
 rust-single = "25.8"
-sha2 = "0.10"
 hex = "0.4.3"
 # 序列化
-serde = "1.0"
-serde_json = "1.0"
 serde_yaml = "0.9"
 serde_urlencoded = "0.7"
-base64 = "0.22"
-regex = "1.11"
 form_urlencoded = "1.1"
-url = "2.5"
 percent-encoding = "2.1"
 byte-unit = "5.1"
 encoding = "0.2"
@@ -72,6 +68,62 @@ winapi = "0.3"
 windows = "0.61"
 # build
 winres = "0.1"
+
+framework-core = { version = "26.8.150" }
+framework-datetime = { version = "26.8.150" }
+framework-region = { version = "26.8.150" }
+framework-proc-auto = { version = "26.8.150" }
+framework-proc-core = { version = "26.8.150" }
+framework-proc-ts = { version = "26.8.150" }
+framework-proc-web = { version = "26.8.150" }
+framework-web = { version = "26.8.150" }
+framework-web-axum = { version = "26.8.150" }
+
+aes = { version = "0.8" }
+base64 = { version = "0.22" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = { version = "1.0" }
+serde_with = { version = "3.21" }
+specta = { version = "=2.0.0-rc.25", features = ["derive", "function", "bytes"] }
+specta-typescript = { version = "0.0.12" }
+specta-serde = { version = "0.0.12" }
+strum = { version = "0.28" }
+strum_macros = { version = "0.28" }
+blake3 = { version = "1.8" }
+url = { version = "2.5", features = ["serde"] }
+tokio = { version = "1.52", features = ["rt-multi-thread", "sync", "time", "macros"] }
+axum = { version = "0.8" }
+anyhow = "1.0"
+regex = { version = "1.12" }
+chrono = { version = "0.4" }
+log = { version = "0.4" }
+tracing = "0.1"
+tracing-appender = "0.2"
+tracing-log = "0.2"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+bytes = { version = "1.11" }
+flate2 = { version = "1.1" }
+cbc = { version = "0.1" }
+cipher = { version = "0.4" }
+rand = { version = "0.8" }
+hmac = { version = "0.12" }
+sha1 = { version = "0.10" }
+md-5 = { version = "0.10" }
+wreq = { version = "0.16", features = ["socks"] }
+rsntp = { version = "4.1", default-features = false }
+sha2 = { version = "0.10" }
+async-trait = { version = "0.1" }
+arc-swap = { version = "1.8" }
+dashmap = { version = "6.1" }
+cef = { version = "149.3.0" }
+tao = { version = "0.35" }
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_UI_WindowsAndMessaging"] }
+sqlx = { version = "0.8", default-features = false, features = ["any", "json", "macros", "postgres", "runtime-tokio-rustls", "sqlite"] }
+proc-macro2 = { version = "1.0" }
+quote = { version = "1.0" }
+syn = { version = "2.0", features = ["full"] }
+inventory = "0.3"
+futures-util = "0.3"
 
 [profile.release]
 # 编译优化 平衡编译速度和性能优化
