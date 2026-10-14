@@ -1,12 +1,8 @@
 [workspace]
 members = [
-    "crates/library-core",
-    "crates/library-nc",
-    "crates/library-web",
-    "crates/binary-ui",
-    "crates/binary-web",
-    "crates/binary-works-cloudflare",
-    "crates/library-sing-box",
+    "crates/lib-core",
+    "crates/lib-db",
+    "crates/types-core",
 ]
 resolver = "2"
 
@@ -23,13 +19,9 @@ description = "lingting network control"
 
 [workspace.dependencies]
 
-library-core = { path = "crates/library-core" }
-library-nc = { path = "crates/library-nc" }
-library-web = { path = "crates/library-web" }
-binary-ui = { path = "crates/binary-ui" }
-binary-web = { path = "crates/binary-web" }
-binary-works-cloudflare = { path = "crates/binary-works-cloudflare" }
-library-sing-box = { path = "crates/library-sing-box" }
+lib-core = { path = "crates/lib-core" }
+lib-db = { path = "crates/lib-db" }
+types-core = { path = "crates/types-core" }
 
 simple_logger = "5.0"
 time = "0.3"
@@ -118,12 +110,13 @@ dashmap = { version = "6.1" }
 cef = { version = "149.3.0" }
 tao = { version = "0.35" }
 windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_UI_WindowsAndMessaging"] }
-sqlx = { version = "0.8", default-features = false, features = ["any", "json", "macros", "postgres", "runtime-tokio-rustls", "sqlite"] }
+sqlx = { version = "0.8", default-features = false, features = ["any", "json", "macros", "sqlite"] }
 proc-macro2 = { version = "1.0" }
 quote = { version = "1.0" }
 syn = { version = "2.0", features = ["full"] }
 inventory = "0.3"
 futures-util = "0.3"
+gpui-kit = { version = "0.7" }
 
 [profile.release]
 # 编译优化 平衡编译速度和性能优化
