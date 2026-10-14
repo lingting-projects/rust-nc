@@ -2,8 +2,9 @@
 
 use std::sync::LazyLock;
 
-use lib_core::constants;
 use regex::Regex;
+
+use crate::constants;
 
 static PATTERN: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^https?://(([a-zA-Z0-9.-]+)(:[0-9]+)?)(/.*)?$").unwrap());

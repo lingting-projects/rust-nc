@@ -10,9 +10,30 @@ license.workspace = true
 [lib]
 crate-type = ["rlib"]
 
+[features]
+default = ["wreq"]
+# 基于 wreq, 模拟 chrome 的 tls 指纹, 仅支持非 wasm 目标
+wreq = ["dep:wreq", "dep:wreq-util"]
+# 基于 reqwest, 支持 wasm 目标; 与 `wreq` 同时启用时使用本实现
+reqwest = ["dep:reqwest"]
+
 [dependencies]
 anyhow = { workspace = true }
 lib-core = { workspace = true }
-regex = { workspace = true }
+bytes = { workspace = true }
 form_urlencoded = { workspace = true }
-wreq = { workspace = true, features = ["gzip", "brotli", "zstd", "deflate", "charset"] }
+reqwest = { workspace = true, optional = true, features = ["gzip", "brotli", "zstd", "deflate"] }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+wreq = { workspace = true, optional = true, features = [
+    "gzip",
+    "brotli",
+    "zstd",
+    "deflate",
+    "charset",
+] }
+wreq-util = { version = "0.2", optional = true }
+
+# wasm 无法使用 wreq, 固定使用 reqwest
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+reqwest = { workspace = true, features = ["gzip", "brotli", "zstd", "deflate"] }

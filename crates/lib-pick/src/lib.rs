@@ -6,6 +6,6 @@ mod pick;
 pub mod remote;
 pub mod value;
 
-pub use node::{PickNode, PickNodes};
-pub use pick::{pick, pick_clash, pick_pure};
+pub use node::{PickNode, PickNodes, is_true};
+pub use pick::{KEY_SCHEME, KEY_TYPE, pick, pick_clash, pick_pure};
 pub use remote::PickRemote;
