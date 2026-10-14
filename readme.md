@@ -13,5 +13,5 @@ cmd /c mklink /J ui $UI
 ```shell
 cd crates/binary-works-cloudflare
 # 手动更新配置
-npx wrangler secret put share --env prod
+pnpm wrangler secret put share --env prod
 ```
