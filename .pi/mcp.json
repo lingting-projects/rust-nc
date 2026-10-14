@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "crates": {
+      "url": "https://gateway.pipeworx.io/crates/mcp"
+    }
+  }
+}
