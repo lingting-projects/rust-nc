@@ -1,0 +1,18 @@
+[package]
+name = "lib-fetch"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+description.workspace = true
+license.workspace = true
+
+[lib]
+crate-type = ["rlib"]
+
+[dependencies]
+anyhow = { workspace = true }
+lib-core = { workspace = true }
+regex = { workspace = true }
+form_urlencoded = { workspace = true }
+wreq = { workspace = true, features = ["gzip", "brotli", "zstd", "deflate", "charset"] }

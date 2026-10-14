@@ -1,7 +1,10 @@
 [workspace]
 members = [
+    "crates/lib-converter",
     "crates/lib-core",
     "crates/lib-db",
+    "crates/lib-fetch",
+    "crates/lib-pick",
     "crates/lib-singbox",
     "crates/lib-system",
     "crates/service-core",
@@ -22,8 +25,11 @@ description = "lingting network control"
 
 [workspace.dependencies]
 
+lib-converter = { path = "crates/lib-converter" }
 lib-core = { path = "crates/lib-core" }
 lib-db = { path = "crates/lib-db" }
+lib-fetch = { path = "crates/lib-fetch" }
+lib-pick = { path = "crates/lib-pick" }
 lib-singbox = { path = "crates/lib-singbox" }
 lib-system = { path = "crates/lib-system" }
 service-core = { path = "crates/service-core" }
