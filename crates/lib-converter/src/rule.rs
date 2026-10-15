@@ -1,5 +1,3 @@
-//! 规则类型与来源。
-
 /// 规则类型, 与规则文件一一对应。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RuleType {

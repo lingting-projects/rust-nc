@@ -1,5 +1,3 @@
-//! 应用外壳：自绘标题栏 + 左侧侧栏 + 页面内容区。
-
 use gpui_kit::assets::IconName;
 use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::ActiveTheme as _;
@@ -82,7 +80,7 @@ fn nav_list(cx: &App) -> Vec<AnyElement> {
             let selected = *path == current.as_ref();
             div()
                 .w_full()
-                .child(Menu::new(*path, *label, *icon).selected(selected))
+                .child(Menu::new(*path, *label).icon(*icon).selected(selected))
                 .into_any_element()
         })
         .collect()

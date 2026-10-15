@@ -1,5 +1,3 @@
-//! 订阅刷新所需的领域类型，对应 `tbl_subscribe`。
-
 use framework_proc_auto::auto_type;
 
 use crate::entity::subscribe::Subscribe;

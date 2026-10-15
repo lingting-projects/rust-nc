@@ -1,8 +1,3 @@
-//! 远程资源获取。
-//!
-//! 通过 `wreq`(模拟 chrome 的 tls 指纹) 或 `reqwest` 提供统一的请求接口。
-//! 两者同时启用时使用 `reqwest`; 均未启用时不报编译错误, 请求在运行时返回错误。
-
 mod client;
 #[cfg(all(
     not(any(feature = "wreq", feature = "reqwest")),

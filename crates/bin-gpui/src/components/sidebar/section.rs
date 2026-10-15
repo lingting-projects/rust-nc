@@ -1,5 +1,3 @@
-//! 侧栏中的一段。
-
 use gpui_kit::base::StyledExt as _;
 use gpui_kit::*;
 

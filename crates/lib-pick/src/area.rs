@@ -1,7 +1,3 @@
-//! 节点区域识别。
-//!
-//! 区域数据取自 `assets/countries.json`, 首次使用时加载。
-
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::OnceLock;

@@ -1,7 +1,3 @@
-//! 节点信息。
-//!
-//! [`PickNode`] 保留订阅中的原始键顺序, 协议名与协议值单独存放, 便于其他模块按源格式扩展。
-
 use anyhow::Result;
 use indexmap::IndexMap;
 use serde_json::Value;

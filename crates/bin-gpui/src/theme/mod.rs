@@ -1,11 +1,3 @@
-//! 仿 antd 的浅色主题，主色取旧界面的拂晓蓝。
-//!
-//! 只定义浅色：程序固定使用浅色模式，不跟随系统外观。
-//! 调色板取自 antd v5 的浅色种子与派生 token：主色 `#1890ff`、
-//! 圆角 6/8、容器白、布局底 `#f5f5f5`、边框 `#d9d9d9`、文字 88%/65%/45% 黑。
-//!
-//! 在 [`gpui_kit::init`] 之后、创建窗口之前调用 [`apply`] 应用。
-
 use std::rc::Rc;
 
 use gpui_kit::component::{Theme, ThemeConfig, ThemeConfigColors, ThemeMode};

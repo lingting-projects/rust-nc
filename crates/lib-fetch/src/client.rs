@@ -1,5 +1,3 @@
-//! 请求客户端。
-
 use anyhow::Result;
 use bytes::Bytes;
 

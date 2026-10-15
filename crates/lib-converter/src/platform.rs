@@ -1,5 +1,3 @@
-//! 转换入口所需的平台与通用配置。
-
 use indexmap::IndexMap;
 use lib_pick::{PickNode, PickNodes};
 

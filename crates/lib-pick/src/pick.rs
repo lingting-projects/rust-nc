@@ -1,7 +1,3 @@
-//! 订阅内容解析。
-//!
-//! [`pick`] 按内容格式自动选择解析方式, 也可以直接调用 [`pick_clash`] 与 [`pick_pure`]。
-
 use anyhow::{Result, bail};
 use base64::Engine;
 use base64::prelude::BASE64_STANDARD;

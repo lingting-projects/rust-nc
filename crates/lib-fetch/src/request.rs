@@ -1,5 +1,3 @@
-//! 请求信息。
-
 use std::collections::HashMap;
 
 use bytes::Bytes;

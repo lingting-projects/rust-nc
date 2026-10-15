@@ -1,5 +1,3 @@
-//! sing-box 配置生成。
-
 mod dns;
 mod outbound;
 mod route;

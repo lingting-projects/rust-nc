@@ -1,5 +1,3 @@
-//! 未启用任何后端时的占位实现, 请求在运行时返回错误。
-
 use anyhow::{Result, bail};
 
 use crate::request::FetchRequest;

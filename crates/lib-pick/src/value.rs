@@ -1,5 +1,3 @@
-//! JSON 与 YAML 值的取值扩展。
-
 use serde_json::Value;
 use serde_yaml::Value as Yml;
 

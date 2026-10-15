@@ -1,7 +1,3 @@
-//! 分享源解析。
-//!
-//! 映射来自环境变量 `share`, 内容为 JSON, 值为字符串或 `{ "p": 参数, "u": 地址 }`。
-
 use serde_json::{Value, from_str};
 use worker::{Env, console_debug, console_error};
 

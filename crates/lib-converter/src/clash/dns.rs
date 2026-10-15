@@ -1,5 +1,3 @@
-//! clash dns 配置。
-
 use indexmap::IndexMap;
 use serde::Serialize;
 

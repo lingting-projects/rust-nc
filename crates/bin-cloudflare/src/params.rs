@@ -1,5 +1,3 @@
-//! 转换请求的查询参数。
-
 use std::collections::HashMap;
 
 use lib_converter::NodeContains;

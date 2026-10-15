@@ -1,5 +1,3 @@
-//! 请求头与响应头在 [`MultiStringValue`] 与后端类型之间的转换。
-
 use std::collections::HashMap;
 
 use lib_core::MultiStringValue;

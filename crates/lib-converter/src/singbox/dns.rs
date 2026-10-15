@@ -1,5 +1,3 @@
-//! sing-box dns 配置。
-
 use serde::Serialize;
 
 use crate::constants::{

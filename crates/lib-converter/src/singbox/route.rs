@@ -1,5 +1,3 @@
-//! sing-box 路由规则。
-
 use serde::Serialize;
 
 use crate::constants::{

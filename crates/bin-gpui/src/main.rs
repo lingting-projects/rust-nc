@@ -1,5 +1,3 @@
-//! 灵听网络控制。
-
 mod app;
 mod assets;
 mod blocks;

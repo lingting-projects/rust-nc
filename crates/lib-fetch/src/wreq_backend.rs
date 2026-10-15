@@ -1,5 +1,3 @@
-//! 基于 `wreq` 的实现, 模拟 chrome 的 tls 指纹。
-
 use std::sync::LazyLock;
 use std::time::Duration;
 

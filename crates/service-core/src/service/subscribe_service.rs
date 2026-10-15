@@ -1,5 +1,3 @@
-//! `tbl_subscribe` 表的业务操作。
-
 use std::sync::Arc;
 
 use anyhow::Result;

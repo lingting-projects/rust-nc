@@ -1,5 +1,3 @@
-//! 订阅远程信息: 节点与流量、到期信息。
-
 use chrono::NaiveDateTime;
 
 use crate::node::PickNodes;

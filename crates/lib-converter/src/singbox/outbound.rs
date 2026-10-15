@@ -1,5 +1,3 @@
-//! sing-box 出口与 tls。
-
 use indexmap::IndexMap;
 use lib_pick::PickNode;
 use serde::Serialize;

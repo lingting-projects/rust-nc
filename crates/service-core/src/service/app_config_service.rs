@@ -1,5 +1,3 @@
-//! `app_config` 表的业务操作。
-
 use std::collections::HashMap;
 use std::sync::Arc;
 

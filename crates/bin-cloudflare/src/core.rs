@@ -1,7 +1,3 @@
-//! 请求与响应头的转发工具。
-//!
-//! 逐跳头只在单次连接内有效, 转发给目标前必须移除。
-
 use std::collections::HashMap;
 
 use lib_core::MultiStringValue;

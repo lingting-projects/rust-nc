@@ -1,5 +1,3 @@
-//! 订阅转换。
-
 use anyhow::{Result, anyhow};
 use lib_converter::{Platform, PlatformConfig, Rule, RuleType, clash_to, pure_to};
 use lib_core::MultiStringValue;

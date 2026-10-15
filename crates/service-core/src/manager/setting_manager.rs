@@ -1,5 +1,3 @@
-//! 应用设置：聚合 `app_config` 键值与本机开机自启状态。
-
 use std::sync::Arc;
 
 use anyhow::{Result, bail};

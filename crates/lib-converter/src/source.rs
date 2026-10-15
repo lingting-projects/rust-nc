@@ -1,5 +1,3 @@
-//! 订阅来源。
-
 /// 节点来源。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Source {

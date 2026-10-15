@@ -1,5 +1,3 @@
-//! 系统字符集识别与解码。
-
 use anyhow::{Result, bail};
 use encoding::{DecoderTrap, Encoding};
 

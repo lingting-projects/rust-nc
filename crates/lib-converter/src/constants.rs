@@ -1,7 +1,3 @@
-//! 通用常量。
-//!
-//! 远程地址的域名提取与 github 加速由 lib-core 提供, 此处转发以便内部使用。
-
 use std::sync::LazyLock;
 
 pub use lib_core::url::fast;

@@ -1,5 +1,3 @@
-//! 开机自启的注册与查询，按平台分发到具体实现。
-
 use std::path::Path;
 
 use anyhow::Result;

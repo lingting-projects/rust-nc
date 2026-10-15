@@ -1,5 +1,3 @@
-//! 子进程封装：统一处理字符集解码、超时等待与生命周期回收。
-
 use std::io::Read;
 use std::process::{Child, Command, ExitStatus, Stdio};
 use std::time::Duration;

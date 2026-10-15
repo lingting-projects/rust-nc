@@ -1,5 +1,3 @@
-//! `app_config` 表的原子数据库操作。
-
 use anyhow::Result;
 use lib_db::{DbPool, DbRow};
 use sqlx::Row;

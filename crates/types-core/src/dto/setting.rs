@@ -1,5 +1,3 @@
-//! 应用设置的领域类型，对应 `app_config` 表中的 `setting:` 前缀键。
-
 use framework_proc_auto::auto_type;
 use lib_core::constants;
 

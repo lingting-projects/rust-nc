@@ -1,5 +1,3 @@
-//! 响应信息。
-
 use bytes::Bytes;
 use lib_core::MultiStringValue;
 

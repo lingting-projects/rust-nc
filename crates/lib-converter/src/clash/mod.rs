@@ -1,5 +1,3 @@
-//! clash 配置生成。
-
 mod dns;
 mod group;
 mod proxy;

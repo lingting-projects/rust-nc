@@ -1,5 +1,3 @@
-//! clash 代理组。
-
 use serde::Serialize;
 
 use crate::constants::{

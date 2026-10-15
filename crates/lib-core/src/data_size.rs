@@ -1,7 +1,3 @@
-//! 数据大小解析与展示。
-//!
-//! 支持 `1.5TB`、`1024` 等写法, 换算按 1024 进制。
-
 use std::fmt::{Display, Formatter};
 use std::sync::LazyLock;
 

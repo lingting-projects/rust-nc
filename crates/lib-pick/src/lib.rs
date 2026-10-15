@@ -1,5 +1,3 @@
-//! 从订阅返回值中提取节点。
-
 pub mod area;
 pub mod node;
 mod pick;

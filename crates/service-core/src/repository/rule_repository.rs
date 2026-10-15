@@ -1,5 +1,3 @@
-//! `tbl_rule` 表的原子数据库操作。
-
 use anyhow::Result;
 use lib_db::{DbPool, DbRow};
 use types_core::dto::rule::RuleRefreshDTO;

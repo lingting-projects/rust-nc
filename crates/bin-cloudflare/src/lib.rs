@@ -1,5 +1,3 @@
-//! cloudflare worker 入口。
-
 mod convert;
 mod core;
 mod git;

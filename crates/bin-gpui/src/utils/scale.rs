@@ -1,5 +1,3 @@
-//! 屏幕缩放查询。
-
 /// 系统 DPI 基准值（100% 缩放）。
 const USER_DEFAULT_SCREEN_DPI: f32 = 96.0;
 

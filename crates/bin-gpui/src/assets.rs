@@ -1,10 +1,3 @@
-//! 应用资源。
-//!
-//! `gpui_kit::assets::Assets` 只包含组件用到的精简图标子集，
-//! 这里补上它没有的图标：先查 `Assets`，再回落到 `AllAssets`（完整目录）。
-//!
-//! `assets/` 目录作为回退源，用于存放应用自己的资源（例如 `assets/icons/` 下的图标）。
-
 use std::borrow::Cow;
 use std::path::{Path, PathBuf};
 

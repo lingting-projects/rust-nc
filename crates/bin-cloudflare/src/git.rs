@@ -1,8 +1,3 @@
-//! github 代理。
-//!
-//! 路径形如 `/gist/{owner}/{repo}/{path}`、`/release/{owner}/{repo}/{tag}/{file}`,
-//! `/latest` 会先查询最新 release 的 tag 再转发到下载地址。
-
 use anyhow::{Result, anyhow};
 use lib_fetch::{FetchClient, FetchRequest};
 use serde::Deserialize;

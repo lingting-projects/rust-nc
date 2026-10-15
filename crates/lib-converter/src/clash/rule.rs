@@ -1,5 +1,3 @@
-//! clash 规则提供者与规则列表。
-
 use indexmap::IndexMap;
 use serde::Serialize;
 

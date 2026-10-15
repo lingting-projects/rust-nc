@@ -1,7 +1,3 @@
-//! 占位页面。
-//!
-//! 页面内容尚未实现时的临时页面：只显示页面名称，用于验证布局与路由。
-
 use gpui_kit::component::ActiveTheme as _;
 use gpui_kit::*;
 

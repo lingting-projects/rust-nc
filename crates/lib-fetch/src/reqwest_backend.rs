@@ -1,5 +1,3 @@
-//! 基于 `reqwest` 的实现。
-
 use std::sync::LazyLock;
 
 use anyhow::Result;

@@ -1,5 +1,3 @@
-//! 数据库行到领域类型的字段映射辅助。
-
 use anyhow::{Context, Result};
 use lib_db::DbRow;
 use serde::de::DeserializeOwned;

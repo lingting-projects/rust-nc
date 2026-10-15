@@ -1,5 +1,3 @@
-//! 远程地址工具。
-
 use std::sync::LazyLock;
 
 use regex::Regex;

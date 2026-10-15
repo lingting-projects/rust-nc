@@ -1,5 +1,3 @@
-//! windows 平台通过计划任务实现开机自启。
-
 use std::env;
 use std::path::Path;
 use std::process::Command;

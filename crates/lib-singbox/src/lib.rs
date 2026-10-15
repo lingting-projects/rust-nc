@@ -1,5 +1,3 @@
-//! 以子进程方式驱动 sing-box 内核，仅支持 bin 模式。
-
 use std::path::Path;
 
 use anyhow::Result;

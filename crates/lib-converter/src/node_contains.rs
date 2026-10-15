@@ -1,5 +1,3 @@
-//! 节点包含与排除条件。
-
 use std::cmp::Ordering;
 
 use lib_core::constants;

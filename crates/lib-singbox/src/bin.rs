@@ -1,5 +1,3 @@
-//! sing-box 子进程实现。
-
 use std::path::Path;
 use std::process::{Command, ExitStatus};
 

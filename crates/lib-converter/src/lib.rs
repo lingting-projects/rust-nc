@@ -1,8 +1,3 @@
-//! 将节点列表转换为指定平台的内核配置。
-//!
-//! [`clash_to`] 用于 clash 订阅提取出的节点, [`pure_to`] 用于纯净订阅提取出的节点,
-//! 两者的节点键不同, 分别翻译为目标平台的字段。
-
 mod clash;
 mod constants;
 mod node_contains;

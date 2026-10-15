@@ -1,5 +1,3 @@
-//! 规则刷新所需的领域类型，对应 `tbl_rule`。
-
 use framework_proc_auto::auto_type;
 
 use crate::entity::rule::Rule;

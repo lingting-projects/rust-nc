@@ -1,5 +1,3 @@
-//! 内核配置的领域类型，对应 `tbl_config`。
-
 use framework_proc_auto::auto_type;
 use lib_core::constants;
 

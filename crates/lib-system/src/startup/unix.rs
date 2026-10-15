@@ -1,5 +1,3 @@
-//! 非 windows 平台暂未实现开机自启。
-
 use std::path::Path;
 
 use anyhow::{Result, bail};

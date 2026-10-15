@@ -1,5 +1,3 @@
-//! clash 代理节点, 按来源翻译为 clash 原生字段。
-
 use indexmap::IndexMap;
 use lib_pick::PickNode;
 use lib_pick::value::json_to_yml;
