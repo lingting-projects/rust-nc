@@ -16,6 +16,7 @@ path = "src/main.rs"
 
 [dependencies]
 gpui-kit = { workspace = true, features = ["gpui-fast"] }
+lingting-gpui-kit = { workspace = true }
 
 # 查询主屏幕缩放，用于把窗口物理尺寸换算成 GPUI 的逻辑尺寸。
 [target.'cfg(windows)'.dependencies]

@@ -1,9 +1,7 @@
-//! 通用组件。
+//! 应用自有组件。
+//!
+//! 菜单、标题栏与路由改用 `lingting-gpui-kit` 的对应实现，这里只保留侧栏。
 
-mod menu;
 mod sidebar;
-mod title_bar;
 
-pub use menu::{MenuItem, menu};
 pub use sidebar::Sidebar;
-pub use title_bar::title_bar;

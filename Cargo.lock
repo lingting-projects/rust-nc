@@ -627,6 +627,7 @@ version = "26.6.251-rc"
 dependencies = [
  "embed-resource",
  "gpui-kit",
+ "lingting-gpui-kit",
  "windows-sys 0.61.2",
 ]
 
@@ -4518,6 +4519,42 @@ name = "linebender_resource_handle"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d4a5ff6bcca6c4867b1c4fd4ef63e4db7436ef363e0ad7531d1558856bae64f4"
+
+[[package]]
+name = "lingting-gpui-components"
+version = "26.10.0"
+dependencies = [
+ "gpui-kit",
+ "lingting-gpui-nav",
+]
+
+[[package]]
+name = "lingting-gpui-kit"
+version = "26.10.0"
+dependencies = [
+ "embed-resource",
+ "gpui-kit",
+ "lingting-gpui-components",
+ "lingting-gpui-layout",
+ "lingting-gpui-nav",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "lingting-gpui-layout"
+version = "26.10.0"
+dependencies = [
+ "gpui-kit",
+ "lingting-gpui-components",
+ "lingting-gpui-nav",
+]
+
+[[package]]
+name = "lingting-gpui-nav"
+version = "26.10.0"
+dependencies = [
+ "gpui-kit",
+]
 
 [[package]]
 name = "link-section"

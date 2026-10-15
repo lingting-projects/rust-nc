@@ -1,53 +1,32 @@
 //! 应用外壳：自绘标题栏 + 左侧侧栏 + 页面内容区。
 
-use gpui_kit::component::{ActiveTheme as _, WindowExt as _};
+use gpui_kit::assets::IconName;
+use gpui_kit::base::StyledExt as _;
+use gpui_kit::component::ActiveTheme as _;
 use gpui_kit::*;
 
-use crate::components::{MenuItem, Sidebar, menu, title_bar};
-use crate::nav::{Outlet, current_path};
+use lingting_gpui_kit::menu::Menu;
+use lingting_gpui_kit::title_bar::TitleBar;
+use lingting_gpui_kit::{Outlet, current_path};
 
-/// 渲染在侧栏中间段的菜单项。
-const MENU_ITEMS: &[MenuItem] = &[
-    MenuItem {
-        path: "/console",
-        label: "控制台",
-        icon: "assets/icons/gauge.svg",
-    },
-    MenuItem {
-        path: "/node",
-        label: "节点",
-        icon: "assets/icons/server.svg",
-    },
-    MenuItem {
-        path: "/connection",
-        label: "连接",
-        icon: "assets/icons/link.svg",
-    },
-    MenuItem {
-        path: "/logs",
-        label: "日志",
-        icon: "assets/icons/scroll-text.svg",
-    },
-    MenuItem {
-        path: "/subscribe",
-        label: "订阅",
-        icon: "assets/icons/rss.svg",
-    },
-    MenuItem {
-        path: "/rule",
-        label: "规则",
-        icon: "assets/icons/git-fork.svg",
-    },
-    MenuItem {
-        path: "/config",
-        label: "配置",
-        icon: "assets/icons/file-cog.svg",
-    },
-    MenuItem {
-        path: "/settings",
-        label: "设置",
-        icon: "assets/icons/settings.svg",
-    },
+use crate::components::Sidebar;
+
+/// 应用标题。
+const APP_TITLE: &str = "lingting network control";
+
+/// 应用图标，由 [`crate::assets::AppAssets`] 从磁盘 `assets/icons/` 读取。
+const APP_ICON: &str = "icons/256x256.png";
+
+/// 渲染在侧栏中间段的菜单项：路径、名称、图标。
+const MENU_ITEMS: &[(&str, &str, IconName)] = &[
+    ("/console", "控制台", IconName::Gauge),
+    ("/node", "节点", IconName::Server),
+    ("/connection", "连接", IconName::Link),
+    ("/logs", "日志", IconName::ScrollText),
+    ("/subscribe", "订阅", IconName::Rss),
+    ("/rule", "规则", IconName::GitFork),
+    ("/config", "配置", IconName::FileCog),
+    ("/settings", "设置", IconName::Settings),
 ];
 
 /// 默认打开的页面。
@@ -67,21 +46,25 @@ impl Shell {
 }
 
 impl Render for Shell {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         div()
             .flex()
             .flex_col()
             .size_full()
             .bg(cx.theme().background)
             .text_color(cx.theme().foreground)
-            .child(title_bar(window, cx))
+            .child(
+                TitleBar::new()
+                    .icon(img(APP_ICON).size(px(22.)).rounded_sm().flex_shrink_0())
+                    .title(APP_TITLE),
+            )
             .child(
                 div()
                     .flex()
                     .flex_row()
                     .flex_1()
                     .min_h_0()
-                    .child(Sidebar::new().middle(nav_list(MENU_ITEMS, cx)))
+                    .child(Sidebar::new().middle(nav_list(cx)))
                     .child(div().flex_1().min_w_0().child(self.outlet.clone())),
             )
     }
@@ -90,16 +73,16 @@ impl Render for Shell {
 /// 把一组菜单项渲染成侧栏的导航列表。
 ///
 /// 每项一个满宽槽位，选中态取自当前路由。
-fn nav_list(items: &[MenuItem], cx: &App) -> Vec<AnyElement> {
+fn nav_list(cx: &App) -> Vec<AnyElement> {
     let current = current_path(cx);
 
-    items
+    MENU_ITEMS
         .iter()
-        .map(|item| {
-            let selected = item.path == current.as_ref();
+        .map(|(path, label, icon)| {
+            let selected = *path == current.as_ref();
             div()
                 .w_full()
-                .child(menu(item, selected, cx))
+                .child(Menu::new(*path, *label, *icon).selected(selected))
                 .into_any_element()
         })
         .collect()
