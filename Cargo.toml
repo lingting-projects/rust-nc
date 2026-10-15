@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "crates/bin-cloudflare",
+    "crates/bin-gpui",
     "crates/lib-converter",
     "crates/lib-core",
     "crates/lib-db",
@@ -130,6 +131,7 @@ syn = { version = "2.0", features = ["full"] }
 inventory = "0.3"
 futures-util = "0.3"
 gpui-kit = { version = "0.7" }
+embed-resource = "3.0"
 
 [profile.release]
 # 编译优化 平衡编译速度和性能优化

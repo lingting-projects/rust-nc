@@ -48,7 +48,7 @@ if [ $_build = true ]; then
   cp -f release/$NAME $DIR_TAR/$NAME
   cp -f release/$NAME.exe $DIR_TAR/$NAME.exe
   rm -rf icons
-  cp -rf ../icons $DIR_TAR
+  cp -rf ../assets/icons $DIR_TAR
 fi
 
 if [ $_ui = true ]; then

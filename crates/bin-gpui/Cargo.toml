@@ -1,0 +1,26 @@
+[package]
+name = "bin-gpui"
+version.workspace = true
+authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
+categories.workspace = true
+license.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "lingting network control gpui"
+
+[[bin]]
+name = "lingting-nc"
+path = "src/main.rs"
+
+[dependencies]
+gpui-kit = { workspace = true, features = ["gpui-fast"] }
+
+# 查询主屏幕缩放，用于把窗口物理尺寸换算成 GPUI 的逻辑尺寸。
+[target.'cfg(windows)'.dependencies]
+windows-sys = { workspace = true, features = ["Win32_UI_HiDpi", "Win32_Graphics_Gdi"] }
+
+# 把 assets/icons/256x256.ico 写入 exe 资源区，供窗口/任务栏图标使用。
+[target.'cfg(windows)'.build-dependencies]
+embed-resource.workspace = true
