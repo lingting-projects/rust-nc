@@ -15,11 +15,16 @@ use gpui_kit::component::select::{SearchableVec, SelectState};
 use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
 
-use lingting_gpui_kit::card::ItemCard;
+use lingting_gpui_kit::card::{ItemCard, ItemCardSelectedStyle};
 
 use crate::services::{self, AppServices, ConsoleData};
 use monitor::Monitor;
 use toolbar::ConfigOption;
+
+/// 各区域卡片的内边距。
+///
+/// 控制栏、预览栏、监控控制栏、监控区的数值卡与图表卡共用，保证同一层的留白一致。
+pub(crate) const PADDING: Rems = rems(1.);
 
 /// 实时监控卡片的分区，可独立开关。
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -282,6 +287,7 @@ impl Console {
                 div().flex_1().min_w_0().h_8().child(
                     ItemCard::new(*label)
                         .selected(selected)
+                        .selected_style(ItemCardSelectedStyle::Elevated)
                         .center(
                             div()
                                 .text_sm()
@@ -302,33 +308,18 @@ impl Console {
 
 impl Render for Console {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        // 内核未启动时不渲染实时监控，只在原位给出一句提示。
-        let monitor = self
-            .kernel
-            .running
-            .then(|| charts::render(&self.monitor, &self.sections, cx.theme()));
-
         v_flex()
             .size_full()
             .min_h_0()
             .gap_4()
-            .p_6()
-            .bg(cx.theme().background)
             .child(toolbar::render(self, cx))
             .child(preview::render(self, cx))
             .child(self.render_monitor_bar(cx))
-            .child(
-                div().w_full().min_h_0().flex_1().child(match monitor {
-                    Some(monitor) => monitor.into_any_element(),
-                    None => v_flex()
-                        .size_full()
-                        .items_center()
-                        .justify_center()
-                        .text_sm()
-                        .text_color(cx.theme().muted_foreground)
-                        .child("启动内核后显示实时监控")
-                        .into_any_element(),
-                }),
-            )
+            .child(div().w_full().min_h_0().flex_1().child(charts::render(
+                &self.monitor,
+                &self.sections,
+                self.kernel.running,
+                cx.theme(),
+            )))
     }
 }

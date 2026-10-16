@@ -8,8 +8,11 @@ use gpui_kit::component::tag::Tag;
 use gpui_kit::component::{ActiveTheme as _, Sizable as _};
 use gpui_kit::*;
 
+use lingting_gpui_kit::card::Card;
+
 use super::Console;
 use super::LoadState;
+use super::PADDING;
 use super::format;
 
 /// 渲染预览栏。
@@ -20,30 +23,15 @@ pub fn render(console: &Console, cx: &App) -> AnyElement {
     let data = match &console.load {
         LoadState::Ready(data) => data,
         LoadState::Loading => {
-            return v_flex()
-                .w_full()
-                .text_sm()
-                .text_color(theme.muted_foreground)
-                .child("正在加载配置…")
-                .into_any_element();
+            return hint("正在加载配置…", theme.muted_foreground);
         }
         LoadState::Failed(reason) => {
-            return v_flex()
-                .w_full()
-                .text_sm()
-                .text_color(theme.danger)
-                .child(reason.clone())
-                .into_any_element();
+            return hint(reason, theme.danger);
         }
     };
 
     let Some(config) = console.selected_config() else {
-        return v_flex()
-            .w_full()
-            .text_sm()
-            .text_color(theme.muted_foreground)
-            .child("暂无配置，请先在配置页新增")
-            .into_any_element();
+        return hint("暂无配置，请先在配置页新增", theme.muted_foreground);
     };
 
     let mut items: Vec<AnyElement> = Vec::new();
@@ -92,12 +80,29 @@ pub fn render(console: &Console, cx: &App) -> AnyElement {
         );
     }
 
-    h_flex()
-        .w_full()
-        .flex_wrap()
-        .gap_4()
-        .children(items)
+    bar(h_flex().w_full().flex_wrap().gap_4().children(items))
+}
+
+/// 预览栏的卡片表面。
+///
+/// 内部按内容高度排布，不随内容区剩余高度拉伸。
+fn bar(content: impl IntoElement) -> AnyElement {
+    Card::new()
+        .flex_shrink_0()
+        .content_padding(PADDING)
+        .child(content)
         .into_any_element()
+}
+
+/// 无法展示元信息时的一行提示。
+///
+/// 与正常状态共用同一张卡片，状态切换时布局不跳动。
+fn hint(reason: &str, color: Hsla) -> AnyElement {
+    bar(div()
+        .w_full()
+        .text_sm()
+        .text_color(color)
+        .child(reason.to_string()))
 }
 
 /// 一枚中性的配置标签。

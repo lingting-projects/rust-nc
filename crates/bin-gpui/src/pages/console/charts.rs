@@ -13,28 +13,45 @@ use gpui_kit::*;
 use lingting_gpui_kit::card::{Card, ItemCard};
 
 use super::MonitorSection;
+use super::PADDING;
 use super::format;
 use super::monitor::{Monitor, Point};
 
 /// 渲染整块实时监控区域。
+///
+/// 内核未启动时没有数据，按同一套结构渲染占位卡片：分区选中状态不变，
+/// 卡片的位置与尺寸也不变，只有内容换成占位。
 pub fn render(
     monitor: &Monitor,
     sections: &[MonitorSection],
+    running: bool,
     theme: &gpui_kit::component::Theme,
 ) -> AnyElement {
     let points = monitor.points();
 
     let mut rows: Vec<AnyElement> = Vec::new();
     if sections.contains(&MonitorSection::Basic) {
-        rows.push(basic(monitor, theme).into_any_element());
+        rows.push(if running {
+            basic(monitor, theme).into_any_element()
+        } else {
+            basic_placeholder(theme).into_any_element()
+        });
     }
 
     let mut columns: Vec<AnyElement> = Vec::new();
     if sections.contains(&MonitorSection::Traffic) {
-        columns.push(traffic(&points, theme).into_any_element());
+        columns.push(if running {
+            traffic(&points, theme).into_any_element()
+        } else {
+            chart_placeholder("流量", theme).into_any_element()
+        });
     }
     if sections.contains(&MonitorSection::Memory) {
-        columns.push(memory(&points, theme).into_any_element());
+        columns.push(if running {
+            memory(&points, theme).into_any_element()
+        } else {
+            chart_placeholder("内存", theme).into_any_element()
+        });
     }
     if !columns.is_empty() {
         rows.push(
@@ -49,12 +66,28 @@ pub fn render(
         );
     }
 
+    // 运行中但一个分区都没勾选：没有卡片可渲染，给一行提示。
+    if rows.is_empty() {
+        return notice("请选择要显示的监控分区", theme).into_any_element();
+    }
+
     v_flex()
         .size_full()
         .min_h_0()
         .gap_4()
         .children(rows)
         .into_any_element()
+}
+
+/// 没有可渲染分区时的一行提示。
+fn notice(reason: &str, theme: &gpui_kit::component::Theme) -> impl IntoElement {
+    v_flex()
+        .size_full()
+        .items_center()
+        .justify_center()
+        .text_sm()
+        .text_color(theme.muted_foreground)
+        .child(reason.to_string())
 }
 
 /// 基础监控：一整行四个数值卡片。
@@ -71,21 +104,34 @@ fn basic(monitor: &Monitor, theme: &gpui_kit::component::Theme) -> impl IntoElem
         .flex_shrink_0()
         .items_stretch()
         .gap_4()
-        .children(items.iter().map(|(label, value)| {
-            div().flex_1().min_w_0().h_16().child(
-                ItemCard::new(*label).with_center_split(
-                    div()
-                        .text_xs()
-                        .text_color(theme.muted_foreground)
-                        .child(*label),
-                    div()
-                        .text_base()
-                        .font_weight(FontWeight::SEMIBOLD)
-                        .truncate()
-                        .child(value.clone()),
-                ),
-            )
-        }))
+        .children(
+            items
+                .iter()
+                .map(|(label, value)| value_card(label, value, theme).into_any_element()),
+        )
+}
+
+/// 一个数值卡：上面是标签，下面是数值。
+///
+/// 基础监控的实时数值与占位共用它，两者的行高与内部结构完全一致。
+fn value_card(
+    label: &'static str,
+    value: &str,
+    theme: &gpui_kit::component::Theme,
+) -> impl IntoElement {
+    div().flex_1().min_w_0().h_16().child(
+        ItemCard::new(label).with_center_split(
+            div()
+                .text_xs()
+                .text_color(theme.muted_foreground)
+                .child(label),
+            div()
+                .text_base()
+                .font_weight(FontWeight::SEMIBOLD)
+                .truncate()
+                .child(value.to_string()),
+        ),
+    )
 }
 
 /// 流量监控：上传与下载两条折线。
@@ -180,7 +226,7 @@ fn chart_card(
         .flex_1()
         .min_w_0()
         .min_h_0()
-        .content_padding(rems(1.))
+        .content_padding(PADDING)
         .child(
             v_flex()
                 .size_full()
@@ -209,5 +255,50 @@ fn chart_card(
                         ),
                 )
                 .child(div().w_full().flex_1().min_h_0().child(chart)),
+        )
+}
+
+/// 基础监控的占位：与控制栏卡片同表面、同内边距，只是数值换成占位符。
+///
+/// 行高与真实的数值卡一致，内核启停时这一行不跳变。
+fn basic_placeholder(theme: &gpui_kit::component::Theme) -> impl IntoElement {
+    let items = ["上传", "下载", "总上传", "总下载"];
+
+    h_flex()
+        .w_full()
+        .flex_shrink_0()
+        .items_stretch()
+        .gap_4()
+        .children(
+            items
+                .iter()
+                .map(|label| value_card(label, "—", theme).into_any_element()),
+        )
+}
+
+/// 图表卡的占位：与真实图表卡同表面、同内边距，只是没有折线。
+fn chart_placeholder(title: &'static str, theme: &gpui_kit::component::Theme) -> impl IntoElement {
+    Card::new()
+        .flex_1()
+        .min_w_0()
+        .min_h_0()
+        .content_padding(PADDING)
+        .child(
+            v_flex()
+                .size_full()
+                .min_h_0()
+                .gap_3()
+                .child(div().text_sm().font_weight(FontWeight::MEDIUM).child(title))
+                .child(
+                    v_flex()
+                        .w_full()
+                        .flex_1()
+                        .min_h_0()
+                        .items_center()
+                        .justify_center()
+                        .text_sm()
+                        .text_color(theme.muted_foreground)
+                        .child("暂无数据"),
+                ),
         )
 }

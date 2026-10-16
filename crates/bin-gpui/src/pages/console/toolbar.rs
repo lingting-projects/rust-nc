@@ -12,8 +12,11 @@ use gpui_kit::component::{ActiveTheme as _, Disableable as _, IconName, Sizable 
 use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
 
+use lingting_gpui_kit::card::Card;
+
 use super::Console;
 use super::LoadState;
+use super::PADDING;
 
 /// 配置下拉框的宽度。
 const SELECT_WIDTH: Rems = rems(20.);
@@ -38,27 +41,29 @@ pub fn render(console: &Console, cx: &mut Context<Console>) -> impl IntoElement 
         .when(!running, |this| this.primary())
         .on_click(cx.listener(|console, _, _, cx| console.toggle_kernel(cx)));
 
-    h_flex()
-        .w_full()
-        .gap_3()
-        .child(action)
-        .child(
-            Button::new("config-refresh")
-                .icon(IconName::RefreshCw)
-                .label("刷新")
-                .loading(console.refreshing)
-                .on_click(cx.listener(|console, _, window, cx| console.reload(window, cx))),
-        )
-        .child(
-            // 内核运行时禁用，避免切换正在生效的配置。
-            div().w(SELECT_WIDTH).child(
-                Select::new(&console.select)
-                    .id("config-select")
-                    .disabled(running)
-                    .placeholder("选择配置")
-                    .accessibility_label("配置列表"),
+    Card::new().flex_shrink_0().content_padding(PADDING).child(
+        h_flex()
+            .w_full()
+            .gap_3()
+            .child(action)
+            .child(
+                Button::new("config-refresh")
+                    .icon(IconName::RefreshCw)
+                    .label("刷新")
+                    .loading(console.refreshing)
+                    .on_click(cx.listener(|console, _, window, cx| console.reload(window, cx))),
+            )
+            .child(
+                // 内核运行时禁用，避免切换正在生效的配置。
+                div().w(SELECT_WIDTH).child(
+                    Select::new(&console.select)
+                        .id("config-select")
+                        .disabled(running)
+                        .placeholder("选择配置")
+                        .accessibility_label("配置列表"),
+                ),
             ),
-        )
+    )
 }
 
 /// 配置下拉框的一个选项：`value` 是配置 id，展示名称。
