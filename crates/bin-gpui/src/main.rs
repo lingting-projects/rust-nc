@@ -9,6 +9,7 @@ use gpui_kit::assets::IconName;
 use gpui_kit::*;
 use lingting_gpui_kit::WindowOptionsBuilder;
 use lingting_gpui_kit::desktop_sidebar_layout::{DesktopSidebarLayout, init_router};
+use lingting_gpui_kit::menu::MenuTextSize;
 use lingting_gpui_kit::router::RouteDefinition;
 
 use crate::assets::AppAssets;
@@ -23,6 +24,15 @@ const APP_ICON: &str = "icons/256x256.png";
 
 /// 默认打开的页面。
 const DEFAULT_PATH: &str = "/console";
+
+/// 侧栏菜单项高度。
+const MENU_HEIGHT: Pixels = px(40.);
+
+/// 侧栏菜单项图标尺寸。
+const MENU_ICON_SIZE: Pixels = px(18.);
+
+/// 侧栏菜单项字号。
+const MENU_TEXT_SIZE: MenuTextSize = MenuTextSize::Base;
 
 fn main() {
     application().with_assets(AppAssets::new()).run(|cx| {
@@ -80,6 +90,9 @@ fn open(
                         .into_any_element()
                 })
                 .title(APP_TITLE)
+                .menu_height(MENU_HEIGHT)
+                .menu_icon_size(MENU_ICON_SIZE)
+                .menu_text_size(MENU_TEXT_SIZE)
         })
     })
 }
