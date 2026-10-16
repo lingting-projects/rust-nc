@@ -1,11 +1,12 @@
 use gpui_kit::base::{StyledExt as _, v_flex};
 use gpui_kit::component::button::ButtonVariants as _;
 use gpui_kit::component::button::{Button, ButtonVariant};
-use gpui_kit::component::dialog::{AlertDialog, DialogFooter};
+use gpui_kit::component::dialog::DialogFooter;
 use gpui_kit::component::input::{Input, InputState};
-use gpui_kit::component::{Disableable as _, WindowExt as _};
+use gpui_kit::component::{ActiveTheme as _, Disableable as _, WindowExt as _};
 use gpui_kit::*;
 
+use lib_core::url::pick_host;
 use types_core::dto::subscribe::SubscribeUpsertDTO;
 use types_core::entity::subscribe::Subscribe;
 
@@ -63,6 +64,7 @@ impl SubscribeDraft {
 /// 打开新增或编辑弹窗。`draft` 为 `None` 表示新增。
 ///
 /// 表单字段是订阅本身的名称、地址与刷新间隔，提交后由页面负责写库与刷新列表。
+/// 地址必填，且必须能解析出域名；名称可留空，保存时用地址的域名兜底。
 /// 内容与页脚闭包会在弹层重建时再次执行，因此输入框状态必须在打开之前创建并捕获。
 pub fn open(
     page: &mut SubscribePage,
@@ -80,12 +82,12 @@ pub fn open(
     // 输入状态在打开前创建：弹层重建时会重新执行内容与页脚闭包，在其中创建会丢失编辑状态。
     let name = cx.new(|cx| {
         InputState::new(window, cx)
-            .placeholder("订阅名称")
+            .placeholder("留空时使用地址域名")
             .default_value(draft.name.clone())
     });
     let url = cx.new(|cx| {
         InputState::new(window, cx)
-            .placeholder("订阅地址，留空表示本地订阅")
+            .placeholder("https://example.com/subscribe")
             .default_value(draft.url.clone())
     });
     let interval = cx.new(|cx| {
@@ -97,7 +99,16 @@ pub fn open(
     let page = cx.entity();
     let id = draft.id;
     window.open_dialog(cx, move |dialog, window, cx| {
-        let name_value = name.read(cx).value().to_string();
+        // 地址必填：解析不出域名时保存按钮保持禁用，名称也因此总有兜底值。
+        let url_value = url.read(cx).value().to_string();
+        let can_save = pick_host(url_value.trim()).is_some();
+        let name_value = {
+            let name = name.read(cx).value().trim().to_string();
+            match name.is_empty() {
+                true => pick_host(url_value.trim()).unwrap_or_default(),
+                false => name,
+            }
+        };
         let footer = DialogFooter::new()
             .child(
                 Button::new("subscribe-cancel")
@@ -109,7 +120,7 @@ pub fn open(
                     .primary()
                     .label("保存")
                     .loading(page.read(cx).is_submitting())
-                    .disabled(name_value.trim().is_empty())
+                    .disabled(!can_save)
                     .on_click({
                         let page = page.clone();
                         let id = id.clone();
@@ -120,8 +131,8 @@ pub fn open(
                             // 点击时再取值：闭包是 `Fn`，且此时才是用户最终确认的内容。
                             let dto = SubscribeUpsertDTO {
                                 id: id.clone(),
-                                name: name.read(cx).value().to_string(),
-                                url: url.read(cx).value().to_string(),
+                                name: name_value.clone(),
+                                url: url_value.clone(),
                                 content: None,
                                 interval: interval
                                     .read(cx)
@@ -145,13 +156,24 @@ pub fn open(
                 let name = name.clone();
                 let url = url.clone();
                 let interval = interval.clone();
-                move |content, _, _| {
-                    content.child(
+                move |content, _, cx| {
+                    // 地址已填写但解析不出域名时，在字段下方说明保存被禁用的原因。
+                    let value = url.read(cx).value();
+                    let hint = (!value.trim().is_empty() && pick_host(value.trim()).is_none())
+                        .then(|| {
+                            div()
+                                .text_xs()
+                                .text_color(cx.theme().danger)
+                                .child("地址需以 http:// 或 https:// 开头")
+                                .into_any_element()
+                        });
+
+                    content.pb_2().child(
                         v_flex()
                             .gap_3()
-                            .child(field("名称", &name))
-                            .child(field("地址", &url))
-                            .child(field("更新间隔（小时）", &interval)),
+                            .child(field("名称", &name, None))
+                            .child(field("地址（必填）", &url, hint))
+                            .child(field("更新间隔（小时）", &interval, None)),
                     )
                 }
             })
@@ -160,11 +182,14 @@ pub fn open(
 }
 
 /// 一行表单字段：标签在上、控件在下，与页面正文共用同一阅读方向。
-fn field(label: &'static str, state: &Entity<InputState>) -> AnyElement {
+///
+/// `hint` 把校验说明贴在被描述的字段下方，无校验时传 `None`。
+fn field(label: &'static str, state: &Entity<InputState>, hint: Option<AnyElement>) -> AnyElement {
     v_flex()
         .gap_1()
         .child(div().text_xs().child(label))
         .child(Input::new(state).cleanable(true).aria_label(label))
+        .children(hint)
         .into_any_element()
 }
 
