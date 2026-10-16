@@ -1,8 +1,3 @@
-//! 实时监控区域。
-//!
-//! 基础监控占一整行，流量与内存并排各占一半；未选中的分区不渲染。
-//! 图表纵向吃掉剩余高度，窗口变高时折线图跟着变高。
-
 use gpui_kit::base::{StyledExt as _, h_flex, v_flex};
 use gpui_kit::component::ActiveTheme as _;
 use gpui_kit::component::chart::{AreaChart, LineChart};
@@ -14,11 +9,13 @@ use lingting_gpui_kit::card::{Card, ItemCard};
 
 use super::MonitorSection;
 use super::PADDING;
-use super::format;
 use super::monitor::{Monitor, Point};
+use crate::utils::format;
 
 /// 渲染整块实时监控区域。
 ///
+/// 基础监控占一整行，流量与内存并排各占一半；未选中的分区不渲染。
+/// 图表纵向吃掉剩余高度，窗口变高时折线图跟着变高。
 /// 内核未启动时没有数据，按同一套结构渲染占位卡片：分区选中状态不变，
 /// 卡片的位置与尺寸也不变，只有内容换成占位。
 pub fn render(

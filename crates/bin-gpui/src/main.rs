@@ -4,17 +4,17 @@ mod components;
 mod pages;
 mod services;
 mod theme;
+mod utils;
 
 use gpui_kit::assets::IconName;
 use gpui_kit::*;
 use lingting_gpui_kit::WindowOptionsBuilder;
 use lingting_gpui_kit::desktop_sidebar_layout::{DesktopSidebarLayout, init_router};
-use lingting_gpui_kit::menu::MenuTextSize;
 use lingting_gpui_kit::router::RouteDefinition;
 
 use crate::assets::AppAssets;
 use crate::blocks::Placeholder;
-use crate::pages::Console;
+use crate::pages::{Console, SubscribePage};
 
 /// 应用标题。
 const APP_TITLE: &str = "lingting network control";
@@ -25,14 +25,14 @@ const APP_ICON: &str = "icons/256x256.png";
 /// 默认打开的页面。
 const DEFAULT_PATH: &str = "/console";
 
-/// 侧栏菜单项高度。
-const MENU_HEIGHT: Pixels = px(40.);
+/// 侧栏菜单项高度，随主题字号缩放。
+const MENU_HEIGHT: Rems = rems(2.5);
 
-/// 侧栏菜单项图标尺寸。
-const MENU_ICON_SIZE: Pixels = px(18.);
+/// 侧栏菜单项图标尺寸，随主题字号缩放。
+const MENU_ICON_SIZE: Rems = rems(1.125);
 
-/// 侧栏菜单项字号。
-const MENU_TEXT_SIZE: MenuTextSize = MenuTextSize::Base;
+/// 侧栏菜单项字号，随主题字号缩放。
+const MENU_TEXT_SIZE: Rems = rems(1.);
 
 fn main() {
     application().with_assets(AppAssets::new()).run(|cx| {
@@ -59,8 +59,10 @@ fn routes() -> Vec<RouteDefinition> {
             .icon(IconName::Link),
         RouteDefinition::new("/logs", "日志", |_, _| Placeholder::new("日志"))
             .icon(IconName::ScrollText),
-        RouteDefinition::new("/subscribe", "订阅", |_, _| Placeholder::new("订阅"))
-            .icon(IconName::Rss),
+        RouteDefinition::new("/subscribe", "订阅", |window, cx| {
+            SubscribePage::new(window, cx)
+        })
+        .icon(IconName::Rss),
         RouteDefinition::new("/rule", "规则", |_, _| Placeholder::new("规则"))
             .icon(IconName::GitFork),
         RouteDefinition::new("/config", "配置", |_, _| Placeholder::new("配置"))

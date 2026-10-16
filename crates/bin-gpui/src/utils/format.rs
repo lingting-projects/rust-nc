@@ -1,5 +1,3 @@
-//! 控制台展示用的数值与时间格式化。
-
 use lib_core::current_millis;
 use lib_core::data_size::DataSize;
 

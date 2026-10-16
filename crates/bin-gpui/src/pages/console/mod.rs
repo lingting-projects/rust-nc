@@ -1,10 +1,4 @@
-//! 控制台页面。
-//!
-//! 自上而下四段：控制栏、预览栏、监控控制栏、实时监控。
-//! 配置与订阅来自 `service-core`，内核状态与实时监控目前是本地模拟。
-
 mod charts;
-mod format;
 mod monitor;
 mod preview;
 mod toolbar;
@@ -75,7 +69,9 @@ pub enum LoadState {
     Failed(SharedString),
 }
 
-/// 控制台页面。
+/// 控制台页面：自上而下四段——控制栏、预览栏、监控控制栏、实时监控。
+///
+/// 配置与订阅来自 `service-core`，内核状态与实时监控目前是本地模拟。
 pub struct Console {
     load: LoadState,
     kernel: Kernel,

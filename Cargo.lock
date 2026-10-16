@@ -4530,7 +4530,15 @@ name = "lingting-gpui-components"
 version = "26.10.0"
 dependencies = [
  "gpui-kit",
+ "lingting-gpui-core",
  "lingting-gpui-nav",
+]
+
+[[package]]
+name = "lingting-gpui-core"
+version = "26.10.0"
+dependencies = [
+ "gpui-kit",
 ]
 
 [[package]]
@@ -4540,6 +4548,7 @@ dependencies = [
  "embed-resource",
  "gpui-kit",
  "lingting-gpui-components",
+ "lingting-gpui-core",
  "lingting-gpui-layout",
  "lingting-gpui-nav",
  "windows-sys 0.61.2",
@@ -4551,6 +4560,7 @@ version = "26.10.0"
 dependencies = [
  "gpui-kit",
  "lingting-gpui-components",
+ "lingting-gpui-core",
  "lingting-gpui-nav",
 ]
 
@@ -4559,6 +4569,7 @@ name = "lingting-gpui-nav"
 version = "26.10.0"
 dependencies = [
  "gpui-kit",
+ "lingting-gpui-core",
 ]
 
 [[package]]

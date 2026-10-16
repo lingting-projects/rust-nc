@@ -1,7 +1,4 @@
-//! 应用数据层。
-//!
-//! 持有 tokio 运行时与数据库上下文，页面通过它读取配置与订阅。
-//! 查询逻辑复用 `service-core` 的服务，本层只负责运行时、连接池与入口。
+mod subscribe;
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -24,11 +21,23 @@ pub struct ConsoleData {
     pub last_used: Option<String>,
 }
 
-/// 数据层入口。
+/// 数据层入口：持有 tokio 运行时与数据库上下文，页面通过它读取配置与订阅。
+///
+/// 查询逻辑复用 `service-core` 的服务，本层只负责运行时、连接池与入口。
 pub struct Services {
     runtime: tokio::runtime::Runtime,
     context: Arc<DbContext>,
+    /// 应用缓存目录，供读取设置的 `SettingManager` 使用。
     cache_dir: PathBuf,
+}
+
+impl Services {
+    /// 绑定请求级数据库上下文。
+    ///
+    /// 数据层由页面共享，服务按需构建，因此这里暴露的是构造服务所需的上下文。
+    pub fn context(&self) -> Arc<DbContext> {
+        self.context.clone()
+    }
 }
 
 impl Services {

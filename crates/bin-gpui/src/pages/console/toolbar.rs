@@ -1,7 +1,3 @@
-//! 控制栏。
-//!
-//! 从左到右：启动/停止按钮、刷新按钮、配置列表下拉框。
-
 use gpui_kit::base::{StyledExt as _, h_flex};
 use gpui_kit::component::IndexPath;
 use gpui_kit::component::button::Button;
@@ -22,6 +18,8 @@ use super::PADDING;
 const SELECT_WIDTH: Rems = rems(20.);
 
 /// 渲染控制栏。
+///
+/// 从左到右：启动/停止按钮、刷新按钮、配置列表下拉框。
 pub fn render(console: &Console, cx: &mut Context<Console>) -> impl IntoElement {
     let ready = matches!(console.load, LoadState::Ready(_));
     let running = console.kernel.running;

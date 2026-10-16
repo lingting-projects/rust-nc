@@ -1,8 +1,3 @@
-//! 预览栏。
-//!
-//! 一行元信息：配置标签、无区域节点规则、规则数量、剩余流量、有效期、上次更新。
-//! 没有选中配置时整行不渲染。
-
 use gpui_kit::base::{StyledExt as _, h_flex, v_flex};
 use gpui_kit::component::tag::Tag;
 use gpui_kit::component::{ActiveTheme as _, Sizable as _};
@@ -13,9 +8,12 @@ use lingting_gpui_kit::card::Card;
 use super::Console;
 use super::LoadState;
 use super::PADDING;
-use super::format;
+use crate::utils::format;
 
 /// 渲染预览栏。
+///
+/// 一行元信息：配置标签、无区域节点规则、规则数量、剩余流量、有效期、上次更新。
+/// 没有选中配置时整行不渲染。
 pub fn render(console: &Console, cx: &App) -> AnyElement {
     let theme = cx.theme();
 
