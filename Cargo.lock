@@ -625,9 +625,15 @@ dependencies = [
 name = "bin-gpui"
 version = "26.6.251-rc"
 dependencies = [
+ "anyhow",
  "embed-resource",
  "gpui-kit",
+ "lib-core",
+ "lib-db",
  "lingting-gpui-kit",
+ "service-core",
+ "tokio",
+ "types-core",
  "windows-sys 0.61.2",
 ]
 

@@ -2,6 +2,8 @@ mod app;
 mod assets;
 mod blocks;
 mod components;
+mod pages;
+mod services;
 mod theme;
 mod utils;
 
@@ -13,9 +15,15 @@ use crate::blocks::Placeholder;
 fn main() {
     application().with_assets(AppAssets::new()).run(|cx| {
         init(cx);
+        services::init(cx);
         theme::apply(cx);
         lingting_gpui_kit::init(cx, |router| {
-            router.add_cache("/console", |_, _| Placeholder::new("控制台"));
+            // 控制台需要自己的 `Context` 持有下拉框状态，因此用已擦除工厂注册。
+            router.add_erased(
+                "/console",
+                std::rc::Rc::new(|window, cx| cx.new(|cx| pages::Console::new(window, cx)).into()),
+                true,
+            );
             router.add_cache("/node", |_, _| Placeholder::new("节点"));
             router.add_cache("/connection", |_, _| Placeholder::new("连接"));
             router.add_cache("/logs", |_, _| Placeholder::new("日志"));
