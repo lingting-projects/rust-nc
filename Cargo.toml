@@ -126,7 +126,7 @@ dashmap = { version = "6.1" }
 cef = { version = "149.3.0" }
 tao = { version = "0.35" }
 windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_UI_WindowsAndMessaging"] }
-sqlx = { version = "0.8", default-features = false, features = ["any", "json", "macros", "sqlite"] }
+sqlx = { version = "0.8", default-features = false, features = ["any", "json", "macros", "sqlite", "runtime-tokio"] }
 proc-macro2 = { version = "1.0" }
 quote = { version = "1.0" }
 syn = { version = "2.0", features = ["full"] }
