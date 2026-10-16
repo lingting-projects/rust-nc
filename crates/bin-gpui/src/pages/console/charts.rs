@@ -120,7 +120,7 @@ fn value_card(
     theme: &gpui_kit::component::Theme,
 ) -> impl IntoElement {
     div().flex_1().min_w_0().h_16().child(
-        ItemCard::new(label).with_center_split(
+        ItemCard::new(label).hoverable(false).with_center_split(
             div()
                 .text_xs()
                 .text_color(theme.muted_foreground)

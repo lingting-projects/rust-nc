@@ -270,15 +270,14 @@ impl Console {
 
     /// 渲染监控控制栏：一组可独立开关的分区卡片。
     ///
-    /// 内核未启动时整栏禁用：点击不再改变选中状态，同时整体降低不透明度。
+    /// 分区只决定监控区显示哪些卡片，与内核是否运行无关：未运行时监控区渲染占位卡片，
+    /// 因此这里始终可切换，不做禁用。
     fn render_monitor_bar(&self, cx: &mut Context<Self>) -> impl IntoElement {
-        let enabled = self.kernel.running;
         let entity = cx.entity();
 
         h_flex()
             .w_full()
             .gap_3()
-            .when(!enabled, |this| this.opacity(0.5))
             .children(MonitorSection::ALL.iter().map(|(label, section)| {
                 let selected = self.sections.contains(section);
                 let section = *section;
@@ -294,12 +293,10 @@ impl Console {
                                 .font_weight(FontWeight::MEDIUM)
                                 .child(*label),
                         )
-                        .when(enabled, |this| {
-                            this.on_click(move |_, cx| {
-                                entity.update(cx, |console, cx| {
-                                    console.toggle_section(section, !selected, cx);
-                                });
-                            })
+                        .on_click(move |_, cx| {
+                            entity.update(cx, |console, cx| {
+                                console.toggle_section(section, !selected, cx);
+                            });
                         }),
                 )
             }))
