@@ -634,7 +634,6 @@ dependencies = [
  "service-core",
  "tokio",
  "types-core",
- "windows-sys 0.61.2",
 ]
 
 [[package]]
