@@ -1,13 +1,10 @@
 use gpui_kit::assets::IconName;
-use gpui_kit::base::StyledExt as _;
-use gpui_kit::component::ActiveTheme as _;
 use gpui_kit::*;
 
-use lingting_gpui_kit::menu::Menu;
-use lingting_gpui_kit::title_bar::TitleBar;
-use lingting_gpui_kit::{Outlet, current_path};
-
-use crate::components::Sidebar;
+use crate::blocks::Placeholder;
+use crate::pages::Console;
+use lingting_gpui_kit::desktop_sidebar_layout::DesktopSidebarLayout;
+use lingting_gpui_kit::router::RouteDefinition;
 
 /// 应用标题。
 const APP_TITLE: &str = "lingting network control";
@@ -15,80 +12,52 @@ const APP_TITLE: &str = "lingting network control";
 /// 应用图标，由 [`crate::assets::AppAssets`] 从磁盘 `assets/icons/` 读取。
 const APP_ICON: &str = "icons/256x256.png";
 
-/// 渲染在侧栏中间段的菜单项：路径、名称、图标。
-const MENU_ITEMS: &[(&str, &str, IconName)] = &[
-    ("/console", "控制台", IconName::Gauge),
-    ("/node", "节点", IconName::Server),
-    ("/connection", "连接", IconName::Link),
-    ("/logs", "日志", IconName::ScrollText),
-    ("/subscribe", "订阅", IconName::Rss),
-    ("/rule", "规则", IconName::GitFork),
-    ("/config", "配置", IconName::FileCog),
-    ("/settings", "设置", IconName::Settings),
-];
-
 /// 默认打开的页面。
 pub const DEFAULT_PATH: &str = "/console";
 
-/// 窗口内容。
-pub struct Shell {
-    outlet: Entity<Outlet>,
-}
-
-impl Shell {
-    pub fn new(cx: &mut Context<Self>) -> Self {
-        Self {
-            outlet: cx.new(Outlet::new),
-        }
-    }
-}
-
-impl Render for Shell {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        div()
-            .flex()
-            .flex_col()
-            .size_full()
-            .bg(cx.theme().background)
-            .text_color(cx.theme().foreground)
-            .child(
-                TitleBar::new()
-                    .icon(img(APP_ICON).size(px(22.)).rounded_sm().flex_shrink_0())
-                    .title(APP_TITLE),
-            )
-            .child(
-                div()
-                    .flex()
-                    .flex_row()
-                    .flex_1()
-                    .min_h_0()
-                    .child(Sidebar::new().middle(nav_list(cx)))
-                    .child(div().flex_1().min_w_0().child(self.outlet.clone())),
-            )
-    }
-}
-
-/// 把一组菜单项渲染成侧栏的导航列表。
-///
-/// 每项一个满宽槽位，选中态取自当前路由。
-fn nav_list(cx: &App) -> Vec<AnyElement> {
-    let current = current_path(cx);
-
-    MENU_ITEMS
-        .iter()
-        .map(|(path, label, icon)| {
-            let selected = *path == current.as_ref();
-            div()
-                .w_full()
-                .child(Menu::new(*path, *label).icon(*icon).selected(selected))
-                .into_any_element()
+/// 路由表：既用于注册路由，也用于生成侧栏菜单。
+pub fn routes() -> Vec<RouteDefinition> {
+    vec![
+        RouteDefinition::new("/console", "控制台", |window, cx| {
+            Console::new(window, cx)
         })
-        .collect()
+        .icon(IconName::Gauge),
+        RouteDefinition::new("/node", "节点", |_, _| Placeholder::new("节点"))
+            .icon(IconName::Server),
+        RouteDefinition::new("/connection", "连接", |_, _| Placeholder::new("连接"))
+            .icon(IconName::Link),
+        RouteDefinition::new("/logs", "日志", |_, _| Placeholder::new("日志"))
+            .icon(IconName::ScrollText),
+        RouteDefinition::new("/subscribe", "订阅", |_, _| Placeholder::new("订阅"))
+            .icon(IconName::Rss),
+        RouteDefinition::new("/rule", "规则", |_, _| Placeholder::new("规则"))
+            .icon(IconName::GitFork),
+        RouteDefinition::new("/config", "配置", |_, _| Placeholder::new("配置"))
+            .icon(IconName::FileCog),
+        RouteDefinition::new("/settings", "设置", |_, _| Placeholder::new("设置"))
+            .icon(IconName::Settings),
+    ]
 }
 
 /// 打开应用窗口。
-pub fn open(cx: &mut gpui_kit::App) -> Result<(AnyWindowHandle, Entity<Shell>)> {
-    open_window(window_options(cx), cx, |_, cx| cx.new(Shell::new))
+pub fn open(
+    cx: &mut gpui_kit::App,
+    routes: Vec<RouteDefinition>,
+) -> Result<(AnyWindowHandle, Entity<DesktopSidebarLayout>)> {
+    open_window(window_options(cx), cx, |_, cx| {
+        cx.new(|cx| {
+            DesktopSidebarLayout::new(cx)
+                .routes(routes)
+                .icon(|_, _| {
+                    img(APP_ICON)
+                        .size(px(22.))
+                        .rounded_sm()
+                        .flex_shrink_0()
+                        .into_any_element()
+                })
+                .title(APP_TITLE)
+        })
+    })
 }
 
 /// 窗口尺寸（物理像素）。
@@ -96,7 +65,7 @@ pub fn open(cx: &mut gpui_kit::App) -> Result<(AnyWindowHandle, Entity<Shell>)> 
 /// 与旧实现一致：启动即使用最终尺寸，并把它同时作为最小尺寸。
 const WINDOW_SIZE: Size<Pixels> = size(px(1600.), px(1024.));
 
-/// 窗口选项：主屏幕、1620x810 物理像素、居中、隐藏系统标题栏、保留系统边框。
+/// 窗口选项：主屏幕、1600x1024 物理像素、居中、隐藏系统标题栏、保留系统边框。
 ///
 /// GPUI 的 `WindowBounds` 是逻辑像素，窗口实际占用物理像素，两者相差屏幕缩放。
 /// 缩放因子在窗口创建前从系统查询，因此这里能一次算出正确的逻辑尺寸。
