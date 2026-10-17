@@ -3,10 +3,10 @@ use lib_core::current_millis;
 use service_core::service::subscribe_service::SubscribeService;
 
 use crate::subscribe_sync::SubscribeSync;
-use crate::timer::environment;
+use crate::timer::{TimerName, environment};
 
-/// 订阅定时同步: 每 60 秒把到达刷新时间的订阅推入同步队列。
-#[timer(interval = 60_000)]
+/// 订阅定时同步: 每 30 秒把到达刷新时间的订阅推入同步队列。
+#[timer(interval = 30_000)]
 pub async fn timer_subscribe_sync() -> TimerResult {
     match run().await {
         Ok(()) => TimerResult::success(),
@@ -27,6 +27,9 @@ async fn run() -> anyhow::Result<()> {
         .collect::<Vec<_>>();
 
     let count = SubscribeSync::instance().push_all(ids);
-    log::debug!("[订阅] 定时同步推送任务数量: {count}");
+    log::debug!(
+        "[订阅] [{}] 推送任务数量: {count}",
+        TimerName::TimerSubscribeSync
+    );
     Ok(())
 }

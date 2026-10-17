@@ -10,6 +10,9 @@ license.workspace = true
 [lib]
 crate-type = ["rlib"]
 
+[build-dependencies]
+framework-timer = { workspace = true, features = ["generate"] }
+
 [dependencies]
 lib-converter = { workspace = true }
 lib-core = { workspace = true }

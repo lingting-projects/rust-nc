@@ -61,6 +61,17 @@ pub fn write(path: &Path, content: impl AsRef<[u8]>) -> Result<()> {
     std::fs::write(path, content).with_context(|| format!("写入文件失败: {}", path.display()))
 }
 
+/// 复制文件, 目标目录不存在时自动创建, 目标已存在则覆盖。
+pub fn copy(source: &Path, target: &Path) -> Result<()> {
+    if let Some(parent) = target.parent() {
+        std::fs::create_dir_all(parent)
+            .with_context(|| format!("创建目录失败: {}", parent.display()))?;
+    }
+
+    std::fs::copy(source, target)
+        .with_context(|| format!("复制文件失败: {} -> {}", source.display(), target.display()))?;
+    Ok(())
+}
 /// 将 json 规则集转换为 srs 规则集。
 pub fn json_to_srs(json_path: &Path, srs_path: &Path) -> Result<()> {
     let mut guard = INSTANCE.lock().unwrap_or_else(|error| error.into_inner());

@@ -2268,6 +2268,7 @@ dependencies = [
  "futures-util",
  "inventory",
  "log",
+ "syn 2.0.104",
  "tokio",
 ]
 

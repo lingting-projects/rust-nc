@@ -15,9 +15,13 @@ use types_core::entity::config::Config;
 use crate::file;
 
 /// 生成配置的 sing-box 配置文件: `{config}/{id}/sing_box/config.json`。
+///
+/// 引用的规则会复制到同一目录, 配置目录因此自包含。
 pub async fn write(context: &Arc<DbContext>, config: &Config) -> Result<PathBuf> {
     let nodes = nodes(context, &config.subscribe_id).await?;
     let kernel = kernel(context).await?;
+    // 先清空上一次的规则副本, 避免规则变更后残留旧文件
+    file::remove_config(&config.id)?;
     let rules = rules(context, config).await?;
 
     let platform = PlatformConfig {
@@ -80,22 +84,25 @@ async fn rules(
     config: &Config,
 ) -> Result<(Vec<Rule>, Vec<Rule>, Vec<Rule>)> {
     let exist = RuleService::new(context.clone()).list_ids().await?;
+    let id = &config.id;
 
     Ok((
-        collect(&exist, &config.rule_direct_ids)?,
-        collect(&exist, &config.rule_proxy_ids)?,
-        collect(&exist, &config.rule_reject_ids)?,
+        collect(id, &exist, &config.rule_direct_ids)?,
+        collect(id, &exist, &config.rule_proxy_ids)?,
+        collect(id, &exist, &config.rule_reject_ids)?,
     ))
 }
 
-/// 取得规则 id 对应的本地规则集。
+/// 取得规则 id 对应的本地规则集, 并把规则文件复制到配置的 sing_box 目录。
 ///
-/// 每个规则按类型各有 json 与 srs 两份产物, 存在 srs 时优先使用。
-fn collect(exist: &[String], ids: &[String]) -> Result<Vec<Rule>> {
+/// 每个规则按类型各有 json 与 srs 两份产物, 存在 srs 时优先使用;
+/// 复制后配置目录自包含, 规则更新后由下一次配置同步刷新副本。
+fn collect(config_id: &str, exist: &[String], ids: &[String]) -> Result<Vec<Rule>> {
+    let root = file::sing_box_dir(config_id)?;
     let mut rules = Vec::new();
     for id in ids {
         if !exist.iter().any(|item| item == id) {
-            log::warn!("[配置] 规则不存在, 跳过: {id}");
+            log::warn!("[配置] [{}] 规则不存在, 跳过: {id}", config_id);
             continue;
         }
 
@@ -103,15 +110,19 @@ fn collect(exist: &[String], ids: &[String]) -> Result<Vec<Rule>> {
             let name = rule_type.name();
             let srs = file::rule_file(id, name, "srs")?;
             let json = file::rule_file(id, name, "json")?;
-            let path = match srs.exists() {
-                true => srs,
-                false if json.exists() => json,
+            let (source, ext) = match srs.exists() {
+                true => (srs, "srs"),
+                false if json.exists() => (json, "json"),
                 false => continue,
             };
 
-            let path = path
+            // 不同规则可能产生同类型文件, 文件名带上规则 id 以免互相覆盖
+            let target = root.join(format!("rule_{}_{}.{}", id, name, ext));
+            file::copy(&source, &target)?;
+
+            let path = target
                 .to_str()
-                .ok_or_else(|| anyhow!("规则文件路径非 UTF-8: {}", path.display()))?;
+                .ok_or_else(|| anyhow!("规则文件路径非 UTF-8: {}", target.display()))?;
             rules.push(Rule::from_local(rule_type, path.to_string()));
         }
     }

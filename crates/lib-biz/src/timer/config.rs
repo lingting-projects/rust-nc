@@ -3,10 +3,10 @@ use lib_core::current_millis;
 use service_core::service::config_service::ConfigService;
 
 use crate::config_sync::ConfigSync;
-use crate::timer::environment;
+use crate::timer::{TimerName, environment};
 
-/// 配置定时同步: 每 60 秒把到达刷新时间的配置推入同步队列。
-#[timer(interval = 60_000)]
+/// 配置定时同步: 每 30 秒把到达刷新时间的配置推入同步队列。
+#[timer(interval = 30_000)]
 pub async fn timer_config_sync() -> TimerResult {
     match run().await {
         Ok(()) => TimerResult::success(),
@@ -27,6 +27,9 @@ async fn run() -> anyhow::Result<()> {
         .collect::<Vec<_>>();
 
     let count = ConfigSync::instance().push_all(ids);
-    log::debug!("[配置] 定时同步推送任务数量: {count}");
+    log::debug!(
+        "[配置] [{}] 推送任务数量: {count}",
+        TimerName::TimerConfigSync
+    );
     Ok(())
 }

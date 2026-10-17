@@ -21,6 +21,12 @@ pub use config::timer_config_sync;
 pub use rule::timer_rule_sync;
 pub use subscribe::timer_subscribe_sync;
 
+/// 由 `build.rs` 扫描 `#[timer]` 任务生成的名称枚举。
+///
+/// 任务在日志中记录自身名称时使用该枚举, 而不是手写字符串字面量,
+/// 任务函数改名后编译期即可发现。
+pub use crate::timer_name::TimerName;
+
 /// 定时任务执行所需的环境。
 struct Environment {
     context: Arc<DbContext>,
