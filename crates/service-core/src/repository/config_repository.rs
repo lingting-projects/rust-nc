@@ -16,9 +16,16 @@ const FIELDS: &str = "`id`,`name`,`tun`,`fake_ip`,`ipv6`,`subscribe_id`,`geo_cn`
 
 /// 查询全部配置。
 pub(crate) async fn all(pool: &DbPool) -> Result<Vec<Config>> {
-    let sql = format!("select {FIELDS} from {TABLE}");
+    let sql = format!("select {FIELDS} from {TABLE} order by `id` desc");
     let rows = sqlx::query(&sql).fetch_all(pool).await?;
     rows.iter().map(from_row).collect()
+}
+
+/// 查询全部配置 id。
+pub(crate) async fn all_id(pool: &DbPool) -> Result<Vec<String>> {
+    let sql = format!("select `id` from {TABLE}");
+    let rows = sqlx::query(&sql).fetch_all(pool).await?;
+    rows.iter().map(|row| mapping::string(row, "id")).collect()
 }
 
 /// 按 id 查询配置。

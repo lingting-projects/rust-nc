@@ -4384,6 +4384,7 @@ dependencies = [
  "lib-fetch",
  "lib-pick",
  "log",
+ "serde_json",
  "service-core",
  "tokio",
  "types-core",
@@ -4555,9 +4556,11 @@ checksum = "d4a5ff6bcca6c4867b1c4fd4ef63e4db7436ef363e0ad7531d1558856bae64f4"
 name = "lingting-gpui-components"
 version = "26.10.0"
 dependencies = [
+ "framework-region",
  "gpui-kit",
  "lingting-gpui-core",
  "lingting-gpui-nav",
+ "rust-embed",
 ]
 
 [[package]]

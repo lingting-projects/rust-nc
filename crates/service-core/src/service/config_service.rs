@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use anyhow::Result;
+use anyhow::{Result, bail};
 use lib_core::next_id;
 use lib_db::{DbContext, DbPool};
 use types_core::dto::config::ConfigUpsertDTO;
@@ -22,6 +22,11 @@ impl ConfigService {
     /// 查询全部配置。
     pub async fn list(&self) -> Result<Vec<Config>> {
         repository::all(self.pool()).await
+    }
+
+    /// 查询全部配置 id。
+    pub async fn list_ids(&self) -> Result<Vec<String>> {
+        repository::all_id(self.pool()).await
     }
 
     /// 按 id 查询配置。
@@ -93,6 +98,24 @@ impl ConfigService {
         };
         repository::update(self.pool(), &entity).await?;
         Ok(id)
+    }
+
+    /// 新增配置，返回配置 id。
+    ///
+    /// 入参里的 id 会被忽略，一律按新增处理。
+    pub async fn create(&self, dto: ConfigUpsertDTO, millis: i64) -> Result<String> {
+        let dto = ConfigUpsertDTO { id: None, ..dto };
+        self.upsert(dto, millis).await
+    }
+
+    /// 修改配置，返回配置 id。
+    ///
+    /// 缺少 id 时返回错误，避免误把修改当成新增。
+    pub async fn edit(&self, dto: ConfigUpsertDTO, millis: i64) -> Result<String> {
+        if existing_id(&dto).is_none() {
+            bail!("修改配置缺少 id");
+        }
+        self.upsert(dto, millis).await
     }
 
     /// 更新配置的刷新时间。

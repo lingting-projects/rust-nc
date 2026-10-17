@@ -1,0 +1,71 @@
+use anyhow::Result;
+use lib_biz::config::ConfigBiz;
+use lib_biz::config_sync::ConfigSync;
+use service_core::service::config_service::ConfigService;
+use service_core::service::rule_service::RuleService;
+use service_core::service::subscribe_service::SubscribeService;
+use types_core::dto::config::ConfigUpsertDTO;
+use types_core::entity::config::Config;
+use types_core::entity::rule::Rule;
+use types_core::entity::subscribe::Subscribe;
+
+use super::Services;
+
+/// 配置页面一次加载所需的全部数据。
+///
+/// 配置、订阅与规则一起读取，订阅与规则供新增、编辑弹窗的下拉框使用。
+pub struct ConfigPageData {
+    pub configs: Vec<Config>,
+    pub subscribes: Vec<Subscribe>,
+    pub rules: Vec<Rule>,
+}
+
+impl Services {
+    /// 读取配置列表，以及表单需要的订阅与规则。
+    pub async fn config_page_data(self: &std::sync::Arc<Self>) -> Result<ConfigPageData> {
+        let context = self.context();
+        let configs = ConfigService::new(context.clone()).list().await?;
+        let subscribes = SubscribeService::new(context.clone()).list().await?;
+        let rules = RuleService::new(context).list().await?;
+
+        Ok(ConfigPageData {
+            configs,
+            subscribes,
+            rules,
+        })
+    }
+}
+
+impl Services {
+    /// 同步配置，未指定 id 时同步全部。
+    ///
+    /// 同步全部只负责推送，等待由后台任务继续完成。
+    pub async fn sync_config(&self, id: Option<&str>) -> Result<usize> {
+        ConfigBiz::new(self.context()).sync(id).await
+    }
+}
+
+impl Services {
+    /// 新增配置，写库后触发一次同步，返回配置 id。
+    pub async fn create_config(&self, dto: ConfigUpsertDTO) -> Result<String> {
+        ConfigBiz::new(self.context()).create(dto).await
+    }
+
+    /// 修改配置，写库后触发一次同步，返回配置 id。
+    pub async fn edit_config(&self, dto: ConfigUpsertDTO) -> Result<String> {
+        ConfigBiz::new(self.context()).edit(dto).await
+    }
+
+    /// 删除一条配置。
+    pub async fn delete_config(&self, id: &str) -> Result<()> {
+        ConfigBiz::new(self.context()).delete(id).await?;
+        Ok(())
+    }
+}
+
+impl Services {
+    /// 把数据库上下文与运行时注入配置同步调度器。
+    pub fn init_config_sync(&self) {
+        ConfigSync::instance().init(self.context(), self.runtime_handle());
+    }
+}

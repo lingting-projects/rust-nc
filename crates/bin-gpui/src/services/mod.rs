@@ -1,3 +1,4 @@
+mod config;
 mod rule;
 mod subscribe;
 
@@ -91,6 +92,7 @@ pub fn init(cx: &mut App) {
         Ok(services) => {
             services.init_subscribe_sync();
             services.init_rule_sync();
+            services.init_config_sync();
             cx.set_global(AppServices::Ready(Arc::new(services)))
         }
         Err(error) => {
