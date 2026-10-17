@@ -7,6 +7,7 @@ use gpui_kit::component::{ActiveTheme as _, Disableable as _, WindowExt as _};
 use gpui_kit::*;
 
 use lib_core::url::pick_host;
+use lingting_gpui_kit::ex_dialog::ExDialog;
 use types_core::dto::rule::RuleUpsertDTO;
 use types_core::entity::rule::Rule;
 
@@ -140,6 +141,7 @@ pub fn open(
     let page = cx.entity();
     let id = draft.id;
     window.open_dialog(cx, move |dialog, window, cx| {
+        let dialog = ExDialog::from(dialog);
         // 远端规则以地址为准：解析不出域名时保存按钮保持禁用，名称也因此总有兜底值；
         // 本地规则没有兜底来源，名称必填。
         let url_value = url.read(cx).value().trim().to_string();
@@ -248,6 +250,7 @@ pub fn open(
                 }
             })
             .footer(footer)
+            .into_dialog()
     });
 }
 

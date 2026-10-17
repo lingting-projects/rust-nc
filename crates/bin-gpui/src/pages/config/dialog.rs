@@ -11,6 +11,7 @@ use gpui_kit::component::select::{Select, SelectState};
 use gpui_kit::component::{ActiveTheme as _, Disableable as _, Sizable as _, WindowExt as _};
 use gpui_kit::*;
 
+use lingting_gpui_kit::ex_dialog::ExDialog;
 use lingting_gpui_kit::region::RegionMultiSelect;
 
 use types_core::dto::config::ConfigUpsertDTO;
@@ -150,6 +151,7 @@ pub fn open(
     let id = draft.id;
 
     window.open_dialog(cx, move |dialog, window, cx| {
+        let dialog = ExDialog::from(dialog);
         let state = form.read(cx);
         let name_value = name.read(cx).value().trim().to_string();
         let subscribe_value = subscribe.read(cx).selected_value().cloned();
@@ -284,6 +286,7 @@ pub fn open(
                 }
             })
             .footer(footer)
+            .into_dialog()
     });
 }
 

@@ -6,6 +6,8 @@ use gpui_kit::component::input::{Input, InputState};
 use gpui_kit::component::{ActiveTheme as _, Disableable as _, WindowExt as _};
 use gpui_kit::*;
 
+use lingting_gpui_kit::ex_dialog::ExDialog;
+
 use lib_core::url::pick_host;
 use types_core::dto::subscribe::SubscribeUpsertDTO;
 use types_core::entity::subscribe::Subscribe;
@@ -99,6 +101,7 @@ pub fn open(
     let page = cx.entity();
     let id = draft.id;
     window.open_dialog(cx, move |dialog, window, cx| {
+        let dialog = ExDialog::from(dialog);
         // 地址必填：解析不出域名时保存按钮保持禁用，名称也因此总有兜底值。
         let url_value = url.read(cx).value().to_string();
         let can_save = pick_host(url_value.trim()).is_some();
@@ -178,6 +181,7 @@ pub fn open(
                 }
             })
             .footer(footer)
+            .into_dialog()
     });
 }
 
