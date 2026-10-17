@@ -633,6 +633,7 @@ dependencies = [
  "lib-db",
  "lib-system",
  "lingting-gpui-kit",
+ "log",
  "service-core",
  "tokio",
  "types-core",

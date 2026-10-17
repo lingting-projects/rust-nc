@@ -67,9 +67,13 @@ pub fn sync(
     cx: &mut App,
 ) {
     table.update(cx, |state, cx| {
-        state.delegate_mut().set_content(items, rows);
-        if state.delegate_mut().set_rem_size(rem_size) {
+        let changed = state.delegate_mut().set_content(items, rows);
+        let resized = state.delegate_mut().set_rem_size(rem_size);
+        // 委托只持有数据，表格实体本身不会被通知：不主动通知的话，
+        // 保留渲染会复用上一帧，列表就停在旧内容上。
+        if changed || resized {
             state.refresh(cx);
+            cx.notify();
         }
     });
 }
@@ -131,9 +135,12 @@ impl ConfigTable {
         }
     }
 
-    fn set_content(&mut self, items: Rc<Vec<Config>>, rows: Rc<Vec<usize>>) {
+    /// 更新数据与过滤结果，返回是否发生了变化。
+    fn set_content(&mut self, items: Rc<Vec<Config>>, rows: Rc<Vec<usize>>) -> bool {
+        let changed = !Rc::ptr_eq(&self.items, &items) || !Rc::ptr_eq(&self.rows, &rows);
         self.items = items;
         self.rows = rows;
+        changed
     }
 
     /// 更新缩放基准，返回是否发生了变化。

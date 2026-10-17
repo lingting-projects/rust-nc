@@ -9,8 +9,12 @@ use super::mapping;
 const TABLE: &str = "tbl_subscribe";
 
 /// 列表查询字段，远端订阅不回传已保存的完整内容。
+///
+/// 节点单独用 [`find_nodes`] 查询：列表不需要节点，占位成空串，
+/// 否则行映射读不到 `nodes` 列会整条查询失败。
 const LIST_FIELDS: &str = "`id`,`name`,`url`,\
     CASE WHEN `url` LIKE 'http%' THEN '' ELSE `content` END AS `content`,\
+    '' AS `nodes`,\
     `interval`,`update_time`,`create_time`,`refresh_time`,`download`,`upload`,`max`,`expire_time`";
 
 /// 刷新字段，远端订阅不回传已保存的完整内容。

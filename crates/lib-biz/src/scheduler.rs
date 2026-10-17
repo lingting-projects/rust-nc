@@ -138,15 +138,31 @@ fn dispatch<T: SyncTask>(state: Arc<State>) {
 
         let worker = state.clone();
         runtime.spawn(async move {
-            T::run(context, id.clone()).await;
-
-            let slot = worker.lock().running.remove(&id);
-            if let Some(slot) = slot {
-                slot.finish();
-            }
-            // 运行数量减少, 唤醒主线程补齐任务
-            worker.wake.notify_all();
+            // 运行状态由守卫清理：任务 panic 时后面的代码不会执行，
+            // 若不用守卫，该 id 会永久留在运行集合里，后续推送全部被拒绝。
+            let task = RunningGuard {
+                state: worker,
+                id,
+            };
+            T::run(context, task.id.clone()).await;
         });
+    }
+}
+
+/// 运行状态守卫：任务结束或 panic 时都会把 id 从运行集合中移除并发出完成信号。
+struct RunningGuard {
+    state: Arc<State>,
+    id: String,
+}
+
+impl Drop for RunningGuard {
+    fn drop(&mut self) {
+        let slot = self.state.lock().running.remove(&self.id);
+        if let Some(slot) = slot {
+            slot.finish();
+        }
+        // 运行数量减少, 唤醒主线程补齐任务
+        self.state.wake.notify_all();
     }
 }
 

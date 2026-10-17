@@ -1,6 +1,7 @@
 mod assets;
 mod blocks;
 mod components;
+mod logging;
 mod pages;
 mod services;
 mod theme;
@@ -35,6 +36,16 @@ const MENU_ICON_SIZE: Rems = rems(1.125);
 const MENU_TEXT_SIZE: Rems = rems(1.);
 
 fn main() {
+    // 日志必须在数据层之前初始化：后台同步任务的失败原因只体现在日志里。
+    // 初始化失败不阻塞启动，只在控制台提示，界面本身不依赖日志。
+    let logging = match logging::init() {
+        Ok(guard) => Some(guard),
+        Err(error) => {
+            eprintln!("初始化日志失败: {error:#}");
+            None
+        }
+    };
+
     application().with_assets(AppAssets::new()).run(|cx| {
         init(cx);
         services::init(cx);
@@ -44,6 +55,9 @@ fn main() {
         init_router(cx, DEFAULT_PATH, &routes);
         open(cx, routes).expect("failed to open window");
     });
+
+    // 守卫必须存活到进程退出，否则日志写入线程会被提前释放、尾部日志丢失。
+    drop(logging);
 }
 
 /// 路由表：既用于注册路由，也用于生成侧栏菜单。
