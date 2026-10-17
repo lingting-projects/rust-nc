@@ -9,6 +9,17 @@ pub enum RuleType {
     Other,
 }
 
+impl RuleType {
+    /// 规则文件使用的名称
+    pub const fn name(&self) -> &'static str {
+        match self {
+            Self::Ip => "ip",
+            Self::Process => "process",
+            Self::Other => "other",
+        }
+    }
+}
+
 /// 规则来源。
 #[derive(Debug, Clone)]
 pub struct Rule {

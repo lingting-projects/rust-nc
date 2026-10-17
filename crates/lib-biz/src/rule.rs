@@ -3,10 +3,11 @@ use std::sync::Arc;
 use anyhow::{Result, anyhow};
 use lib_core::current_millis;
 use lib_db::DbContext;
-use log::debug;
+use log::{debug, warn};
 use service_core::service::rule_service::RuleService;
 use types_core::dto::rule::RuleUpsertDTO;
 
+use crate::file;
 use crate::rule_sync::RuleSync;
 
 /// 规则的核心业务入口。
@@ -67,9 +68,13 @@ impl RuleBiz {
         Ok(id)
     }
 
-    /// 删除规则，返回删除行数。
+    /// 删除规则，返回删除行数，并清理该规则的规则文件目录。
     pub async fn delete(&self, id: &str) -> Result<u64> {
-        self.service().delete(id).await
+        let count = self.service().delete(id).await?;
+        if let Err(error) = file::remove_rule(id) {
+            warn!("[规则] [{}] 清理规则文件失败: {error:#}", id);
+        }
+        Ok(count)
     }
 
     /// 触发同步但不等待结果；写库结果不受同步推送影响。

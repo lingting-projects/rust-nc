@@ -7,6 +7,7 @@ use std::sync::Arc;
 
 use anyhow::{Context as _, Result};
 use gpui_kit::*;
+use lib_biz::timer;
 use lib_core::directorys;
 use lib_db::{Database, DatabaseOptions, DbContext};
 use service_core::manager::setting_manager::SettingManager;
@@ -93,6 +94,7 @@ pub fn init(cx: &mut App) {
             services.init_subscribe_sync();
             services.init_rule_sync();
             services.init_config_sync();
+            services.init_timer();
             cx.set_global(AppServices::Ready(Arc::new(services)))
         }
         Err(error) => {

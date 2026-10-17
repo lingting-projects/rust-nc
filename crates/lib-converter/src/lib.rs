@@ -3,6 +3,7 @@ mod constants;
 mod node_contains;
 mod platform;
 mod rule;
+pub mod ruleset;
 mod singbox;
 mod source;
 
@@ -10,6 +11,7 @@ pub use clash::ClashRule;
 pub use node_contains::NodeContains;
 pub use platform::{Platform, PlatformConfig};
 pub use rule::{Rule, RuleType};
+pub use ruleset::RuleSet;
 pub use singbox::SingBoxRule;
 
 use anyhow::Result;

@@ -48,6 +48,8 @@ framework-proc-ts = { path = "../../lingting-rust-framework/framework-proc-ts" }
 framework-proc-web = { path = "../../lingting-rust-framework/framework-proc-web" }
 framework-web = { path = "../../lingting-rust-framework/framework-web" }
 framework-web-axum = { path = "../../lingting-rust-framework/framework-web-axum" }
+framework-timer = { path = "../../lingting-rust-framework/framework-timer" }
+framework-proc-timer = { path = "../../lingting-rust-framework/framework-proc-timer" }
 
 lingting-gpui-kit = { path = "../../lingting-gpui-kit/lingting-gpui-kit" }
 

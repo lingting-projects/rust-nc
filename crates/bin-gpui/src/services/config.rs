@@ -1,6 +1,7 @@
 use anyhow::Result;
 use lib_biz::config::ConfigBiz;
 use lib_biz::config_sync::ConfigSync;
+use lib_biz::timer;
 use service_core::service::config_service::ConfigService;
 use service_core::service::rule_service::RuleService;
 use service_core::service::subscribe_service::SubscribeService;
@@ -67,5 +68,18 @@ impl Services {
     /// 把数据库上下文与运行时注入配置同步调度器。
     pub fn init_config_sync(&self) {
         ConfigSync::instance().init(self.context(), self.runtime_handle());
+    }
+}
+
+impl Services {
+    /// 注入定时同步环境并启动定时任务运行时。
+    ///
+    /// 定时任务按固定间隔扫描到达刷新时间的数据并推入同步队列;
+    /// 启动失败只记录日志, 手动同步不受影响。
+    pub fn init_timer(&self) {
+        timer::init(self.context(), self.runtime_handle());
+        if let Err(error) = timer::start() {
+            eprintln!("启动定时同步失败: {error:#}");
+        }
     }
 }

@@ -16,8 +16,11 @@ lib-core = { workspace = true }
 lib-db = { workspace = true }
 lib-fetch = { workspace = true }
 lib-pick = { workspace = true }
+lib-singbox = { workspace = true }
 service-core = { workspace = true }
 types-core = { workspace = true }
+
+framework-timer = { workspace = true }
 
 anyhow = { workspace = true }
 log = { workspace = true }

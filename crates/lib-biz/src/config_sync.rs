@@ -9,6 +9,7 @@ use service_core::service::rule_service::RuleService;
 use service_core::service::subscribe_service::SubscribeService;
 use types_core::entity::config::Config;
 
+use crate::config_file;
 use crate::scheduler::{Scheduler, SyncTask};
 
 /// 全局唯一的配置同步调度器。
@@ -61,9 +62,7 @@ impl SyncTask for ConfigTask {
     }
 }
 
-/// 同步单个配置: 校验订阅节点与引用的规则, 通过后刷新刷新时间。
-///
-/// 内核配置的生成依赖内核运行态, 尚未接入, 因此这里只做数据校验。
+/// 同步单个配置: 校验订阅节点与引用的规则, 通过后生成配置文件并刷新刷新时间。
 pub(crate) async fn sync(context: &Arc<DbContext>, id: &str) -> Result<()> {
     let service = ConfigService::new(context.clone());
     let Some(config) = service.find(id).await? else {
@@ -73,8 +72,13 @@ pub(crate) async fn sync(context: &Arc<DbContext>, id: &str) -> Result<()> {
 
     info!("[配置] [{}] 开始同步", config.name);
     let count = validate(context, &config).await?;
+    let path = config_file::write(context, &config).await?;
     service.touch_refresh(id, current_millis()?).await?;
-    info!("[配置] [{}] 同步完成, 节点数量: {count}", config.name);
+    info!(
+        "[配置] [{}] 同步完成, 节点数量: {count}, 配置文件: {}",
+        config.name,
+        path.display()
+    );
     Ok(())
 }
 

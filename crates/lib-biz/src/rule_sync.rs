@@ -8,6 +8,7 @@ use log::{debug, error, info, warn};
 use service_core::service::rule_service::RuleService;
 use types_core::dto::rule::RuleRefreshDTO;
 
+use crate::rule_file;
 use crate::scheduler::{Scheduler, SyncTask};
 
 /// 全局唯一的规则同步调度器。
@@ -90,25 +91,26 @@ async fn sync(context: &Arc<DbContext>, id: &str) -> Result<()> {
         return Ok(());
     }
 
-    let counts = count(&source.content);
-    if counts.total == 0 {
+    let files = rule_file::write(id, &source.content).await?;
+    if files.total == 0 {
+        // 无可用规则时目录已被清理, 避免配置继续引用已失效的规则文件
         warn!("[规则] [{}] 未解析到规则, 结束同步", rule.name);
         return Ok(());
     }
 
     debug!(
         "[规则] [{}] 保存同步结果, 规则数量: {}",
-        rule.name, counts.total
+        rule.name, files.total
     );
     service
         .save_refresh(
             id,
             source.body.as_deref(),
             current_millis()?,
-            counts.total,
-            counts.process,
-            counts.ip,
-            counts.other,
+            files.total,
+            files.process,
+            files.ip,
+            files.other,
         )
         .await?;
     info!("[规则] [{}] 同步完成", rule.name);
@@ -150,52 +152,4 @@ async fn source(rule: &RuleRefreshDTO) -> Result<Source> {
         content: body.clone(),
         body: Some(body),
     })
-}
-
-/// 规则数量统计, 按 sing-box 规则集的类型归类。
-#[derive(Debug, Default, PartialEq, Eq)]
-struct Counts {
-    /// 可用规则总数
-    total: u64,
-    /// IP 规则数量
-    ip: u64,
-    /// 进程规则数量
-    process: u64,
-    /// 其他规则数量
-    other: u64,
-}
-
-/// 统计规则文本中的条目数量。
-///
-/// 每行一条 `类型,值`, 空行与 `#` 开头的注释行跳过;
-/// `ip-cidr` 开头归为 IP 规则, `process-name` 归为进程规则, 其余归为其他规则。
-fn count(content: &str) -> Counts {
-    let mut counts = Counts::default();
-
-    for raw_line in content.lines() {
-        let line = raw_line.trim();
-        if line.is_empty() || line.starts_with('#') {
-            continue;
-        }
-
-        let Some((kind, value)) = line.split_once(',') else {
-            continue;
-        };
-        let (kind, value) = (kind.trim(), value.trim());
-        if kind.is_empty() || value.is_empty() {
-            continue;
-        }
-
-        counts.total += 1;
-        let kind = kind.to_lowercase();
-        if kind.starts_with("ip-cidr") {
-            counts.ip += 1;
-        } else if kind == "process-name" {
-            counts.process += 1;
-        } else {
-            counts.other += 1;
-        }
-    }
-
-    counts
 }

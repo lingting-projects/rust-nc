@@ -2232,6 +2232,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "framework-proc-timer"
+version = "26.8.150"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.104",
+]
+
+[[package]]
 name = "framework-proc-ts"
 version = "26.8.150"
 dependencies = [
@@ -2247,6 +2256,19 @@ version = "26.8.150"
 dependencies = [
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "framework-timer"
+version = "26.8.150"
+dependencies = [
+ "anyhow",
+ "framework-core",
+ "framework-proc-timer",
+ "futures-util",
+ "inventory",
+ "log",
+ "tokio",
 ]
 
 [[package]]
@@ -4378,11 +4400,13 @@ name = "lib-biz"
 version = "26.6.251-rc"
 dependencies = [
  "anyhow",
+ "framework-timer",
  "lib-converter",
  "lib-core",
  "lib-db",
  "lib-fetch",
  "lib-pick",
+ "lib-singbox",
  "log",
  "serde_json",
  "service-core",
