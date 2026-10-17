@@ -1,12 +1,14 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
 use gpui_kit::base::{h_flex, v_flex};
-use gpui_kit::component::ActiveTheme as _;
+use gpui_kit::component::button::Button;
+use gpui_kit::component::button::ButtonVariants as _;
+use gpui_kit::component::notification::Notification;
+use gpui_kit::component::{ActiveTheme as _, IconName, Sizable as _, WindowExt as _};
 use gpui_kit::*;
 
 use lingting_gpui_kit::card::Card;
-
 /// 卡片内边距，与其它页面保持一致。
 const PADDING: Rems = rems(1.);
 
@@ -82,8 +84,10 @@ fn content(entries: &Result<Vec<DirectoryEntry>, SharedString>, cx: &App) -> Any
     }
 }
 
-/// 一行目录：左侧名称，右侧完整路径。
+/// 一行目录：左侧名称，右侧完整路径，行尾一个打开按钮。
 fn row(entry: &DirectoryEntry, cx: &App) -> AnyElement {
+    let path = entry.path.clone();
+
     h_flex()
         .w_full()
         .items_start()
@@ -105,7 +109,23 @@ fn row(entry: &DirectoryEntry, cx: &App) -> AnyElement {
                 .font_family(cx.theme().mono_font_family.clone())
                 .child(entry.path.display().to_string()),
         )
+        .child(
+            Button::new(format!("settings-directory-open:{}", entry.label))
+                .ghost()
+                .small()
+                .icon(IconName::FolderOpen)
+                .tooltip("在资源管理器中打开")
+                .accessibility_label("在资源管理器中打开")
+                .on_click(move |_, window, cx| open(&path, window, cx)),
+        )
         .into_any_element()
+}
+
+/// 用资源管理器打开目录，失败时提示原因。
+fn open(path: &Path, window: &mut Window, cx: &mut App) {
+    if let Err(error) = lib_system::shell::open_path(path) {
+        window.push_notification(Notification::error(format!("{error:#}")), cx);
+    }
 }
 
 /// 读取应用目录。

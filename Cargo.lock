@@ -631,6 +631,7 @@ dependencies = [
  "lib-biz",
  "lib-core",
  "lib-db",
+ "lib-system",
  "lingting-gpui-kit",
  "service-core",
  "tokio",
