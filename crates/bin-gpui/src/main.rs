@@ -14,7 +14,7 @@ use lingting_gpui_kit::router::RouteDefinition;
 
 use crate::assets::AppAssets;
 use crate::blocks::Placeholder;
-use crate::pages::{ConfigPage, Console, RulePage, SubscribePage};
+use crate::pages::{ConfigPage, Console, RulePage, SettingsPage, SubscribePage};
 
 /// 应用标题。
 const APP_TITLE: &str = "lingting network control";
@@ -65,8 +65,7 @@ fn routes() -> Vec<RouteDefinition> {
         .icon(IconName::Rss),
         RouteDefinition::new("/rule", "规则", RulePage::new).icon(IconName::GitFork),
         RouteDefinition::new("/config", "配置", ConfigPage::new).icon(IconName::FileCog),
-        RouteDefinition::new("/settings", "设置", |_, _| Placeholder::new("设置"))
-            .icon(IconName::Settings),
+        RouteDefinition::new("/settings", "设置", SettingsPage::new).icon(IconName::Settings),
     ]
 }
 
