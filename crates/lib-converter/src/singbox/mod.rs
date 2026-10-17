@@ -220,7 +220,7 @@ fn auto_area_outbounds(kernel: &Kernel) -> Vec<Outbound> {
         .into_iter()
         .map(|(code, nodes)| {
             let area = nodes[0].area.expect("区域分组中的节点必然有区域");
-            let tag = format!("[{}] {}自动", code, area.name_cn);
+            let tag = format!("[{}] {}自动", code, area.name.zh);
             let outbounds = nodes.iter().map(|node| node.name()).collect();
             Outbound::url_test(&tag, outbounds)
         })

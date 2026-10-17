@@ -76,7 +76,7 @@ impl NodeContains {
 
         match node.area {
             None => self.non_area,
-            Some(area) => self.area.contains(&area.code),
+            Some(area) => self.area.iter().any(|code| code == area.iso),
         }
     }
 
@@ -122,8 +122,8 @@ fn compare(left: &PickNode, right: &PickNode) -> Ordering {
         };
     };
 
-    let left_main = main.contains(&left_area.code.as_str());
-    let right_main = main.contains(&right_area.code.as_str());
+    let left_main = main.contains(&left_area.iso);
+    let right_main = main.contains(&right_area.iso);
     if left_main != right_main {
         return if left_main {
             Ordering::Less
@@ -133,10 +133,10 @@ fn compare(left: &PickNode, right: &PickNode) -> Ordering {
     }
 
     if left_main {
-        let left_index = main.iter().position(|code| *code == left_area.code);
-        let right_index = main.iter().position(|code| *code == right_area.code);
+        let left_index = main.iter().position(|code| *code == left_area.iso);
+        let right_index = main.iter().position(|code| *code == right_area.iso);
         return left_index.cmp(&right_index);
     }
 
-    left_area.code.cmp(&right_area.code)
+    left_area.iso.cmp(right_area.iso)
 }

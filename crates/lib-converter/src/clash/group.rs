@@ -48,7 +48,7 @@ fn build_auto_areas(kernel: &Kernel) -> Vec<ProxyGroup> {
         .into_iter()
         .map(|(code, nodes)| {
             let area = nodes[0].area.expect("区域分组中的节点必然有区域");
-            let name = format!("[{}] {}自动", code, area.name_cn);
+            let name = format!("[{}] {}自动", code, area.name.zh);
             let proxies = nodes.iter().map(|node| node.name()).collect();
             auto_group(name, proxies)
         })

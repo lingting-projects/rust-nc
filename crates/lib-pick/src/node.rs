@@ -1,8 +1,9 @@
 use anyhow::Result;
+use framework_region::types::Region;
 use indexmap::IndexMap;
 use serde_json::Value;
 
-use crate::area::{self, Area};
+use crate::area;
 use crate::value::JsonValueExt;
 
 /// 节点名称键。
@@ -22,7 +23,7 @@ pub struct PickNode {
     /// 协议值, 例如 vless、trojan、ss
     pub protocol: String,
     /// 识别出的区域
-    pub area: Option<&'static Area>,
+    pub area: Option<&'static Region>,
 }
 
 impl PickNode {

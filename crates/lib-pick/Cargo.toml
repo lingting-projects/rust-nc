@@ -13,6 +13,7 @@ crate-type = ["rlib"]
 [dependencies]
 anyhow = { workspace = true }
 lib-core = { workspace = true }
+framework-region = { workspace = true }
 chrono = { workspace = true }
 base64 = { workspace = true }
 indexmap = { workspace = true, features = ["serde"] }

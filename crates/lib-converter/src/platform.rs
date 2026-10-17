@@ -96,7 +96,7 @@ impl Kernel {
             let Some(area) = node.area else {
                 continue;
             };
-            map.entry(area.code.clone()).or_default().push(node);
+            map.entry(area.iso.to_string()).or_default().push(node);
         }
         map
     }
