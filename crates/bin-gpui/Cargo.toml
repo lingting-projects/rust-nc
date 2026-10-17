@@ -19,6 +19,7 @@ gpui-kit = { workspace = true, features = ["gpui-fast"] }
 lingting-gpui-kit = { workspace = true }
 
 anyhow = { workspace = true }
+lib-biz = { workspace = true }
 lib-core = { workspace = true }
 lib-db = { workspace = true }
 service-core = { workspace = true }

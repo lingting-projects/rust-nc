@@ -54,6 +54,11 @@ impl Services {
         self.runtime.spawn(future)
     }
 
+    /// 异步运行时的句柄，供需要自行提交任务的组件使用。
+    pub fn runtime_handle(&self) -> tokio::runtime::Handle {
+        self.runtime.handle().clone()
+    }
+
     /// 读取控制台需要的配置、订阅与上次使用的配置 id。
     pub async fn console_data(self: Arc<Self>) -> Result<ConsoleData> {
         let configs = ConfigService::new(self.context.clone()).list().await?;
@@ -82,7 +87,10 @@ impl Global for AppServices {}
 /// 初始化数据层。必须在创建窗口之前调用。
 pub fn init(cx: &mut App) {
     match open() {
-        Ok(services) => cx.set_global(AppServices::Ready(Arc::new(services))),
+        Ok(services) => {
+            services.init_subscribe_sync();
+            cx.set_global(AppServices::Ready(Arc::new(services)))
+        }
         Err(error) => {
             eprintln!("初始化数据层失败: {error:#}");
             cx.set_global(AppServices::Failed(format!("{error:#}").into()));

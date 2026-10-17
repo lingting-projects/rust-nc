@@ -130,6 +130,8 @@ impl SubscribePage {
     }
 
     /// 提交新增或修改。成功后关闭弹窗并刷新列表。
+    ///
+    /// 新增与修改走业务层的不同流程，写库成功后由业务层决定是否触发同步。
     pub fn submit(&mut self, dto: SubscribeUpsertDTO, window: &mut Window, cx: &mut Context<Self>) {
         if self.submitting {
             return;
@@ -141,11 +143,19 @@ impl SubscribePage {
         self.submitting = true;
         cx.notify();
 
+        // 无 id 视为新增，两者在业务层是不同流程：新增总会触发同步，修改只在地址变更后触发
+        let create = dto.id.as_deref().is_none_or(|id| id.is_empty());
         let loader = services.clone();
         let runner = services.clone();
         cx.spawn_in(window, async move |this, cx| {
             let result = loader
-                .spawn(async move { runner.upsert_subscribe(dto).await })
+                .spawn(async move {
+                    if create {
+                        runner.create_subscribe(dto).await
+                    } else {
+                        runner.edit_subscribe(dto).await
+                    }
+                })
                 .await;
 
             this.update_in(cx, |page, window, cx| {
@@ -193,20 +203,36 @@ impl SubscribePage {
 
     /// 同步全部订阅。
     ///
-    /// 同步尚未接入数据层，这里只维护按钮的加载状态并说明结果，
-    /// 避免界面看起来已经拉取过。
+    /// 只把订阅推送给同步调度器，实际拉取与保存由后台任务按并行上限完成，
+    /// 因此这里推送成功即可结束按钮的加载状态。
     pub fn sync_all(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if self.syncing {
+            return;
+        }
+        let Some(services) = self.ready_services(cx) else {
+            return;
+        };
+
         self.syncing = true;
         cx.notify();
 
+        let loader = services.clone();
+        let runner = services.clone();
         cx.spawn_in(window, async move |this, cx| {
-            cx.background_executor()
-                .timer(std::time::Duration::from_millis(200))
+            let result = loader
+                .spawn(async move { runner.sync_subscribe(None).await })
                 .await;
 
             this.update_in(cx, |page, window, cx| {
                 page.syncing = false;
-                window.push_notification(Notification::warning("订阅同步尚未接入"), cx);
+                match result {
+                    Ok(Ok(count)) => {
+                        let message = format!("已推送 {count} 个订阅同步");
+                        window.push_notification(Notification::success(message), cx);
+                    }
+                    Ok(Err(error)) => page.failed(window, cx, format!("同步订阅失败: {error:#}")),
+                    Err(error) => page.failed(window, cx, format!("同步任务异常: {error}")),
+                }
                 cx.notify();
             })
             .ok();
@@ -214,9 +240,35 @@ impl SubscribePage {
         .detach();
     }
 
-    /// 同步一条订阅。与 [`Self::sync_all`] 一样只保留交互反馈。
-    pub fn sync_one(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        self.sync_all(window, cx);
+    /// 同步一条订阅，等待该订阅同步结束后刷新列表。
+    pub fn sync_one(&mut self, id: &str, window: &mut Window, cx: &mut Context<Self>) {
+        let Some(services) = self.ready_services(cx) else {
+            return;
+        };
+
+        self.syncing = true;
+        cx.notify();
+
+        let id = id.to_string();
+        let loader = services.clone();
+        let runner = services.clone();
+        cx.spawn_in(window, async move |this, cx| {
+            let result = loader
+                .spawn(async move { runner.sync_subscribe(Some(&id)).await })
+                .await;
+
+            this.update_in(cx, |page, window, cx| {
+                page.syncing = false;
+                match result {
+                    Ok(Ok(_)) => page.reload(cx),
+                    Ok(Err(error)) => page.failed(window, cx, format!("同步订阅失败: {error:#}")),
+                    Err(error) => page.failed(window, cx, format!("同步任务异常: {error}")),
+                }
+                cx.notify();
+            })
+            .ok();
+        })
+        .detach();
     }
 
     /// 当前表格要展示的订阅。

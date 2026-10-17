@@ -192,8 +192,10 @@ impl SubscribeTable {
                     .accessibility_label("同步")
                     .on_click({
                         let page = page.clone();
+                        let id = id.clone();
                         move |_, window, cx| {
-                            page.update(cx, |page, cx| page.sync_one(window, cx)).ok();
+                            page.update(cx, |page, cx| page.sync_one(&id, window, cx))
+                                .ok();
                         }
                     }),
             )

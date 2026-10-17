@@ -17,11 +17,18 @@ const LIST_FIELDS: &str = "`id`,`name`,`url`,\
 const REFRESH_FIELDS: &str = "`id`,`name`,`url`,\
     CASE WHEN `url` LIKE 'http%' THEN '' ELSE `content` END AS `content`";
 
-/// 查询全部订阅。
+/// 查询全部订阅, 按 id 倒序。
 pub(crate) async fn all(pool: &DbPool) -> Result<Vec<Subscribe>> {
-    let sql = format!("select {LIST_FIELDS} from {TABLE}");
+    let sql = format!("select {LIST_FIELDS} from {TABLE} order by `id` desc");
     let rows = sqlx::query(&sql).fetch_all(pool).await?;
     rows.iter().map(from_row).collect()
+}
+
+/// 查询全部订阅 id。
+pub(crate) async fn all_id(pool: &DbPool) -> Result<Vec<String>> {
+    let sql = format!("select `id` from {TABLE}");
+    let rows = sqlx::query(&sql).fetch_all(pool).await?;
+    rows.iter().map(|row| mapping::string(row, "id")).collect()
 }
 
 /// 按 id 查询订阅。

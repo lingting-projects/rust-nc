@@ -2,6 +2,7 @@
 members = [
     "crates/bin-cloudflare",
     "crates/bin-gpui",
+    "crates/lib-biz",
     "crates/lib-converter",
     "crates/lib-core",
     "crates/lib-db",
@@ -17,7 +18,7 @@ resolver = "2"
 [workspace.package]
 version = "26.6.251-rc"
 edition = "2024"
-rust-version = "1.88.0"
+rust-version = "1.98.0"
 authors = ["lingting"]
 homepage = "https://github.com/lingting"
 repository = "https://github.com/lingting-projects/lingting-nc"
@@ -27,6 +28,7 @@ description = "lingting network control"
 
 [workspace.dependencies]
 
+lib-biz = { path = "crates/lib-biz" }
 lib-converter = { path = "crates/lib-converter" }
 lib-core = { path = "crates/lib-core" }
 lib-db = { path = "crates/lib-db" }
@@ -36,6 +38,18 @@ lib-singbox = { path = "crates/lib-singbox" }
 lib-system = { path = "crates/lib-system" }
 service-core = { path = "crates/service-core" }
 types-core = { path = "crates/types-core" }
+
+framework-core = { path = "../../lingting-rust-framework/framework-core" }
+framework-datetime = { path = "../../lingting-rust-framework/framework-datetime" }
+framework-region = { path = "../../lingting-rust-framework/framework-region" }
+framework-proc-auto = { path = "../../lingting-rust-framework/framework-proc-auto" }
+framework-proc-core = { path = "../../lingting-rust-framework/framework-proc-core" }
+framework-proc-ts = { path = "../../lingting-rust-framework/framework-proc-ts" }
+framework-proc-web = { path = "../../lingting-rust-framework/framework-proc-web" }
+framework-web = { path = "../../lingting-rust-framework/framework-web" }
+framework-web-axum = { path = "../../lingting-rust-framework/framework-web-axum" }
+
+lingting-gpui-kit = { path = "../../lingting-gpui-kit/lingting-gpui-kit" }
 
 simple_logger = "5.0"
 time = "0.3"
@@ -74,19 +88,6 @@ winapi = "0.3"
 windows = "0.61"
 # build
 winres = "0.1"
-
-framework-core = { path = "../../lingting-rust-framework/framework-core" }
-framework-datetime = { path = "../../lingting-rust-framework/framework-datetime" }
-framework-region = { path = "../../lingting-rust-framework/framework-region" }
-framework-proc-auto = { path = "../../lingting-rust-framework/framework-proc-auto" }
-framework-proc-core = { path = "../../lingting-rust-framework/framework-proc-core" }
-framework-proc-ts = { path = "../../lingting-rust-framework/framework-proc-ts" }
-framework-proc-web = { path = "../../lingting-rust-framework/framework-proc-web" }
-framework-web = { path = "../../lingting-rust-framework/framework-web" }
-framework-web-axum = { path = "../../lingting-rust-framework/framework-web-axum" }
-
-lingting-gpui-kit = { path = "../../lingting-gpui-kit/lingting-gpui-kit" }
-
 aes = { version = "0.8" }
 base64 = { version = "0.22" }
 serde = { version = "1.0", features = ["derive"] }

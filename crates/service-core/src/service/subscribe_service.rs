@@ -19,9 +19,14 @@ impl SubscribeService {
         Self { context }
     }
 
-    /// 查询全部订阅。
+    /// 查询全部订阅，按 id 倒序。
     pub async fn list(&self) -> Result<Vec<Subscribe>> {
         repository::all(self.pool()).await
+    }
+
+    /// 查询全部订阅 id。
+    pub async fn list_ids(&self) -> Result<Vec<String>> {
+        repository::all_id(self.pool()).await
     }
 
     /// 按 id 查询订阅。
