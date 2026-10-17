@@ -19,9 +19,14 @@ impl RuleService {
         Self { context }
     }
 
-    /// 查询全部规则。
+    /// 查询全部规则，按 id 倒序。
     pub async fn list(&self) -> Result<Vec<Rule>> {
         repository::all(self.pool()).await
+    }
+
+    /// 查询全部规则 id。
+    pub async fn list_ids(&self) -> Result<Vec<String>> {
+        repository::all_id(self.pool()).await
     }
 
     /// 按 id 查询规则。

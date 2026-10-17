@@ -11,6 +11,7 @@ use gpui_kit::*;
 use types_core::entity::subscribe::Subscribe;
 
 use super::SubscribePage;
+use crate::components::delete_button;
 use crate::utils::format;
 
 /// 各列宽度，单位为 rem，随界面缩放一起变化。
@@ -172,7 +173,7 @@ impl SubscribeTable {
     /// 操作列：同步、编辑、删除。
     ///
     /// 三个都是图标按钮，用 tooltip 说明含义，并以 `accessibility_label` 给出可读名称。
-    fn action(&self, item: &Subscribe) -> AnyElement {
+    fn action(&self, item: &Subscribe, cx: &App) -> AnyElement {
         let page = self.page.clone();
         let id = item.id.clone();
         let name = item.name.clone();
@@ -215,13 +216,8 @@ impl SubscribeTable {
                     }),
             )
             .child(
-                Button::new(delete_id)
-                    .ghost()
-                    .small()
-                    .icon(IconName::Trash)
-                    .tooltip("删除")
-                    .accessibility_label("删除")
-                    .on_click(move |_, window, cx| {
+                delete_button(delete_id, IconName::Trash, "删除", cx).on_click(
+                    move |_, window, cx| {
                         super::dialog::confirm_delete(
                             page.clone(),
                             id.clone(),
@@ -229,7 +225,8 @@ impl SubscribeTable {
                             window,
                             cx,
                         );
-                    }),
+                    },
+                ),
             )
             .into_any_element()
     }
@@ -274,7 +271,7 @@ impl TableDelegate for SubscribeTable {
                 .text_sm()
                 .child(format::until(item.expire_time))
                 .into_any_element(),
-            _ => self.action(item),
+            _ => self.action(item, cx),
         }
     }
 }

@@ -1,3 +1,4 @@
+mod rule;
 mod subscribe;
 
 use std::path::PathBuf;
@@ -89,6 +90,7 @@ pub fn init(cx: &mut App) {
     match open() {
         Ok(services) => {
             services.init_subscribe_sync();
+            services.init_rule_sync();
             cx.set_global(AppServices::Ready(Arc::new(services)))
         }
         Err(error) => {
