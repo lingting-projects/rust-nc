@@ -32,7 +32,12 @@ pub fn remaining(max: u64, used: u64) -> String {
 }
 
 /// 距离 `millis` 还有多久，已经过去时返回 `已过期`。
+///
+/// `millis` 不大于 0 表示没有到期时间（如按流量计费的永久订阅），返回 `-`。
 pub fn until(millis: i64) -> String {
+    if millis <= 0 {
+        return "-".to_string();
+    }
     match duration(millis - now()) {
         Some(text) => text,
         None => "已过期".to_string(),
