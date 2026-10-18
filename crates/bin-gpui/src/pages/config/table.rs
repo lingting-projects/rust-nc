@@ -5,9 +5,8 @@ use gpui_kit::base::{StyledExt as _, h_flex};
 use gpui_kit::component::button::Button;
 use gpui_kit::component::button::ButtonVariants as _;
 use gpui_kit::component::table::{Column, DataTable, TableDelegate, TableState};
-use gpui_kit::component::tag::Tag;
 use gpui_kit::component::tooltip::Tooltip;
-use gpui_kit::component::{ActiveTheme as _, ColorName, Sizable as _};
+use gpui_kit::component::{ActiveTheme as _, Sizable as _};
 use gpui_kit::*;
 
 use lingting_gpui_kit::region::RegionTag;
@@ -15,7 +14,7 @@ use lingting_gpui_kit::region::RegionTag;
 use types_core::entity::config::Config;
 
 use super::ConfigPage;
-use crate::components::delete_button;
+use crate::components::{PolicyTags, delete_button};
 use crate::utils::format;
 
 /// 各列宽度，单位为 rem，随界面缩放一起变化。
@@ -279,55 +278,7 @@ fn count(item: &Config) -> impl IntoElement {
 
 /// 节点策略：把各列原本单独展示的开关收成一排标签。
 ///
-/// 每一类都用自己的颜色，扫读时不必逐个读文字；无区域节点的颜色同时表示
-/// 包含还是排除，其余标签只表示「启用了这一项」，关闭时不渲染。
+/// 取值、配色与说明由 [`PolicyTags`] 统一维护，与配置预览栏共用同一实现。
 fn policy(item: &Config) -> impl IntoElement {
-    h_flex().gap_1().children(tags(item))
-}
-
-/// 节点策略里的标签。
-fn tags(item: &Config) -> Vec<AnyElement> {
-    let mut tags = vec![if item.include_area_non {
-        tag(
-            Tag::info(),
-            "包含无区域节点",
-            "筛选时保留没有区域信息的节点",
-        )
-    } else {
-        tag(
-            Tag::warning(),
-            "排除无区域节点",
-            "筛选时移除没有区域信息的节点",
-        )
-    }];
-
-    if item.tun {
-        tags.push(tag(
-            Tag::color(ColorName::Violet),
-            "TUN",
-            "使用 TUN 模式接管流量",
-        ));
-    }
-    tags.push(if item.ipv6 {
-        tag(Tag::color(ColorName::Emerald), "IPv6", "启用 IPv6")
-    } else {
-        tag(Tag::color(ColorName::Cyan), "IPv4", "仅使用 IPv4")
-    });
-    if item.fake_ip {
-        tags.push(tag(Tag::color(ColorName::Fuchsia), "FakeIP", "启用 FakeIP"));
-    }
-
-    tags
-}
-
-/// 一枚带 tooltip 的策略标签：颜色区分类型，tooltip 说明这一项的含义。
-///
-/// `Tag` 自身不接受交互与 tooltip，因此外面包一层 `div` 承载 tooltip 与可读名称。
-fn tag(tag: Tag, label: &'static str, hint: &'static str) -> AnyElement {
-    div()
-        .id(label)
-        .aria_label(label)
-        .tooltip(move |window, cx| Tooltip::new(hint).build(window, cx))
-        .child(tag.small().child(label))
-        .into_any_element()
+    PolicyTags::render(item, rems(0.25))
 }

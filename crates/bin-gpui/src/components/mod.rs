@@ -1,3 +1,7 @@
+mod policy_tags;
+
+pub use policy_tags::PolicyTags;
+
 use gpui_kit::assets::IconName;
 use gpui_kit::component::button::Button;
 use gpui_kit::component::button::ButtonVariants as _;

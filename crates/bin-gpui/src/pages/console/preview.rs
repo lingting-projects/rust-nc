@@ -1,6 +1,5 @@
 use gpui_kit::base::{StyledExt as _, h_flex, v_flex};
-use gpui_kit::component::tag::Tag;
-use gpui_kit::component::{ActiveTheme as _, Sizable as _};
+use gpui_kit::component::ActiveTheme as _;
 use gpui_kit::*;
 
 use lingting_gpui_kit::card::Card;
@@ -8,6 +7,7 @@ use lingting_gpui_kit::card::Card;
 use super::Console;
 use super::LoadState;
 use super::PADDING;
+use crate::components::PolicyTags;
 use crate::utils::format;
 
 /// 渲染预览栏。
@@ -34,29 +34,11 @@ pub fn render(console: &Console, cx: &App) -> AnyElement {
 
     let mut items: Vec<AnyElement> = Vec::new();
 
-    // 启用中的配置才展示协议标签。
-    if config.tun {
-        items.push(tag("TUN").into_any_element());
-    }
-    items.push(tag(if config.ipv6 { "IPv6" } else { "IPv4" }).into_any_element());
-    if config.fake_ip {
-        items.push(tag("FakeIP").into_any_element());
-    }
+    // 节点策略与配置表共用同一组件，两处的取值、配色与说明不会走偏。
+    items.push(PolicyTags::render(config, rems(0.5)).into_any_element());
 
     let rules =
         config.rule_direct_ids.len() + config.rule_proxy_ids.len() + config.rule_reject_ids.len();
-    items.push(
-        pair(
-            "无区域节点",
-            if config.include_area_non {
-                "包含"
-            } else {
-                "排除"
-            },
-            theme,
-        )
-        .into_any_element(),
-    );
     items.push(pair("规则数量", &rules.to_string(), theme).into_any_element());
 
     if let Some(subscribe) = data
@@ -102,10 +84,6 @@ fn hint(reason: &str, color: Hsla) -> AnyElement {
         .child(reason.to_string()))
 }
 
-/// 一枚中性的配置标签。
-fn tag(label: &'static str) -> impl IntoElement {
-    Tag::secondary().small().child(label)
-}
 
 /// 「标签 + 数值」的一项元信息。
 fn pair(label: &'static str, value: &str, theme: &gpui_kit::component::Theme) -> impl IntoElement {
