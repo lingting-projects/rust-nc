@@ -1,6 +1,7 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use arc_swap::ArcSwapOption;
 use framework_core::ApplicationDirectory;
+use std::fs;
 use std::path::PathBuf;
 use std::sync::{Arc, LazyLock};
 
@@ -37,9 +38,14 @@ pub fn directorys() -> Result<Arc<Directorys>> {
         logs: directory.logs,
         startup: directory.startup,
         install: directory.install,
-        config: root.join("config"),
-        rule: root.join("rule"),
+        config: create_directory(root.join("config"))?,
+        rule: create_directory(root.join("rule"))?,
     });
     DIRECTORY.store(Some(v.clone()));
     Ok(v)
+}
+fn create_directory(directory: PathBuf) -> Result<PathBuf> {
+    fs::create_dir_all(&directory)
+        .with_context(|| format!("创建应用目录失败: {}", directory.display()))?;
+    Ok(directory.to_path_buf())
 }
