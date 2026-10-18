@@ -77,7 +77,7 @@ impl ConfigDraft {
             rule_proxy_ids: Vec::new(),
             rule_reject_ids: Vec::new(),
             include_name_contains: Vec::new(),
-            exclude_name_contains: Vec::new(),
+            exclude_name_contains: ConfigUpsertDTO::default().exclude_name_contains,
             form: ConfigForm::new(),
         }
     }
