@@ -19,7 +19,8 @@ use types_core::entity::config::Config;
 
 use super::ConfigPage;
 use super::form::{
-    ConfigForm, RuleDelegate, SubscribeDelegate, rule_delegate, rule_state, subscribe_delegate,
+    ConfigForm, RULE_SLOT_DIRECT, RULE_SLOT_PROXY, RULE_SLOT_REJECT, RuleDelegate,
+    SubscribeDelegate, rule_peers, rule_register, rule_state, subscribe_delegate,
 };
 
 /// 刷新间隔的单位换算：界面用小时，落库用毫秒。
@@ -142,9 +143,35 @@ pub fn open(
         window,
         cx,
     );
-    let direct = rule_state(rule_delegate(rules), &draft.rule_direct_ids, window, cx);
-    let proxy = rule_state(rule_delegate(rules), &draft.rule_proxy_ids, window, cx);
-    let reject = rule_state(rule_delegate(rules), &draft.rule_reject_ids, window, cx);
+    // 三个规则框互相登记：同一条规则只能被其中一个框选中。
+    let peers = rule_peers();
+    let direct = rule_state(
+        rules,
+        peers.clone(),
+        RULE_SLOT_DIRECT,
+        &draft.rule_direct_ids,
+        window,
+        cx,
+    );
+    let proxy = rule_state(
+        rules,
+        peers.clone(),
+        RULE_SLOT_PROXY,
+        &draft.rule_proxy_ids,
+        window,
+        cx,
+    );
+    let reject = rule_state(
+        rules,
+        peers.clone(),
+        RULE_SLOT_REJECT,
+        &draft.rule_reject_ids,
+        window,
+        cx,
+    );
+    rule_register(&peers, RULE_SLOT_DIRECT, &direct);
+    rule_register(&peers, RULE_SLOT_PROXY, &proxy);
+    rule_register(&peers, RULE_SLOT_REJECT, &reject);
 
     let form = cx.new(|_| draft.form);
     let page = cx.entity();
@@ -239,49 +266,55 @@ pub fn open(
                 let reject = reject.clone();
                 let form = form.clone();
                 move |content, _, cx| {
+                    // 外层只按最大高度裁切，内层拿到确定高度后才有滚动范围。
+                    let fields = v_flex()
+                        .size_full()
+                        .gap_3()
+                        .overflow_y_scrollbar()
+                        .child(field("名称（必填）", &name, hint.map(str::to_string), cx))
+                        .child(
+                            v_flex()
+                                .gap_1()
+                                .child(div().text_xs().child("订阅（必填）"))
+                                .child(
+                                    Select::new(&subscribe)
+                                        .id("config-subscribe")
+                                        .placeholder("选择订阅")
+                                        .accessibility_label("订阅"),
+                                ),
+                        )
+                        .child(switches(&form, cx))
+                        .child(areas(&form, cx))
+                        .child(
+                            v_flex()
+                                .gap_1()
+                                .child(div().text_xs().child("包含名称关键字"))
+                                .child(
+                                    Input::new(&include_names)
+                                        .cleanable(true)
+                                        .aria_label("包含名称关键字"),
+                                ),
+                        )
+                        .child(
+                            v_flex()
+                                .gap_1()
+                                .child(div().text_xs().child("排除名称关键字"))
+                                .child(
+                                    Input::new(&exclude_names)
+                                        .cleanable(true)
+                                        .aria_label("排除名称关键字"),
+                                ),
+                        )
+                        .child(rule_field("直连规则", &direct))
+                        .child(rule_field("代理规则", &proxy))
+                        .child(rule_field("拒绝规则", &reject))
+                        .child(field("更新间隔（小时）", &interval, None, cx));
+
                     content.pb_2().child(
                         v_flex()
-                            .gap_3()
                             .max_h(FORM_MAX_HEIGHT)
-                            .child(field("名称（必填）", &name, hint.map(str::to_string), cx))
-                            .child(
-                                v_flex()
-                                    .gap_1()
-                                    .child(div().text_xs().child("订阅（必填）"))
-                                    .child(
-                                        Select::new(&subscribe)
-                                            .id("config-subscribe")
-                                            .placeholder("选择订阅")
-                                            .accessibility_label("订阅"),
-                                    ),
-                            )
-                            .child(switches(&form, cx))
-                            .child(areas(&form, cx))
-                            .child(
-                                v_flex()
-                                    .gap_1()
-                                    .child(div().text_xs().child("包含名称关键字"))
-                                    .child(
-                                        Input::new(&include_names)
-                                            .cleanable(true)
-                                            .aria_label("包含名称关键字"),
-                                    ),
-                            )
-                            .child(
-                                v_flex()
-                                    .gap_1()
-                                    .child(div().text_xs().child("排除名称关键字"))
-                                    .child(
-                                        Input::new(&exclude_names)
-                                            .cleanable(true)
-                                            .aria_label("排除名称关键字"),
-                                    ),
-                            )
-                            .child(rule_field("直连规则", &direct))
-                            .child(rule_field("代理规则", &proxy))
-                            .child(rule_field("拒绝规则", &reject))
-                            .child(field("更新间隔（小时）", &interval, None, cx))
-                            .overflow_y_scrollbar(),
+                            .min_h_0()
+                            .child(v_flex().flex_1().min_h_0().overflow_hidden().child(fields)),
                     )
                 }
             })
