@@ -11,7 +11,8 @@ pub const KEY_REJECT: &str = "reject";
 
 /// 直连出口名称
 pub const OUT_DIRECT: &str = "直连";
-
+/// 下载远程规则集使用的 http 客户端名称
+pub const TAG_HTTP_CLIENT: &str = "http-client";
 /// 节点选择组
 pub const TAG_SELECTOR: &str = "节点选择";
 /// 自动选择组
@@ -21,9 +22,6 @@ pub const TAG_FALLBACK: &str = "默认选择";
 
 /// 连通性测试地址
 pub const TEST_URL: &str = "http://www.gstatic.com/generate_204";
-/// clash 面板下载地址
-pub const CLASH_UI_URL: &str =
-    "https://github.com/MetaCubeX/metacubexd/archive/refs/heads/gh-pages.zip";
 
 /// geoip 数据地址
 pub const URL_GEOIP: &str =

@@ -6,8 +6,10 @@ use lib_core::constants;
 pub struct SettingKernel {
     /// sing-box 版本
     pub sing_box_version: String,
-    /// 面板地址
-    pub ui: String,
+    /// 面板监听地址
+    pub ui_listen: String,
+    /// 面板监听端口
+    pub ui_port: u16,
     /// 混合代理监听地址
     pub mixed_listen: String,
     /// 混合代理端口
@@ -22,7 +24,8 @@ impl Default for SettingKernel {
     fn default() -> Self {
         Self {
             sing_box_version: String::new(),
-            ui: constants::KERNEL_UI.to_string(),
+            ui_listen: constants::KERNEL_UI_LISTEN.to_string(),
+            ui_port: constants::KERNEL_UI_PORT,
             mixed_listen: constants::KERNEL_MIXED_LISTEN.to_string(),
             mixed_port: constants::KERNEL_MIXED_PORT,
             dns_cn: to_vec(constants::KERNEL_DNS_CN),

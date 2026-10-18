@@ -35,7 +35,8 @@ pub(crate) fn build(kernel: &Kernel, source: Source) -> Result<String> {
         bind_address: kernel.config.mixed_listen.clone(),
         mode: "rule".to_string(),
         log_level: if kernel.config.debug { "debug" } else { "info" }.to_string(),
-        external_controller: kernel.config.ui.clone(),
+        // clash 内核的面板地址是单个 host:port 字符串
+        external_controller: format!("{}:{}", kernel.config.ui_listen, kernel.config.ui_port),
         unified_delay: true,
         tcp_concurrent: false,
         global_client_fingerprint: "chrome".to_string(),

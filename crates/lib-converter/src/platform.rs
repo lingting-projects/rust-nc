@@ -16,8 +16,10 @@ pub enum Platform {
 /// 平台通用配置, 由用户信息组装而成。
 #[derive(Debug, Clone)]
 pub struct PlatformConfig {
-    /// 面板地址
-    pub ui: String,
+    /// 面板监听地址
+    pub ui_listen: String,
+    /// 面板监听端口
+    pub ui_port: u16,
     /// 混合代理监听地址
     pub mixed_listen: String,
     /// 混合代理端口
@@ -51,7 +53,8 @@ pub struct PlatformConfig {
 impl Default for PlatformConfig {
     fn default() -> Self {
         Self {
-            ui: lib_core::constants::KERNEL_UI.to_string(),
+            ui_listen: lib_core::constants::KERNEL_UI_LISTEN.to_string(),
+            ui_port: lib_core::constants::KERNEL_UI_PORT,
             mixed_listen: lib_core::constants::KERNEL_MIXED_LISTEN.to_string(),
             mixed_port: lib_core::constants::KERNEL_MIXED_PORT,
             tun: true,

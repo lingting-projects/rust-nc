@@ -10,9 +10,22 @@ license.workspace = true
 [lib]
 crate-type = ["rlib"]
 
+[features]
+default = ["grpc"]
+# 内核 gRPC API 客户端，默认开启。
+grpc = ["dep:tonic", "dep:tonic-prost", "dep:prost", "dep:tokio"]
 [dependencies]
 lib-core = { workspace = true }
 lib-system = { workspace = true }
 
 anyhow = { workspace = true }
+arc-swap = { workspace = true }
 log = { workspace = true }
+prost = { workspace = true, optional = true }
+tokio = { workspace = true, optional = true }
+tonic = { workspace = true, optional = true }
+tonic-prost = { workspace = true, optional = true }
+
+[build-dependencies]
+tonic-prost-build = { workspace = true }
+protoc-bin-vendored = { workspace = true }

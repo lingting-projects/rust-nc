@@ -37,7 +37,8 @@ impl SettingManager {
     pub async fn kernel(&self) -> Result<SettingKernel> {
         let keys = [
             AppConfigKey::SettingKernelSingBoxVersion,
-            AppConfigKey::SettingKernelUi,
+            AppConfigKey::SettingKernelUiListen,
+            AppConfigKey::SettingKernelUiPort,
             AppConfigKey::SettingKernelMixedListen,
             AppConfigKey::SettingKernelMixedPort,
             AppConfigKey::SettingKernelDnsCn,
@@ -48,11 +49,12 @@ impl SettingManager {
 
         Ok(SettingKernel {
             sing_box_version: text(&map, &keys[0], default.sing_box_version),
-            ui: text(&map, &keys[1], default.ui),
-            mixed_listen: text(&map, &keys[2], default.mixed_listen),
-            mixed_port: number(&map, &keys[3]).unwrap_or(default.mixed_port),
-            dns_cn: list(&map, &keys[4]).unwrap_or(default.dns_cn),
-            dns_proxy: list(&map, &keys[5]).unwrap_or(default.dns_proxy),
+            ui_listen: text(&map, &keys[1], default.ui_listen),
+            ui_port: number(&map, &keys[2]).unwrap_or(default.ui_port),
+            mixed_listen: text(&map, &keys[3], default.mixed_listen),
+            mixed_port: number(&map, &keys[4]).unwrap_or(default.mixed_port),
+            dns_cn: list(&map, &keys[5]).unwrap_or(default.dns_cn),
+            dns_proxy: list(&map, &keys[6]).unwrap_or(default.dns_proxy),
         })
     }
 
@@ -96,7 +98,14 @@ impl SettingManager {
             AppConfigKey::SettingSoftwareMinimize,
             setting.software.minimize.to_string(),
         ));
-        items.push((AppConfigKey::SettingKernelUi, setting.kernel.ui.clone()));
+        items.push((
+            AppConfigKey::SettingKernelUiListen,
+            setting.kernel.ui_listen.clone(),
+        ));
+        items.push((
+            AppConfigKey::SettingKernelUiPort,
+            setting.kernel.ui_port.to_string(),
+        ));
         items.push((
             AppConfigKey::SettingKernelMixedListen,
             setting.kernel.mixed_listen.clone(),

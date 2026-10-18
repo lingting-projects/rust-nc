@@ -8,9 +8,7 @@ use lib_singbox::SingBox;
 /// 全局唯一的内核实例。
 ///
 /// 规则集转换需要调用内核可执行文件, 因此按安装目录创建一次后复用。
-static INSTANCE: LazyLock<Mutex<Option<Box<dyn SingBox + Send>>>> =
-    LazyLock::new(|| Mutex::new(None));
-
+static INSTANCE: LazyLock<Mutex<Option<SingBox>>> = LazyLock::new(|| Mutex::new(None));
 /// 规则文件根目录。
 pub fn rule_root() -> Result<PathBuf> {
     Ok(directorys()?.rule.clone())
@@ -76,7 +74,7 @@ pub fn copy(source: &Path, target: &Path) -> Result<()> {
 pub fn json_to_srs(json_path: &Path, srs_path: &Path) -> Result<()> {
     let mut guard = INSTANCE.lock().unwrap_or_else(|error| error.into_inner());
     if guard.is_none() {
-        *guard = Some(Box::new(lib_singbox::create()?));
+        *guard = Some(lib_singbox::create()?);
     }
 
     match guard.as_mut() {

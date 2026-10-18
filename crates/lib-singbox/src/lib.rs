@@ -1,11 +1,17 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::process::{Command, ExitStatus};
+use std::sync::Arc;
 
-use anyhow::Result;
+use anyhow::{Context, Result, bail};
+use arc_swap::ArcSwapOption;
+use lib_system::process::Process;
 
-mod bin;
+mod grpc;
+
+pub use grpc::SingBoxGrpc;
 
 /// 随包分发的 sing-box 版本。
-pub const VERSION: &str = "v1.11.9";
+pub const VERSION: &str = "v1.14.3";
 
 /// 内核进程可执行文件名，位于安装目录下。
 pub const BIN_NAME: &str = "lingting-nc-singbox";
@@ -21,20 +27,168 @@ pub struct State {
     pub reason: Option<String>,
 }
 
-/// 内核进程能力。
-pub trait SingBox {
-    /// 查询当前状态。
-    fn state(&mut self) -> Result<State>;
-    /// 以 `config_path` 为配置、`work_dir` 为工作目录启动内核。
-    fn start(&mut self, config_path: &Path, work_dir: &Path) -> Result<()>;
-    /// 停止内核。
-    fn stop(&mut self) -> Result<()>;
-    /// 将 json 规则集转换为 srs 规则集。
-    fn json_to_srs(&mut self, json_path: &Path, srs_path: &Path) -> Result<()>;
+/// 内核实例。
+///
+/// 仅支持随包分发的二进制内核，实例创建时即绑定可执行文件路径，
+/// 之后通过 [`SingBox::start`] 与 [`SingBox::stop`] 管理其生命周期。
+pub struct SingBox {
+    bin: String,
+    process: Option<Process>,
+    error: bool,
+    reason: Option<String>,
+    /// gRPC 客户端，仅在内核运行期间存在。
+    grpc: ArcSwapOption<SingBoxGrpc>,
+    /// 内核 API 监听地址，用于构造 gRPC 客户端。
+    api: String,
 }
 
-/// 创建内核进程实例，内核可执行文件位于安装目录。
-pub fn create() -> Result<bin::BinSingBox> {
+impl SingBox {
+    /// 创建实例，`bin_dir` 为内核可执行文件所在目录。
+    pub fn new(bin_dir: impl AsRef<Path>) -> Result<Self> {
+        let bin = bin_dir.as_ref().join(BIN_NAME);
+        let bin = bin
+            .to_str()
+            .with_context(|| format!("内核路径非 UTF-8: {}", bin.display()))?
+            .to_string();
+        log::info!("load sing box bin from {bin}");
+        Ok(Self {
+            bin,
+            process: None,
+            error: false,
+            reason: None,
+            grpc: ArcSwapOption::empty(),
+            api: String::new(),
+        })
+    }
+
+    /// 查询当前状态。
+    pub fn state(&mut self) -> Result<State> {
+        if let Some(process) = &mut self.process {
+            // 已经结束时判断结果, 未结束不做处理
+            if let Some(status) = process.status()? {
+                self.process = None;
+                // 内核退出后 gRPC 连接已失效, 一并清理
+                self.grpc.store(None);
+                if let Err(error) = Self::check(status) {
+                    log::error!("singbox执行异常! {error}");
+                    self.error = true;
+                    self.reason = Some(error.to_string());
+                }
+            }
+        }
+
+        Ok(State {
+            running: self.process.is_some(),
+            error: self.error,
+            reason: self.reason.clone(),
+        })
+    }
+
+    /// 以 `config_path` 为配置、`work_dir` 为工作目录启动内核，`api` 为内核 API 监听地址。
+    pub fn start(&mut self, config_path: &Path, work_dir: &Path, api: &str) -> Result<()> {
+        if self.process.is_some() {
+            return Ok(());
+        }
+
+        let config = config_path
+            .to_str()
+            .with_context(|| format!("配置路径非 UTF-8: {}", config_path.display()))?;
+        let work = work_dir
+            .to_str()
+            .with_context(|| format!("工作目录非 UTF-8: {}", work_dir.display()))?;
+
+        let mut cmd = Command::new(&self.bin);
+        cmd.arg("start")
+            .current_dir(work_dir)
+            .arg(config)
+            .arg(work)
+            // 父进程 pid, 内核据此判断是否需要退出
+            .arg(std::process::id().to_string());
+
+        self.process = Some(Process::new(cmd)?);
+        self.api = api.to_string();
+        self.error = false;
+        self.reason = None;
+        // 上一轮连接属于旧进程, 启动新进程时丢弃
+        self.grpc.store(None);
+        Ok(())
+    }
+
+    /// 停止内核。
+    pub fn stop(&mut self) -> Result<()> {
+        // 无论进程是否成功结束, 旧连接都不再可用
+        self.grpc.store(None);
+        let Some(mut process) = self.process.take() else {
+            return Ok(());
+        };
+
+        match process.kill() {
+            Ok(()) => Ok(()),
+            Err(error) => {
+                // 没结束, 放回去
+                self.process = Some(process);
+                log::error!("singbox结束进程异常! {error}");
+                Err(error)
+            }
+        }
+    }
+
+    /// 将 json 规则集转换为 srs 规则集。
+    pub fn json_to_srs(&mut self, json_path: &Path, srs_path: &Path) -> Result<()> {
+        let json = json_path
+            .to_str()
+            .with_context(|| format!("json 路径非 UTF-8: {}", json_path.display()))?;
+        let srs = srs_path
+            .to_str()
+            .with_context(|| format!("srs 路径非 UTF-8: {}", srs_path.display()))?;
+
+        let mut cmd = Command::new(&self.bin);
+        cmd.arg("json2srs").arg(json).arg(srs);
+        let status = cmd.status()?;
+        Self::check(status)
+    }
+
+    /// 取得 gRPC 客户端。
+    ///
+    /// 内核运行中时返回可用客户端，尚未构造则先按当前 API 地址构造并保存；
+    /// 内核未运行时返回 `None`。
+    pub fn grpc(&self) -> Result<Option<Arc<SingBoxGrpc>>> {
+        if self.process.is_none() {
+            return Ok(None);
+        }
+
+        if let Some(grpc) = self.grpc.load_full() {
+            return Ok(Some(grpc));
+        }
+
+        let grpc = Arc::new(SingBoxGrpc::new(&self.api)?);
+        self.grpc.store(Some(grpc.clone()));
+        Ok(Some(grpc))
+    }
+
+    /// 检查子进程退出码，非零视为失败。
+    fn check(status: ExitStatus) -> Result<()> {
+        let code = status.code().unwrap_or(-1);
+        if code == 0 {
+            return Ok(());
+        }
+        bail!("内核执行失败, 退出码: {code}")
+    }
+}
+
+impl Drop for SingBox {
+    fn drop(&mut self) {
+        let _ = self.stop();
+    }
+}
+
+/// 创建内核实例，内核可执行文件位于安装目录。
+pub fn create() -> Result<SingBox> {
     let directory = lib_core::directorys()?;
-    bin::BinSingBox::new(&directory.install)
+    SingBox::new(&directory.install)
+}
+
+/// 安装目录下的内核可执行文件路径。
+pub fn bin_path() -> Result<PathBuf> {
+    Ok(lib_core::directorys()?.install.join(BIN_NAME))
 }

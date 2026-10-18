@@ -23,10 +23,14 @@ pub enum AppConfigKey {
     #[strum(serialize = "setting:kernel:sing_box_version")]
     #[serde(rename = "setting:kernel:sing_box_version")]
     SettingKernelSingBoxVersion,
-    /// 内核: 面板地址
-    #[strum(serialize = "setting:kernel:ui")]
-    #[serde(rename = "setting:kernel:ui")]
-    SettingKernelUi,
+    /// 内核: 面板监听地址
+    #[strum(serialize = "setting:kernel:ui_listen")]
+    #[serde(rename = "setting:kernel:ui_listen")]
+    SettingKernelUiListen,
+    /// 内核: 面板监听端口
+    #[strum(serialize = "setting:kernel:ui_port")]
+    #[serde(rename = "setting:kernel:ui_port")]
+    SettingKernelUiPort,
     /// 内核: 混合代理监听地址
     #[strum(serialize = "setting:kernel:mixed_listen")]
     #[serde(rename = "setting:kernel:mixed_listen")]

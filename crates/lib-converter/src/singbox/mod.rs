@@ -9,9 +9,9 @@ use anyhow::Result;
 use serde::Serialize;
 
 use crate::constants::{
-    CLASH_UI_URL, FAKE_IPV4, FAKE_IPV6, INNER_IPV4, INNER_IPV6, LOOPBACK_IPV4, LOOPBACK_IPV6,
-    OUT_DIRECT, ROUTE_IPV4, ROUTE_IPV6, TAG_AUTO, TAG_FALLBACK, TAG_SELECTOR, VIRTUAL_IPV4,
-    VIRTUAL_IPV6,
+    FAKE_IPV4, FAKE_IPV6, INNER_IPV4, INNER_IPV6, LOOPBACK_IPV4, LOOPBACK_IPV6, OUT_DIRECT,
+    ROUTE_IPV4, TAG_HTTP_CLIENT,
+    ROUTE_IPV6, TAG_AUTO, TAG_FALLBACK, TAG_SELECTOR, VIRTUAL_IPV4, VIRTUAL_IPV6,
 };
 use crate::platform::Kernel;
 use crate::source::Source;
@@ -33,17 +33,13 @@ pub(crate) fn build(kernel: &Kernel, source: Source) -> Result<String> {
         experimental: ExperimentalConfig {
             cache_file: ExperimentalCache {
                 enabled: true,
-                store_rdrc: true,
+                // 1.14 起 store_rdrc 废弃, 由 store_dns 持久化完整 DNS 缓存
+                store_dns: true,
                 store_fakeip: kernel.config.fake_ip,
             },
-            clash_api: ExperimentalClash {
-                external_controller: kernel.config.ui.clone(),
-                external_ui: "nc-sing".to_string(),
-                external_ui_download_url: crate::constants::fast(CLASH_UI_URL),
-                external_ui_download_detour: OUT_DIRECT.to_string(),
-                default_mode: "rule".to_string(),
-            },
         },
+        services: services(kernel),
+        http_clients: http_clients(),
         inbounds: inbounds(kernel),
         outbounds: outbounds(kernel, source),
         route,
@@ -57,6 +53,10 @@ pub(crate) fn build(kernel: &Kernel, source: Source) -> Result<String> {
 struct SingBoxConfig {
     log: LogConfig,
     experimental: ExperimentalConfig,
+    /// 内核 API 等内核自身提供的服务
+    services: Vec<Service>,
+    /// 供远程规则集等内部组件复用的 http 客户端
+    http_clients: Vec<HttpClient>,
     inbounds: Vec<Inbound>,
     outbounds: Vec<Outbound>,
     route: RouteConfig,
@@ -72,25 +72,53 @@ struct LogConfig {
 #[derive(Serialize)]
 struct ExperimentalConfig {
     cache_file: ExperimentalCache,
-    clash_api: ExperimentalClash,
 }
 
 #[derive(Serialize)]
 struct ExperimentalCache {
     enabled: bool,
-    store_rdrc: bool,
+    /// 持久化完整 DNS 缓存, 替代 1.14 起废弃的 store_rdrc
+    store_dns: bool,
     store_fakeip: bool,
 }
 
+/// 内核自身提供的服务。
 #[derive(Serialize)]
-struct ExperimentalClash {
-    external_controller: String,
-    external_ui: String,
-    external_ui_download_url: String,
-    external_ui_download_detour: String,
-    default_mode: String,
+#[serde(tag = "type", rename_all = "kebab-case")]
+enum Service {
+    /// sing-box API, 提供 gRPC 接口
+    Api {
+        tag: String,
+        listen: String,
+        listen_port: u16,
+    },
 }
 
+/// 按内核设置生成服务列表。
+fn services(kernel: &Kernel) -> Vec<Service> {
+    vec![Service::Api {
+        tag: "api".to_string(),
+        listen: kernel.config.ui_listen.clone(),
+        listen_port: kernel.config.ui_port,
+    }]
+}
+
+/// http 客户端，供远程规则集等内部组件下载资源。
+///
+/// 1.14 起为远程规则集隐式创建默认客户端会告警，因此显式声明一个直连客户端。
+#[derive(Serialize)]
+struct HttpClient {
+    tag: String,
+    detour: String,
+}
+
+/// 生成 http 客户端列表。
+fn http_clients() -> Vec<HttpClient> {
+    vec![HttpClient {
+        tag: TAG_HTTP_CLIENT.to_string(),
+        detour: OUT_DIRECT.to_string(),
+    }]
+}
 #[derive(Serialize)]
 #[serde(untagged)]
 enum Inbound {
@@ -101,10 +129,8 @@ enum Inbound {
         interface_name: String,
         auto_route: bool,
         strict_route: bool,
-        endpoint_independent_nat: bool,
         udp_timeout: String,
         stack: String,
-        sniff_override_destination: bool,
         #[serde(skip_serializing_if = "Option::is_none")]
         address: Option<Vec<String>>,
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -167,10 +193,8 @@ fn tun(kernel: &Kernel) -> Inbound {
         interface_name: "NcRustTunBySingBox".to_string(),
         auto_route: true,
         strict_route: true,
-        endpoint_independent_nat: false,
         udp_timeout: "5m".to_string(),
         stack: "system".to_string(),
-        sniff_override_destination: false,
         address,
         route_address,
         loopback_address,

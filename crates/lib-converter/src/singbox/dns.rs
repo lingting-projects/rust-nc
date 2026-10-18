@@ -15,31 +15,41 @@ pub(crate) struct DnsConfig {
     final_: String,
     disable_cache: bool,
     disable_expire: bool,
-    independent_cache: bool,
     strategy: String,
     servers: Vec<DnsServer>,
     rules: Vec<DnsRule>,
 }
 
+/// dns 服务器。
+///
+/// sing-box 1.14 起只接受带 `type` 的新格式，旧的 `address` 单字段写法已被移除。
 #[derive(Serialize)]
-struct DnsServer {
-    tag: String,
-    #[serde(rename = "type", skip_serializing_if = "Option::is_none")]
-    type_: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    server: Option<String>,
-    /// 临时留着用于兼容未适配的协议
-    #[serde(skip_serializing_if = "Option::is_none")]
-    address: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    detour: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    inet4_range: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    inet6_range: Option<String>,
+#[serde(tag = "type", rename_all = "kebab-case")]
+enum DnsServer {
+    /// 加密 dns，例如 DoH
+    Https {
+        tag: String,
+        server: String,
+        detour: String,
+    },
+    /// 系统 dns，用于兼容无法直接指定服务器的地址
+    Udp {
+        tag: String,
+        server: String,
+        detour: String,
+    },
+    /// fake ip
+    Fakeip {
+        tag: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        inet4_range: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        inet6_range: Option<String>,
+    },
 }
 
 impl DnsServer {
+    /// 由 dns 地址构建服务器，`https://` 前缀按 DoH 处理。
     fn of(tag: &str, address: String, detour: &str) -> Self {
         if let Some(scheme) = address.strip_prefix("https://") {
             // 暂时不兼容指定 path
@@ -47,35 +57,23 @@ impl DnsServer {
                 Some(position) => &scheme[..position],
                 None => scheme,
             };
-            return Self {
+            return Self::Https {
                 tag: tag.to_string(),
-                type_: Some("https".to_string()),
-                server: Some(server.to_string()),
-                address: None,
-                detour: Some(detour.to_string()),
-                inet4_range: None,
-                inet6_range: None,
+                server: server.to_string(),
+                detour: detour.to_string(),
             };
         }
 
-        Self {
+        Self::Udp {
             tag: tag.to_string(),
-            type_: None,
-            server: None,
-            address: Some(address),
-            detour: Some(detour.to_string()),
-            inet4_range: None,
-            inet6_range: None,
+            server: address,
+            detour: detour.to_string(),
         }
     }
 
     fn fake(tag: &str, inet4_range: Option<String>, inet6_range: Option<String>) -> Self {
-        Self {
+        Self::Fakeip {
             tag: tag.to_string(),
-            type_: Some("fakeip".to_string()),
-            server: None,
-            address: None,
-            detour: None,
             inet4_range,
             inet6_range,
         }
@@ -156,7 +154,6 @@ pub(crate) fn build(kernel: &Kernel, route: &RouteConfig) -> DnsConfig {
         final_: TAG_DNS_CN.to_string(),
         disable_cache: false,
         disable_expire: false,
-        independent_cache: true,
         strategy: kernel.ip_strategy().to_string(),
         servers,
         rules,

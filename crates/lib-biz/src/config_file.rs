@@ -25,7 +25,8 @@ pub async fn write(context: &Arc<DbContext>, config: &Config) -> Result<PathBuf>
     let rules = rules(context, config).await?;
 
     let platform = PlatformConfig {
-        ui: kernel.ui,
+        ui_listen: kernel.ui_listen,
+        ui_port: kernel.ui_port,
         mixed_listen: kernel.mixed_listen,
         mixed_port: kernel.mixed_port,
         tun: config.tun,

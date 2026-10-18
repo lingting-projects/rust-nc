@@ -19,6 +19,8 @@ func main() {
 	switch cmd {
 	case "start":
 		handleStart()
+	case "check":
+		handleCheck()
 	case "json2srs":
 		handleJsonToSrs()
 	default:
@@ -44,7 +46,7 @@ func handleStart() {
 
 	err := core.Start(configPath, workDir, pid)
 	if !errors.Is(core.Nil, err) {
-		fmt.Printf("启动失败: %s\n", err.Error())
+		fmt.Printf("启动失败[%d]: %s\n", err.ToInt(), err.Error())
 		os.Exit(err.ToInt())
 	}
 }
@@ -58,4 +60,15 @@ func handleJsonToSrs() {
 		os.Exit(err.ToInt())
 	}
 	fmt.Printf("成功将 %s 转换为 %s\n", jsonPath, srsPath)
+}
+
+func handleCheck() {
+	configPath := os.Args[2]
+	workDir := os.Args[3]
+	reason := core.Check(configPath, workDir)
+	if reason != "" {
+		fmt.Printf("配置校验失败: %s\n", reason)
+		os.Exit(1)
+	}
+	fmt.Printf("配置校验通过: %s\n", configPath)
 }

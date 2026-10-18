@@ -62,6 +62,30 @@ fn main() {
     println!("cargo:rerun-if-changed=cmd/main.go");
     println!("cargo:rerun-if-changed=go.mod");
     println!("cargo:rerun-if-changed=go.sum");
+
+    build_proto(Path::new(&dir_manifest));
+}
+
+/// 由官方 proto 生成 gRPC 客户端代码。
+///
+/// proto 取自 sing-box 对应版本的 `daemon/started_service.proto` 并保持原样，
+/// 升级版本时随 `go.mod` 一起替换。`protoc` 使用 vendored 二进制，无需本机安装。
+fn build_proto(manifest_dir: &Path) {
+    let proto = manifest_dir.join("proto").join("started_service.proto");
+    if !proto.exists() {
+        return;
+    }
+
+    if let Ok(protoc) = protoc_bin_vendored::protoc_bin_path() {
+        // SAFETY: build 脚本单线程执行, 设置环境变量不会与其他线程竞争。
+        unsafe { std::env::set_var("PROTOC", protoc) };
+    }
+
+    tonic_prost_build::configure()
+        .build_server(false)
+        .compile_protos(&[proto.as_path()], &[manifest_dir.join("proto").as_path()])
+        .expect("编译内核 gRPC proto 失败");
+    println!("cargo:rerun-if-changed=proto/started_service.proto");
 }
 
 fn build_go(target: &str, bin_path: &Path, manifest_dir: &Path) {

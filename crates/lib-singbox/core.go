@@ -114,7 +114,8 @@ func readConfig(ctx context.Context, path string) (option.Options, error) {
 }
 
 func create(configPath string, workDir string) (context.CancelFunc, *box.Box, error) {
-	_ctx := box.Context(context.Background(), include.InboundRegistry(), include.OutboundRegistry(), include.EndpointRegistry(), include.DNSTransportRegistry(), include.ServiceRegistry())
+	// 1.14 起 box.Context 还需要证书提供者注册表，include.Context 已统一封装全部注册表
+	_ctx := include.Context(context.Background())
 	ctx, cancel := context.WithCancel(_ctx)
 
 	if workDir != "" {
@@ -138,7 +139,10 @@ func create(configPath string, workDir string) (context.CancelFunc, *box.Box, er
 	if err != nil {
 		return cancel, nil, err
 	}
-	options.Log.DisableColor = true
+	// 1.14 起 Log 是指针, 配置缺少 log 字段时为 nil
+	if options.Log != nil {
+		options.Log.DisableColor = true
+	}
 	boxOptions := box.Options{
 		Context: ctx,
 		Options: options,
@@ -146,6 +150,26 @@ func create(configPath string, workDir string) (context.CancelFunc, *box.Box, er
 	instance, err := box.New(boxOptions)
 
 	return cancel, instance, err
+}
+
+// Check 校验配置文件能否被内核正确解析与构建。
+//
+// 与官方 `sing-box check` 等价：完整走一遍配置解析与实例构建，随即关闭实例，
+// 不真正接管流量。返回错误文本，空串表示校验通过。
+func Check(configPath string, workDir string) string {
+	setLog(false)
+	cancel, instance, err := create(configPath, workDir)
+	defer cancel()
+	if err != nil {
+		return err.Error()
+	}
+	if instance != nil {
+		closeErr := instance.Close()
+		if closeErr != nil {
+			return closeErr.Error()
+		}
+	}
+	return ""
 }
 
 func Start(configPath string, workDir string, pid int) SingBoxError {

@@ -1,7 +1,9 @@
 // region 内核设置
 
-/// 内核面板地址
-pub const KERNEL_UI: &str = "127.0.0.1:9090";
+/// 内核面板监听地址
+pub const KERNEL_UI_LISTEN: &str = "127.0.0.1";
+/// 内核面板监听端口
+pub const KERNEL_UI_PORT: u16 = 9090;
 /// 混合代理监听地址
 pub const KERNEL_MIXED_LISTEN: &str = "127.0.0.1";
 /// 混合代理端口

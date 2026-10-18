@@ -1,7 +1,8 @@
 use serde::Serialize;
 
 use crate::constants::{
-    GEO_IP_CN, KEY_DIRECT, KEY_PROXY, KEY_REJECT, OUT_DIRECT, TAG_FALLBACK, TAG_SELECTOR,
+    GEO_IP_CN, KEY_DIRECT, KEY_PROXY, KEY_REJECT, OUT_DIRECT, TAG_DNS_CN, TAG_FALLBACK,
+    TAG_HTTP_CLIENT, TAG_SELECTOR,
 };
 use crate::platform::Kernel;
 use crate::rule::{Rule, RuleType};
@@ -74,9 +75,19 @@ pub(crate) struct RouteConfig {
     #[serde(rename = "final")]
     final_: String,
     auto_detect_interface: bool,
+    /// 出站域名解析使用的 dns 服务器, 1.12 起取代出站内的 `domain_resolver`
+    default_domain_resolver: DomainResolver,
+    /// 默认 http 客户端, 1.14 起为内部组件显式指定
+    default_http_client: String,
     /// dns 分流需要读取规则标签
     pub(crate) rule_set: Vec<SingBoxRule>,
     rules: Vec<RouteRule>,
+}
+
+/// 出站域名解析设置。
+#[derive(Serialize)]
+pub(crate) struct DomainResolver {
+    pub(crate) server: String,
 }
 
 /// 构建路由规则与规则集。
@@ -130,6 +141,10 @@ pub(crate) fn build(kernel: &Kernel) -> RouteConfig {
     RouteConfig {
         final_: TAG_FALLBACK.to_string(),
         auto_detect_interface: true,
+        default_domain_resolver: DomainResolver {
+            server: TAG_DNS_CN.to_string(),
+        },
+        default_http_client: TAG_HTTP_CLIENT.to_string(),
         rule_set,
         rules,
     }

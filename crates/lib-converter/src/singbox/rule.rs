@@ -1,6 +1,6 @@
 use serde::Serialize;
 
-use crate::constants::OUT_DIRECT;
+use crate::constants::TAG_HTTP_CLIENT;
 use crate::rule::Rule;
 
 /// sing-box 规则集。
@@ -14,8 +14,9 @@ pub struct SingBoxRule {
     pub url: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub path: Option<String>,
+    /// 下载规则集使用的 http 客户端, 1.14 起取代 `download_detour`
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub download_detour: Option<String>,
+    pub http_client: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub update_interval: Option<String>,
 }
@@ -37,7 +38,7 @@ impl Rule {
                 format,
                 url: Some(self.path.clone()),
                 path: None,
-                download_detour: Some(OUT_DIRECT.to_string()),
+                http_client: Some(TAG_HTTP_CLIENT.to_string()),
                 update_interval: Some("1d".to_string()),
             };
         }
@@ -48,7 +49,7 @@ impl Rule {
             format,
             url: None,
             path: Some(self.path.clone()),
-            download_detour: None,
+            http_client: None,
             update_interval: None,
         }
     }

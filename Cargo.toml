@@ -126,6 +126,12 @@ sha2 = { version = "0.10" }
 async-trait = { version = "0.1" }
 arc-swap = { version = "1.8" }
 dashmap = { version = "6.1" }
+# 内核 gRPC 客户端
+tonic = { version = "0.14", features = ["transport"] }
+tonic-prost = { version = "0.14" }
+prost = { version = "0.14" }
+tonic-prost-build = { version = "0.14" }
+protoc-bin-vendored = { version = "3.3" }
 cef = { version = "149.3.0" }
 tao = { version = "0.35" }
 windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_UI_WindowsAndMessaging"] }
