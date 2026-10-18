@@ -1,11 +1,13 @@
 use std::rc::Rc;
 
 use gpui_kit::assets::IconName;
-use gpui_kit::base::{StyledExt as _, h_flex, v_flex};
+use gpui_kit::base::{StyledExt as _, h_flex};
 use gpui_kit::component::button::Button;
 use gpui_kit::component::button::ButtonVariants as _;
 use gpui_kit::component::table::{Column, DataTable, TableDelegate, TableState};
-use gpui_kit::component::{ActiveTheme as _, Sizable as _};
+use gpui_kit::component::tag::Tag;
+use gpui_kit::component::tooltip::Tooltip;
+use gpui_kit::component::{ActiveTheme as _, ColorName, Sizable as _};
 use gpui_kit::*;
 
 use lingting_gpui_kit::region::RegionTag;
@@ -17,22 +19,17 @@ use crate::components::delete_button;
 use crate::utils::format;
 
 /// 各列宽度，单位为 rem，随界面缩放一起变化。
-const NAME_WIDTH: Rems = rems(16.);
-const AREA_WIDTH: Rems = rems(9.);
-const COUNT_WIDTH: Rems = rems(7.);
-const FLAG_WIDTH: Rems = rems(6.);
-const IP_WIDTH: Rems = rems(6.);
-const REFRESH_WIDTH: Rems = rems(8.);
+const NAME_WIDTH: Rems = rems(10.);
+const COUNT_WIDTH: Rems = rems(5.);
+const POLICY_WIDTH: Rems = rems(14.);
+const REFRESH_WIDTH: Rems = rems(7.);
 const ACTION_WIDTH: Rems = rems(9.);
 
 /// 列定义：键、表头文案、宽度。
-const COLUMNS: [(&str, &str, Rems); 8] = [
+const COLUMNS: [(&str, &str, Rems); 5] = [
     ("name", "名称", NAME_WIDTH),
-    ("area", "无区域节点", AREA_WIDTH),
-    ("count", "配置数量", COUNT_WIDTH),
-    ("tun", "TUN", FLAG_WIDTH),
-    ("ip", "IP 策略", IP_WIDTH),
-    ("fake_ip", "FakeIP", FLAG_WIDTH),
+    ("count", "规则数量", COUNT_WIDTH),
+    ("policy", "节点策略", POLICY_WIDTH),
     ("refresh", "上次更新", REFRESH_WIDTH),
     ("action", "操作", ACTION_WIDTH),
 ];
@@ -115,7 +112,7 @@ pub fn matched(items: &[Config], keyword: &str) -> Vec<usize> {
 
 /// 配置表格的数据与渲染。
 ///
-/// 八列：名称、无区域节点、配置数量、TUN、IP 策略、FakeIP、上次更新、操作。
+/// 五列：名称、规则数量、节点策略、上次更新、操作。
 /// 委托只持有数据与过滤结果的共享引用，由页面在渲染时同步；
 /// 页面是数据的唯一来源，表格不单独维护一份可变副本。
 pub struct ConfigTable {
@@ -158,10 +155,17 @@ impl ConfigTable {
     }
 
     /// 名称列：只放名称，其余信息各自成列，避免同一行重复表达。
+    ///
+    /// 名称长度不可控，超出列宽时省略，完整名称放在 tooltip 里。
     fn name(&self, item: &Config) -> AnyElement {
+        let name = item.name.clone();
         div()
             .text_sm()
             .font_weight(FontWeight::MEDIUM)
+            .truncate()
+            .id(ElementId::from(format!("config-name:{}", item.id)))
+            .aria_label(name.clone())
+            .tooltip(move |window, cx| Tooltip::new(name.clone()).build(window, cx))
             .child(item.name.clone())
             .into_any_element()
     }
@@ -259,12 +263,9 @@ impl TableDelegate for ConfigTable {
 
         match col_ix {
             0 => self.name(item),
-            1 => flag(item.include_area_non, "包含", "排除", cx),
-            2 => count(item).into_any_element(),
-            3 => flag(item.tun, "启用", "停用", cx),
-            4 => ip(item).into_any_element(),
-            5 => flag(item.fake_ip, "启用", "停用", cx),
-            6 => div()
+            1 => count(item).into_any_element(),
+            2 => policy(item).into_any_element(),
+            3 => div()
                 .text_sm()
                 .child(format::since(item.refresh_time))
                 .into_any_element(),
@@ -273,28 +274,63 @@ impl TableDelegate for ConfigTable {
     }
 }
 
-/// 配置数量：直连、代理、拒绝三类规则的数量之和。
+/// 规则数量：直连、代理、拒绝三类规则的数量之和。
 fn count(item: &Config) -> impl IntoElement {
     let total = item.rule_direct_ids.len() + item.rule_proxy_ids.len() + item.rule_reject_ids.len();
     div().text_sm().child(total.to_string())
 }
 
-/// 开关类列的取值：启用态用常规文字色，关闭态退到次要文字色。
-fn flag(value: bool, on: &'static str, off: &'static str, cx: &App) -> AnyElement {
-    let (text, color) = match value {
-        true => (on, cx.theme().foreground),
-        false => (off, cx.theme().muted_foreground),
-    };
-    div()
-        .text_sm()
-        .text_color(color)
-        .child(text)
-        .into_any_element()
+/// 节点策略：把各列原本单独展示的开关收成一排标签。
+///
+/// 每一类都用自己的颜色，扫读时不必逐个读文字；无区域节点的颜色同时表示
+/// 包含还是排除，其余标签只表示「启用了这一项」，关闭时不渲染。
+fn policy(item: &Config) -> impl IntoElement {
+    h_flex().gap_1().children(tags(item))
 }
 
-/// IP 策略：只启用 IPv6 时优先 IPv6，否则只走 IPv4。
-fn ip(item: &Config) -> impl IntoElement {
+/// 节点策略里的标签。
+fn tags(item: &Config) -> Vec<AnyElement> {
+    let mut tags = vec![if item.include_area_non {
+        tag(
+            Tag::info(),
+            "包含无区域节点",
+            "筛选时保留没有区域信息的节点",
+        )
+    } else {
+        tag(
+            Tag::warning(),
+            "排除无区域节点",
+            "筛选时移除没有区域信息的节点",
+        )
+    }];
+
+    if item.tun {
+        tags.push(tag(
+            Tag::color(ColorName::Violet),
+            "TUN",
+            "使用 TUN 模式接管流量",
+        ));
+    }
+    tags.push(if item.ipv6 {
+        tag(Tag::color(ColorName::Emerald), "IPv6", "启用 IPv6")
+    } else {
+        tag(Tag::color(ColorName::Cyan), "IPv4", "仅使用 IPv4")
+    });
+    if item.fake_ip {
+        tags.push(tag(Tag::color(ColorName::Fuchsia), "FakeIP", "启用 FakeIP"));
+    }
+
+    tags
+}
+
+/// 一枚带 tooltip 的策略标签：颜色区分类型，tooltip 说明这一项的含义。
+///
+/// `Tag` 自身不接受交互与 tooltip，因此外面包一层 `div` 承载 tooltip 与可读名称。
+fn tag(tag: Tag, label: &'static str, hint: &'static str) -> AnyElement {
     div()
-        .text_sm()
-        .child(if item.ipv6 { "IPv6" } else { "IPv4" })
+        .id(label)
+        .aria_label(label)
+        .tooltip(move |window, cx| Tooltip::new(hint).build(window, cx))
+        .child(tag.small().child(label))
+        .into_any_element()
 }
