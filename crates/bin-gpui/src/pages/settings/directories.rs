@@ -62,7 +62,7 @@ impl RenderOnce for Directories {
             .flex_shrink_0()
             .title_padding(PADDING)
             .content_padding(PADDING)
-            .title(div().text_sm().font_weight(FontWeight::MEDIUM).child(TITLE))
+            .title(div().font_weight(FontWeight::MEDIUM).child(TITLE))
             .child(content(self.entries.as_ref(), cx))
     }
 }
@@ -77,7 +77,6 @@ fn content(entries: &Result<Vec<DirectoryEntry>, SharedString>, cx: &App) -> Any
             .into_any_element(),
         Err(reason) => div()
             .w_full()
-            .text_sm()
             .text_color(cx.theme().danger)
             .child(reason.clone())
             .into_any_element(),
@@ -96,7 +95,6 @@ fn row(entry: &DirectoryEntry, cx: &App) -> AnyElement {
             div()
                 .w(LABEL_WIDTH)
                 .flex_shrink_0()
-                .text_sm()
                 .text_color(cx.theme().muted_foreground)
                 .child(entry.label),
         )
@@ -105,7 +103,6 @@ fn row(entry: &DirectoryEntry, cx: &App) -> AnyElement {
             div()
                 .flex_1()
                 .min_w_0()
-                .text_sm()
                 .font_family(cx.theme().mono_font_family.clone())
                 .child(entry.path.display().to_string()),
         )

@@ -83,7 +83,6 @@ pub fn placeholder(reason: &str, cx: &App) -> AnyElement {
         .flex()
         .items_center()
         .justify_center()
-        .text_sm()
         .text_color(cx.theme().muted_foreground)
         .child(reason.to_string())
         .into_any_element()
@@ -163,13 +162,11 @@ impl RuleTable {
             .gap_0p5()
             .child(
                 div()
-                    .text_sm()
                     .font_weight(FontWeight::MEDIUM)
                     .child(item.name.clone()),
             )
             .child(
                 div()
-                    .text_xs()
                     .text_color(cx.theme().muted_foreground)
                     .child(url),
             )
@@ -270,12 +267,10 @@ impl TableDelegate for RuleTable {
         match col_ix {
             0 => self.name(item, cx),
             1 => div()
-                .text_sm()
                 .child(item.count.to_string())
                 .into_any_element(),
-            2 => div().text_sm().child(kind(item)).into_any_element(),
+            2 => div().child(kind(item)).into_any_element(),
             3 => div()
-                .text_sm()
                 .child(format::since(item.refresh_time))
                 .into_any_element(),
             _ => self.action(item, cx),

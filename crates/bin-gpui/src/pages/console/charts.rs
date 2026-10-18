@@ -82,7 +82,6 @@ fn notice(reason: &str, theme: &gpui_kit::component::Theme) -> impl IntoElement 
         .size_full()
         .items_center()
         .justify_center()
-        .text_sm()
         .text_color(theme.muted_foreground)
         .child(reason.to_string())
 }
@@ -119,11 +118,9 @@ fn value_card(
     div().flex_1().min_w_0().h_16().child(
         ItemCard::new(label).hoverable(false).with_center_split(
             div()
-                .text_xs()
                 .text_color(theme.muted_foreground)
                 .child(label),
             div()
-                .text_base()
                 .font_weight(FontWeight::SEMIBOLD)
                 .truncate()
                 .child(value.to_string()),
@@ -234,7 +231,7 @@ fn chart_card(
                         .w_full()
                         .flex_shrink_0()
                         .justify_between()
-                        .child(div().text_sm().font_weight(FontWeight::MEDIUM).child(title))
+                        .child(div().font_weight(FontWeight::MEDIUM).child(title))
                         .child(
                             h_flex()
                                 .gap_3()
@@ -244,7 +241,6 @@ fn chart_card(
                                         .child(div().size_2().rounded_full().bg(*color))
                                         .child(
                                             div()
-                                                .text_xs()
                                                 .text_color(theme.muted_foreground)
                                                 .child(*label),
                                         )
@@ -285,7 +281,7 @@ fn chart_placeholder(title: &'static str, theme: &gpui_kit::component::Theme) ->
                 .size_full()
                 .min_h_0()
                 .gap_3()
-                .child(div().text_sm().font_weight(FontWeight::MEDIUM).child(title))
+                .child(div().font_weight(FontWeight::MEDIUM).child(title))
                 .child(
                     v_flex()
                         .w_full()
@@ -293,7 +289,6 @@ fn chart_placeholder(title: &'static str, theme: &gpui_kit::component::Theme) ->
                         .min_h_0()
                         .items_center()
                         .justify_center()
-                        .text_sm()
                         .text_color(theme.muted_foreground)
                         .child("暂无数据"),
                 ),

@@ -98,7 +98,6 @@ fn bar(content: impl IntoElement) -> AnyElement {
 fn hint(reason: &str, color: Hsla) -> AnyElement {
     bar(div()
         .w_full()
-        .text_sm()
         .text_color(color)
         .child(reason.to_string()))
 }
@@ -114,13 +113,11 @@ fn pair(label: &'static str, value: &str, theme: &gpui_kit::component::Theme) ->
         .gap_2()
         .child(
             div()
-                .text_xs()
                 .text_color(theme.muted_foreground)
                 .child(label),
         )
         .child(
             div()
-                .text_sm()
                 .font_weight(FontWeight::MEDIUM)
                 .child(value.to_string()),
         )

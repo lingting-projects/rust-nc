@@ -3,6 +3,15 @@ use std::rc::Rc;
 use gpui_kit::component::{Theme, ThemeConfig, ThemeConfigColors, ThemeMode};
 use gpui_kit::*;
 
+/// 基础字号：GPUI 的默认值，也是所有 rem 长度的基准。
+///
+/// 界面整体大小只由这一个值决定；页面里的尺寸、间距、字号一律用 `rems()` 或
+/// `text_sm()` 这类 rem 助手表达，改这里就能整体放大缩小。
+const BASE_FONT_SIZE: f32 = 16.;
+
+/// 等宽字号，与基础字号的比例保持 GPUI 默认的 16 : 13。
+const BASE_MONO_FONT_SIZE: f32 = 13.;
+
 /// 主色（antd `colorPrimary`，旧界面的拂晓蓝）。
 const PRIMARY: &str = "#1890ff";
 /// 主色悬停（antd `colorPrimaryHover`）。
@@ -83,16 +92,23 @@ macro_rules! palette {
 }
 
 /// 应用主题。必须在 [`gpui_kit::init`] 之后、创建窗口之前调用。
+///
+/// [`BASE_FONT_SIZE`] 写进 `ThemeConfig::font_size`，`Root` 每帧把该值设为窗口的 rem，
+/// 于是字号、间距、控件高度、图标等所有 rem 长度一起缩放。
 pub fn apply(cx: &mut App) {
     let config = Rc::new(config());
     Theme::update(cx, |theme| theme.apply_config(&config));
 }
 
 /// 主题配置：antd 的圆角、阴影与浅色色板。
+///
+/// 基础字号固定为 [`BASE_FONT_SIZE`]，`Root` 会把它设为窗口 rem。
 fn config() -> ThemeConfig {
     ThemeConfig {
         name: "Antd Dawn Blue".into(),
         mode: ThemeMode::Light,
+        font_size: Some(BASE_FONT_SIZE),
+        mono_font_size: Some(BASE_MONO_FONT_SIZE),
         radius: Some(6),
         radius_lg: Some(8),
         shadow: Some(true),

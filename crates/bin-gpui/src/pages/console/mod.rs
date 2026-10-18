@@ -285,7 +285,6 @@ impl Console {
                         .selected_style(ItemCardSelectedStyle::Elevated)
                         .center(
                             div()
-                                .text_sm()
                                 .font_weight(FontWeight::MEDIUM)
                                 .child(*label),
                         )

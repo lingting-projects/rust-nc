@@ -220,7 +220,6 @@ pub fn open(
                     let hint = (!value.trim().is_empty() && pick_host(value.trim()).is_none())
                         .then(|| {
                             div()
-                                .text_xs()
                                 .text_color(cx.theme().danger)
                                 .child("地址需以 http:// 或 https:// 开头")
                                 .into_any_element()
@@ -269,7 +268,7 @@ fn width(remote: bool) -> Rems {
 fn field(label: &'static str, state: &Entity<InputState>, hint: Option<AnyElement>) -> AnyElement {
     v_flex()
         .gap_1()
-        .child(div().text_xs().child(label))
+        .child(div().child(label))
         .child(Input::new(state).cleanable(true).aria_label(label))
         .children(hint)
         .into_any_element()
@@ -279,7 +278,7 @@ fn field(label: &'static str, state: &Entity<InputState>, hint: Option<AnyElemen
 fn content_field(state: &Entity<TextareaState>) -> AnyElement {
     v_flex()
         .gap_1()
-        .child(div().text_xs().child("规则内容"))
+        .child(div().child("规则内容"))
         .child(
             Textarea::new(state)
                 .h(CONTENT_HEIGHT)
@@ -291,7 +290,6 @@ fn content_field(state: &Entity<TextareaState>) -> AnyElement {
 /// 必填字段留空时的提示，样式与地址字段的校验提示一致。
 fn required_hint(cx: &App, text: &'static str) -> AnyElement {
     div()
-        .text_xs()
         .text_color(cx.theme().danger)
         .child(text)
         .into_any_element()

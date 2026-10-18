@@ -84,7 +84,6 @@ pub fn placeholder(reason: &str, cx: &App) -> AnyElement {
         .flex()
         .items_center()
         .justify_center()
-        .text_sm()
         .text_color(cx.theme().muted_foreground)
         .child(reason.to_string())
         .into_any_element()
@@ -164,13 +163,11 @@ impl SubscribeTable {
             .gap_0p5()
             .child(
                 div()
-                    .text_sm()
                     .font_weight(FontWeight::MEDIUM)
                     .child(item.name.clone()),
             )
             .child(
                 div()
-                    .text_xs()
                     .text_color(cx.theme().muted_foreground)
                     .child(url),
             )
@@ -271,11 +268,9 @@ impl TableDelegate for SubscribeTable {
         match col_ix {
             0 => self.name(item, cx),
             1 => div()
-                .text_sm()
                 .child(format::remaining(item.max, item.upload + item.download))
                 .into_any_element(),
             2 => div()
-                .text_sm()
                 .child(format::until(item.expire_time))
                 .into_any_element(),
             _ => self.action(item, cx),

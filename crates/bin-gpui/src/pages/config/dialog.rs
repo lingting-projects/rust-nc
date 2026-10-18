@@ -275,7 +275,7 @@ pub fn open(
                         .child(
                             v_flex()
                                 .gap_1()
-                                .child(div().text_xs().child("订阅（必填）"))
+                                .child(div().child("订阅（必填）"))
                                 .child(
                                     Select::new(&subscribe)
                                         .id("config-subscribe")
@@ -288,7 +288,7 @@ pub fn open(
                         .child(
                             v_flex()
                                 .gap_1()
-                                .child(div().text_xs().child("包含名称关键字"))
+                                .child(div().child("包含名称关键字"))
                                 .child(
                                     Input::new(&include_names)
                                         .cleanable(true)
@@ -298,7 +298,7 @@ pub fn open(
                         .child(
                             v_flex()
                                 .gap_1()
-                                .child(div().text_xs().child("排除名称关键字"))
+                                .child(div().child("排除名称关键字"))
                                 .child(
                                     Input::new(&exclude_names)
                                         .cleanable(true)
@@ -334,7 +334,6 @@ fn field(
 ) -> AnyElement {
     let hint = hint.map(|hint| {
         div()
-            .text_xs()
             .text_color(cx.theme().danger)
             .child(hint)
             .into_any_element()
@@ -342,7 +341,7 @@ fn field(
 
     v_flex()
         .gap_1()
-        .child(div().text_xs().child(label))
+        .child(div().child(label))
         .child(Input::new(state).cleanable(true).aria_label(label))
         .children(hint)
         .into_any_element()
@@ -420,7 +419,7 @@ fn areas(form: &Entity<ConfigForm>, cx: &mut App) -> AnyElement {
         .child(
             v_flex()
                 .gap_1()
-                .child(div().text_xs().child("包含区域"))
+                .child(div().child("包含区域"))
                 .child(
                     // 区域多选：值变化直接写回表单，渲染时按受控值同步。
                     RegionMultiSelect::new("config-include-area")
@@ -442,7 +441,7 @@ fn areas(form: &Entity<ConfigForm>, cx: &mut App) -> AnyElement {
         .child(
             v_flex()
                 .gap_1()
-                .child(div().text_xs().child("排除区域"))
+                .child(div().child("排除区域"))
                 .child(
                     RegionMultiSelect::new("config-exclude-area")
                         .value(exclude)
@@ -465,7 +464,7 @@ fn areas(form: &Entity<ConfigForm>, cx: &mut App) -> AnyElement {
 fn rule_field(label: &'static str, state: &Entity<ComboboxState<RuleDelegate>>) -> AnyElement {
     v_flex()
         .gap_1()
-        .child(div().text_xs().child(label))
+        .child(div().child(label))
         .child(
             Combobox::new(state)
                 .placeholder("选择规则")

@@ -90,7 +90,6 @@ pub fn placeholder(reason: &str, cx: &App) -> AnyElement {
         .flex()
         .items_center()
         .justify_center()
-        .text_sm()
         .text_color(cx.theme().muted_foreground)
         .child(reason.to_string())
         .into_any_element()
@@ -160,7 +159,6 @@ impl ConfigTable {
     fn name(&self, item: &Config) -> AnyElement {
         let name = item.name.clone();
         div()
-            .text_sm()
             .font_weight(FontWeight::MEDIUM)
             .truncate()
             .id(ElementId::from(format!("config-name:{}", item.id)))
@@ -266,7 +264,6 @@ impl TableDelegate for ConfigTable {
             1 => count(item).into_any_element(),
             2 => policy(item).into_any_element(),
             3 => div()
-                .text_sm()
                 .child(format::since(item.refresh_time))
                 .into_any_element(),
             _ => self.action(item, cx),
@@ -277,7 +274,7 @@ impl TableDelegate for ConfigTable {
 /// 规则数量：直连、代理、拒绝三类规则的数量之和。
 fn count(item: &Config) -> impl IntoElement {
     let total = item.rule_direct_ids.len() + item.rule_proxy_ids.len() + item.rule_reject_ids.len();
-    div().text_sm().child(total.to_string())
+    div().child(total.to_string())
 }
 
 /// 节点策略：把各列原本单独展示的开关收成一排标签。

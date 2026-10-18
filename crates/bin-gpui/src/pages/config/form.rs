@@ -87,7 +87,6 @@ impl SearchableListItem for RuleItem {
 fn row(name: &SharedString, hint: &SharedString, cx: &App) -> impl IntoElement {
     h_flex().gap_2().child(name.clone()).child(
         div()
-            .text_xs()
             .text_color(cx.theme().muted_foreground)
             .child(hint.clone()),
     )

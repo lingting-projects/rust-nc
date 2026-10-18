@@ -165,7 +165,6 @@ pub fn open(
                     let hint = (!value.trim().is_empty() && pick_host(value.trim()).is_none())
                         .then(|| {
                             div()
-                                .text_xs()
                                 .text_color(cx.theme().danger)
                                 .child("地址需以 http:// 或 https:// 开头")
                                 .into_any_element()
@@ -191,7 +190,7 @@ pub fn open(
 fn field(label: &'static str, state: &Entity<InputState>, hint: Option<AnyElement>) -> AnyElement {
     v_flex()
         .gap_1()
-        .child(div().text_xs().child(label))
+        .child(div().child(label))
         .child(Input::new(state).cleanable(true).aria_label(label))
         .children(hint)
         .into_any_element()

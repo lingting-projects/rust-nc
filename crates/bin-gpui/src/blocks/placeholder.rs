@@ -20,10 +20,9 @@ impl Render for Placeholder {
             .flex_col()
             .gap_2()
             .p_6()
-            .child(div().text_xl().child(self.title.clone()))
+            .child(div().child(self.title.clone()))
             .child(
                 div()
-                    .text_sm()
                     .text_color(cx.theme().muted_foreground)
                     .child("页面开发中。"),
             )
