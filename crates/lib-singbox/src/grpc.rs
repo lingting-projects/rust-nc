@@ -10,7 +10,7 @@ pub mod proto {
 pub use proto::started_service_client::StartedServiceClient;
 pub use proto::{
     CloseConnectionRequest, Connection, ConnectionEvent, ConnectionEventType, Group, GroupItem,
-    SelectOutboundRequest, SubscribeConnectionsRequest, UrlTestRequest,
+    SelectOutboundRequest, SubscribeConnectionsRequest, UrlTestRequest, Version,
 };
 
 /// 连接信息快照。
@@ -93,6 +93,17 @@ impl SingBoxGrpc {
     /// 取得服务客户端。
     fn client(&self) -> StartedServiceClient<Channel> {
         StartedServiceClient::new(self.channel.clone())
+    }
+
+    /// 读取内核版本，用于确认内核 API 已就绪。
+    pub async fn version(&self) -> Result<Version> {
+        let version = self
+            .client()
+            .get_version(self.request(()))
+            .await
+            .context("读取内核版本失败")?
+            .into_inner();
+        Ok(version)
     }
 
     /// 读取出站分组，分组内的节点即节点切换的候选项。
@@ -191,7 +202,8 @@ impl SingBoxGrpc {
 impl ConnectionEvent {
     /// 事件类型，未知取值按新增处理。
     fn kind(&self) -> ConnectionEventType {
-        ConnectionEventType::try_from(self.r#type).unwrap_or(ConnectionEventType::ConnectionEventNew)
+        ConnectionEventType::try_from(self.r#type)
+            .unwrap_or(ConnectionEventType::ConnectionEventNew)
     }
 }
 

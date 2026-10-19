@@ -26,6 +26,7 @@ types-core = { workspace = true }
 framework-timer = { workspace = true }
 
 anyhow = { workspace = true }
+arc-swap = { workspace = true }
 log = { workspace = true }
 tokio = { workspace = true }
 serde_json = { workspace = true }

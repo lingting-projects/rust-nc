@@ -140,10 +140,7 @@ fn dispatch<T: SyncTask>(state: Arc<State>) {
         runtime.spawn(async move {
             // 运行状态由守卫清理：任务 panic 时后面的代码不会执行，
             // 若不用守卫，该 id 会永久留在运行集合里，后续推送全部被拒绝。
-            let task = RunningGuard {
-                state: worker,
-                id,
-            };
+            let task = RunningGuard { state: worker, id };
             T::run(context, task.id.clone()).await;
         });
     }

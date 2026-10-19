@@ -1,14 +1,8 @@
 use std::path::{Path, PathBuf};
-use std::sync::{LazyLock, Mutex};
 
 use anyhow::{Context, Result};
 use lib_core::directorys;
-use lib_singbox::SingBox;
 
-/// 全局唯一的内核实例。
-///
-/// 规则集转换需要调用内核可执行文件, 因此按安装目录创建一次后复用。
-static INSTANCE: LazyLock<Mutex<Option<SingBox>>> = LazyLock::new(|| Mutex::new(None));
 /// 规则文件根目录。
 pub fn rule_root() -> Result<PathBuf> {
     Ok(directorys()?.rule.clone())
@@ -70,17 +64,12 @@ pub fn copy(source: &Path, target: &Path) -> Result<()> {
         .with_context(|| format!("复制文件失败: {} -> {}", source.display(), target.display()))?;
     Ok(())
 }
+
 /// 将 json 规则集转换为 srs 规则集。
 pub fn json_to_srs(json_path: &Path, srs_path: &Path) -> Result<()> {
-    let mut guard = INSTANCE.lock().unwrap_or_else(|error| error.into_inner());
-    if guard.is_none() {
-        *guard = Some(lib_singbox::create()?);
-    }
-
-    match guard.as_mut() {
-        Some(sing_box) => sing_box.json_to_srs(json_path, srs_path),
-        None => unreachable!("内核实例已在上一行创建"),
-    }
+    crate::kernel::SingBoxInstance::instance()
+        .singbox()?
+        .json_to_srs(json_path, srs_path)
 }
 
 /// 删除目录, 不存在时视为成功。

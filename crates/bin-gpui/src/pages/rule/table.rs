@@ -165,11 +165,7 @@ impl RuleTable {
                     .font_weight(FontWeight::MEDIUM)
                     .child(item.name.clone()),
             )
-            .child(
-                div()
-                    .text_color(cx.theme().muted_foreground)
-                    .child(url),
-            )
+            .child(div().text_color(cx.theme().muted_foreground).child(url))
             .into_any_element()
     }
 
@@ -266,9 +262,7 @@ impl TableDelegate for RuleTable {
 
         match col_ix {
             0 => self.name(item, cx),
-            1 => div()
-                .child(item.count.to_string())
-                .into_any_element(),
+            1 => div().child(item.count.to_string()).into_any_element(),
             2 => div().child(kind(item)).into_any_element(),
             3 => div()
                 .child(format::since(item.refresh_time))

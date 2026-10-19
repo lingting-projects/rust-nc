@@ -273,37 +273,28 @@ pub fn open(
                         .overflow_y_scrollbar()
                         .child(field("名称（必填）", &name, hint.map(str::to_string), cx))
                         .child(
-                            v_flex()
-                                .gap_1()
-                                .child(div().child("订阅（必填）"))
-                                .child(
-                                    Select::new(&subscribe)
-                                        .id("config-subscribe")
-                                        .placeholder("选择订阅")
-                                        .accessibility_label("订阅"),
-                                ),
+                            v_flex().gap_1().child(div().child("订阅（必填）")).child(
+                                Select::new(&subscribe)
+                                    .id("config-subscribe")
+                                    .placeholder("选择订阅")
+                                    .accessibility_label("订阅"),
+                            ),
                         )
                         .child(switches(&form, cx))
                         .child(areas(&form, cx))
                         .child(
-                            v_flex()
-                                .gap_1()
-                                .child(div().child("包含名称关键字"))
-                                .child(
-                                    Input::new(&include_names)
-                                        .cleanable(true)
-                                        .aria_label("包含名称关键字"),
-                                ),
+                            v_flex().gap_1().child(div().child("包含名称关键字")).child(
+                                Input::new(&include_names)
+                                    .cleanable(true)
+                                    .aria_label("包含名称关键字"),
+                            ),
                         )
                         .child(
-                            v_flex()
-                                .gap_1()
-                                .child(div().child("排除名称关键字"))
-                                .child(
-                                    Input::new(&exclude_names)
-                                        .cleanable(true)
-                                        .aria_label("排除名称关键字"),
-                                ),
+                            v_flex().gap_1().child(div().child("排除名称关键字")).child(
+                                Input::new(&exclude_names)
+                                    .cleanable(true)
+                                    .aria_label("排除名称关键字"),
+                            ),
                         )
                         .child(rule_field("直连规则", &direct))
                         .child(rule_field("代理规则", &proxy))
@@ -417,45 +408,39 @@ fn areas(form: &Entity<ConfigForm>, cx: &mut App) -> AnyElement {
             |form| &mut form.include_area_non,
         ))
         .child(
-            v_flex()
-                .gap_1()
-                .child(div().child("包含区域"))
-                .child(
-                    // 区域多选：值变化直接写回表单，渲染时按受控值同步。
-                    RegionMultiSelect::new("config-include-area")
-                        .value(include)
-                        .placeholder("全部区域")
-                        .search_placeholder("搜索区域")
-                        .on_change({
-                            let form = form.clone();
-                            move |values, _, cx| {
-                                let values = values.iter().map(|iso| iso.to_string()).collect();
-                                form.update(cx, |form, cx| {
-                                    form.include_area = values;
-                                    cx.notify();
-                                });
-                            }
-                        }),
-                ),
+            v_flex().gap_1().child(div().child("包含区域")).child(
+                // 区域多选：值变化直接写回表单，渲染时按受控值同步。
+                RegionMultiSelect::new("config-include-area")
+                    .value(include)
+                    .placeholder("全部区域")
+                    .search_placeholder("搜索区域")
+                    .on_change({
+                        let form = form.clone();
+                        move |values, _, cx| {
+                            let values = values.iter().map(|iso| iso.to_string()).collect();
+                            form.update(cx, |form, cx| {
+                                form.include_area = values;
+                                cx.notify();
+                            });
+                        }
+                    }),
+            ),
         )
         .child(
-            v_flex()
-                .gap_1()
-                .child(div().child("排除区域"))
-                .child(
-                    RegionMultiSelect::new("config-exclude-area")
-                        .value(exclude)
-                        .on_change({
-                            let form = form.clone();
-                            move |values, _, cx| {
-                                let values = values.iter().map(|iso| iso.to_string()).collect();
-                                form.update(cx, |form, cx| {
-                                    form.exclude_area = values;
-                                    cx.notify();
-                                });
-                            }
-                        }),
-                ),
+            v_flex().gap_1().child(div().child("排除区域")).child(
+                RegionMultiSelect::new("config-exclude-area")
+                    .value(exclude)
+                    .on_change({
+                        let form = form.clone();
+                        move |values, _, cx| {
+                            let values = values.iter().map(|iso| iso.to_string()).collect();
+                            form.update(cx, |form, cx| {
+                                form.exclude_area = values;
+                                cx.notify();
+                            });
+                        }
+                    }),
+            ),
         )
         .into_any_element()
 }

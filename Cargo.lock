@@ -4473,6 +4473,7 @@ name = "lib-biz"
 version = "26.6.251-rc"
 dependencies = [
  "anyhow",
+ "arc-swap",
  "framework-timer",
  "lib-converter",
  "lib-core",

@@ -9,9 +9,10 @@ use gpui_kit::component::select::{SearchableVec, SelectState};
 use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
 
+use lib_biz::kernel::Status;
 use lingting_gpui_kit::card::{ItemCard, ItemCardSelectedStyle};
 
-use crate::services::{self, AppServices, ConsoleData};
+use crate::services::{self, AppServices, ConsoleData, KernelData};
 use monitor::Monitor;
 use toolbar::ConfigOption;
 
@@ -40,25 +41,32 @@ impl MonitorSection {
     ];
 }
 
-/// 内核运行状态。
-///
-/// 内核尚未接入，状态由本地维护；接入后这里换成真实查询结果。
+/// 内核状态，取自全局内核实例。
 pub struct Kernel {
-    /// 是否正在运行。
-    pub running: bool,
+    /// 内核状态。
+    pub status: Status,
     /// 是否正在执行启停操作。
     pub loading: bool,
     /// 正在运行的配置 id，未运行时为 `None`。
     pub config_id: Option<String>,
+    /// 最近一次异常的原因。
+    pub reason: Option<String>,
 }
 
 impl Kernel {
-    fn stopped() -> Self {
+    /// 由服务层返回的状态快照构造。
+    fn new(data: KernelData) -> Self {
         Self {
-            running: false,
+            status: data.status,
             loading: false,
-            config_id: None,
+            config_id: data.config_id,
+            reason: data.reason,
         }
+    }
+
+    /// 是否正在运行。
+    pub fn running(&self) -> bool {
+        self.status == Status::Running
     }
 }
 
@@ -71,7 +79,7 @@ pub enum LoadState {
 
 /// 控制台页面：自上而下四段——控制栏、预览栏、监控控制栏、实时监控。
 ///
-/// 配置与订阅来自 `service-core`，内核状态与实时监控目前是本地模拟。
+/// 配置与订阅来自 `service-core`，内核状态取自全局内核实例，实时监控仍是本地模拟。
 pub struct Console {
     load: LoadState,
     kernel: Kernel,
@@ -99,14 +107,17 @@ impl Console {
                     .timer(std::time::Duration::from_secs(1))
                     .await;
 
-                // 内核未运行时监控区不渲染，也不必推进采样。
+                // 每秒同步一次内核状态：内核可能自行退出，状态变化后界面跟随。
                 if this
                     .update(cx, |console, cx| {
-                        if !console.kernel.running {
-                            return;
+                        let changed = console.sync_kernel();
+                        let running = console.kernel.running();
+                        if running {
+                            console.monitor.tick();
                         }
-                        console.monitor.tick();
-                        cx.notify();
+                        if changed || running {
+                            cx.notify();
+                        }
                     })
                     .is_err()
                 {
@@ -120,7 +131,7 @@ impl Console {
 
         let mut console = Self {
             load: LoadState::Loading,
-            kernel: Kernel::stopped(),
+            kernel: Kernel::new(services::kernel_data()),
             select,
             selected: None,
             refreshing: false,
@@ -203,39 +214,69 @@ impl Console {
 
     /// 启停内核。
     ///
-    /// 内核尚未接入，这里用一次短暂的等待代替真实启停，让 loading 状态可见；
-    /// 接入后把等待换成真实调用即可，页面其余部分不用改。
+    /// 启动需要等内核 API 探测通过，因此按钮在整个等待期间保持 loading；
+    /// 状态本身由全局内核实例维护，这里只在操作结束后回读。
     pub fn toggle_kernel(&mut self, cx: &mut Context<Self>) {
         if self.kernel.loading {
             return;
         }
 
-        if !self.kernel.running && self.selected.is_none() {
+        let running = self.kernel.running();
+        if !running && self.selected.is_none() {
             return;
         }
+
+        let services = match services::get(cx) {
+            Some(AppServices::Ready(services)) => services.clone(),
+            Some(AppServices::Failed(_)) | None => return,
+        };
 
         self.kernel.loading = true;
         cx.notify();
 
+        let id = self.selected.clone().unwrap_or_default();
+        let loader = services.clone();
+        let runner = services.clone();
         cx.spawn(async move |this, cx| {
-            cx.background_executor()
-                .timer(std::time::Duration::from_millis(400))
-                .await;
+            let task = loader.spawn(async move {
+                if running {
+                    runner.stop_kernel().await
+                } else {
+                    runner.start_kernel(&id).await
+                }
+            });
+
+            let result = match task.await {
+                Ok(result) => result.map_err(|error| format!("{error:#}")),
+                Err(error) => Err(format!("内核任务异常: {error}")),
+            };
 
             this.update(cx, |console, cx| {
                 console.kernel.loading = false;
-                if console.kernel.running {
-                    console.kernel.running = false;
-                    console.kernel.config_id = None;
-                } else {
-                    console.kernel.config_id = console.selected.clone();
-                    console.kernel.running = true;
+                console.sync_kernel();
+                // 内核实例未记录原因时（例如未初始化）用本次操作的错误补上
+                if let Err(reason) = result
+                    && console.kernel.reason.is_none()
+                {
+                    console.kernel.reason = Some(reason);
                 }
                 cx.notify();
             })
             .ok();
         })
         .detach();
+    }
+
+    /// 同步内核状态，返回状态是否发生变化。
+    fn sync_kernel(&mut self) -> bool {
+        let data = services::kernel_data();
+        let changed = self.kernel.status != data.status
+            || self.kernel.config_id != data.config_id
+            || self.kernel.reason != data.reason;
+        self.kernel.status = data.status;
+        self.kernel.config_id = data.config_id;
+        self.kernel.reason = data.reason;
+        changed
     }
 
     /// 切换一个监控分区的显示。
@@ -283,11 +324,7 @@ impl Console {
                     ItemCard::new(*label)
                         .selected(selected)
                         .selected_style(ItemCardSelectedStyle::Elevated)
-                        .center(
-                            div()
-                                .font_weight(FontWeight::MEDIUM)
-                                .child(*label),
-                        )
+                        .center(div().font_weight(FontWeight::MEDIUM).child(*label))
                         .on_click(move |_, cx| {
                             entity.update(cx, |console, cx| {
                                 console.toggle_section(section, !selected, cx);
@@ -310,7 +347,7 @@ impl Render for Console {
             .child(div().w_full().min_h_0().flex_1().child(charts::render(
                 &self.monitor,
                 &self.sections,
-                self.kernel.running,
+                self.kernel.running(),
                 cx.theme(),
             )))
     }

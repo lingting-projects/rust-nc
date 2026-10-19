@@ -166,11 +166,7 @@ impl SubscribeTable {
                     .font_weight(FontWeight::MEDIUM)
                     .child(item.name.clone()),
             )
-            .child(
-                div()
-                    .text_color(cx.theme().muted_foreground)
-                    .child(url),
-            )
+            .child(div().text_color(cx.theme().muted_foreground).child(url))
             .into_any_element()
     }
 

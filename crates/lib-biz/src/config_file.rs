@@ -29,7 +29,7 @@ pub async fn write(context: &Arc<DbContext>, config: &Config) -> Result<PathBuf>
         ui_port: kernel.ui_port,
         mixed_listen: kernel.mixed_listen,
         mixed_port: kernel.mixed_port,
-        tun: config.tun,
+        tun: tun(config),
         fake_ip: config.fake_ip,
         ipv6: config.ipv6,
         geo_cn: config.geo_cn,
@@ -150,6 +150,16 @@ fn exclude(config: &Config) -> NodeContains {
         non_area: default.non_area,
         non_name: default.non_name,
     }
+}
+
+/// 是否启用 tun。
+///
+/// 开发构建不会以管理员权限运行，因此 debug 下无条件关闭 tun，忽略配置中的取值。
+fn tun(config: &Config) -> bool {
+    if cfg!(debug_assertions) {
+        return false;
+    }
+    config.tun
 }
 
 /// 由节点识别订阅来源, 依据协议所在的字段名。

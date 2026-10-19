@@ -117,9 +117,7 @@ fn value_card(
 ) -> impl IntoElement {
     div().flex_1().min_w_0().h_16().child(
         ItemCard::new(label).hoverable(false).with_center_split(
-            div()
-                .text_color(theme.muted_foreground)
-                .child(label),
+            div().text_color(theme.muted_foreground).child(label),
             div()
                 .font_weight(FontWeight::SEMIBOLD)
                 .truncate()
@@ -240,9 +238,7 @@ fn chart_card(
                                         .gap_1()
                                         .child(div().size_2().rounded_full().bg(*color))
                                         .child(
-                                            div()
-                                                .text_color(theme.muted_foreground)
-                                                .child(*label),
+                                            div().text_color(theme.muted_foreground).child(*label),
                                         )
                                 })),
                         ),

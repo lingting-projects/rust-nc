@@ -52,11 +52,7 @@ fn tags(config: &Config) -> Vec<AnyElement> {
         tag(Tag::color(ColorName::Cyan), "IPv4", "仅使用 IPv4")
     });
     if config.fake_ip {
-        tags.push(tag(
-            Tag::color(ColorName::Fuchsia),
-            "FakeIP",
-            "启用 FakeIP",
-        ));
+        tags.push(tag(Tag::color(ColorName::Fuchsia), "FakeIP", "启用 FakeIP"));
     }
 
     tags

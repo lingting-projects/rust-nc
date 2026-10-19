@@ -1,6 +1,9 @@
 mod config;
+mod kernel;
 mod rule;
 mod subscribe;
+
+pub use kernel::{KernelData, kernel_data};
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -94,6 +97,7 @@ pub fn init(cx: &mut App) {
             services.init_subscribe_sync();
             services.init_rule_sync();
             services.init_config_sync();
+            services.init_kernel();
             services.init_timer();
             cx.set_global(AppServices::Ready(Arc::new(services)))
         }

@@ -4,11 +4,14 @@ use gpui_kit::component::button::Button;
 use gpui_kit::component::button::ButtonVariants as _;
 use gpui_kit::component::searchable_list::SearchableListItem;
 use gpui_kit::component::select::{SearchableVec, Select, SelectEvent, SelectState};
+use gpui_kit::component::tooltip::Tooltip;
 use gpui_kit::component::{ActiveTheme as _, Disableable as _, IconName, Sizable as _};
 use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
 
 use lingting_gpui_kit::card::Card;
+
+use lib_biz::kernel::Status;
 
 use super::Console;
 use super::LoadState;
@@ -19,10 +22,10 @@ const SELECT_WIDTH: Rems = rems(20.);
 
 /// 渲染控制栏。
 ///
-/// 从左到右：启动/停止按钮、刷新按钮、配置列表下拉框。
+/// 从左到右：启动/停止按钮、内核状态、刷新按钮、配置列表下拉框。
 pub fn render(console: &Console, cx: &mut Context<Console>) -> impl IntoElement {
     let ready = matches!(console.load, LoadState::Ready(_));
-    let running = console.kernel.running;
+    let running = console.kernel.running();
     let has_config = console.selected.is_some();
 
     // 启动/停止按钮：停止态是启动，运行态是停止。
@@ -34,7 +37,7 @@ pub fn render(console: &Console, cx: &mut Context<Console>) -> impl IntoElement 
         })
         .label(if running { "停止" } else { "启动" })
         .loading(console.kernel.loading)
-        .disabled(!ready || !has_config)
+        .disabled(console.kernel.loading || !ready || (!running && !has_config))
         .when(running, |this| this.danger())
         .when(!running, |this| this.primary())
         .on_click(cx.listener(|console, _, _, cx| console.toggle_kernel(cx)));
@@ -44,6 +47,7 @@ pub fn render(console: &Console, cx: &mut Context<Console>) -> impl IntoElement 
             .w_full()
             .gap_3()
             .child(action)
+            .child(status(console, cx))
             .child(
                 Button::new("config-refresh")
                     .icon(IconName::RefreshCw)
@@ -62,6 +66,28 @@ pub fn render(console: &Console, cx: &mut Context<Console>) -> impl IntoElement 
                 ),
             ),
     )
+}
+
+/// 内核状态标签。
+///
+/// 状态取自全局内核实例，各状态用主题色区分，异常原因挂在 tooltip 上。
+fn status(console: &Console, cx: &Context<Console>) -> impl IntoElement {
+    let theme = cx.theme();
+    let (text, color) = match console.kernel.status {
+        Status::Running => ("运行中", theme.success),
+        Status::Starting => ("启动中", theme.warning),
+        Status::Stopped if console.kernel.reason.is_some() => ("启动失败", theme.danger),
+        Status::Stopped => ("未运行", theme.muted_foreground),
+    };
+
+    div()
+        .id("kernel-status")
+        .aria_label(text)
+        .text_color(color)
+        .when_some(console.kernel.reason.clone(), |this, reason| {
+            this.tooltip(move |window, cx| Tooltip::new(reason.clone()).build(window, cx))
+        })
+        .child(text)
 }
 
 /// 配置下拉框的一个选项：`value` 是配置 id，展示名称。

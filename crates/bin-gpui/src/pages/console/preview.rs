@@ -78,22 +78,14 @@ fn bar(content: impl IntoElement) -> AnyElement {
 ///
 /// 与正常状态共用同一张卡片，状态切换时布局不跳动。
 fn hint(reason: &str, color: Hsla) -> AnyElement {
-    bar(div()
-        .w_full()
-        .text_color(color)
-        .child(reason.to_string()))
+    bar(div().w_full().text_color(color).child(reason.to_string()))
 }
-
 
 /// 「标签 + 数值」的一项元信息。
 fn pair(label: &'static str, value: &str, theme: &gpui_kit::component::Theme) -> impl IntoElement {
     h_flex()
         .gap_2()
-        .child(
-            div()
-                .text_color(theme.muted_foreground)
-                .child(label),
-        )
+        .child(div().text_color(theme.muted_foreground).child(label))
         .child(
             div()
                 .font_weight(FontWeight::MEDIUM)

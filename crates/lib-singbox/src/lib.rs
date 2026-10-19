@@ -1,10 +1,13 @@
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, MutexGuard};
 
 use anyhow::{Context, Result, bail};
 use arc_swap::ArcSwapOption;
 use lib_system::process::Process;
+
+#[cfg(feature = "grpc")]
+use std::time::{Duration, Instant};
 
 mod grpc;
 
@@ -31,13 +34,19 @@ pub struct State {
 ///
 /// 仅支持随包分发的二进制内核，实例创建时即绑定可执行文件路径，
 /// 之后通过 [`SingBox::start`] 与 [`SingBox::stop`] 管理其生命周期。
+/// 内部状态受锁保护，实例可由多个线程共享。
 pub struct SingBox {
     bin: String,
+    inner: Mutex<Inner>,
+    /// gRPC 客户端，仅在内核运行期间存在。
+    grpc: ArcSwapOption<SingBoxGrpc>,
+}
+
+/// 内核实例的内部状态。
+struct Inner {
     process: Option<Process>,
     error: bool,
     reason: Option<String>,
-    /// gRPC 客户端，仅在内核运行期间存在。
-    grpc: ArcSwapOption<SingBoxGrpc>,
     /// 内核 API 监听地址，用于构造 gRPC 客户端。
     api: String,
 }
@@ -53,40 +62,44 @@ impl SingBox {
         log::info!("load sing box bin from {bin}");
         Ok(Self {
             bin,
-            process: None,
-            error: false,
-            reason: None,
+            inner: Mutex::new(Inner {
+                process: None,
+                error: false,
+                reason: None,
+                api: String::new(),
+            }),
             grpc: ArcSwapOption::empty(),
-            api: String::new(),
         })
     }
 
     /// 查询当前状态。
-    pub fn state(&mut self) -> Result<State> {
-        if let Some(process) = &mut self.process {
+    pub fn state(&self) -> Result<State> {
+        let mut inner = self.lock();
+        if let Some(process) = &mut inner.process {
             // 已经结束时判断结果, 未结束不做处理
             if let Some(status) = process.status()? {
-                self.process = None;
+                inner.process = None;
                 // 内核退出后 gRPC 连接已失效, 一并清理
                 self.grpc.store(None);
                 if let Err(error) = Self::check(status) {
                     log::error!("singbox执行异常! {error}");
-                    self.error = true;
-                    self.reason = Some(error.to_string());
+                    inner.error = true;
+                    inner.reason = Some(error.to_string());
                 }
             }
         }
 
         Ok(State {
-            running: self.process.is_some(),
-            error: self.error,
-            reason: self.reason.clone(),
+            running: inner.process.is_some(),
+            error: inner.error,
+            reason: inner.reason.clone(),
         })
     }
 
     /// 以 `config_path` 为配置、`work_dir` 为工作目录启动内核，`api` 为内核 API 监听地址。
-    pub fn start(&mut self, config_path: &Path, work_dir: &Path, api: &str) -> Result<()> {
-        if self.process.is_some() {
+    pub fn start(&self, config_path: &Path, work_dir: &Path, api: &str) -> Result<()> {
+        let mut inner = self.lock();
+        if inner.process.is_some() {
             return Ok(());
         }
 
@@ -105,20 +118,20 @@ impl SingBox {
             // 父进程 pid, 内核据此判断是否需要退出
             .arg(std::process::id().to_string());
 
-        self.process = Some(Process::new(cmd)?);
-        self.api = api.to_string();
-        self.error = false;
-        self.reason = None;
+        inner.process = Some(Process::new(cmd)?);
+        inner.api = api.to_string();
+        inner.error = false;
+        inner.reason = None;
         // 上一轮连接属于旧进程, 启动新进程时丢弃
         self.grpc.store(None);
         Ok(())
     }
 
     /// 停止内核。
-    pub fn stop(&mut self) -> Result<()> {
+    pub fn stop(&self) -> Result<()> {
         // 无论进程是否成功结束, 旧连接都不再可用
         self.grpc.store(None);
-        let Some(mut process) = self.process.take() else {
+        let Some(mut process) = self.lock().process.take() else {
             return Ok(());
         };
 
@@ -126,15 +139,53 @@ impl SingBox {
             Ok(()) => Ok(()),
             Err(error) => {
                 // 没结束, 放回去
-                self.process = Some(process);
+                self.lock().process = Some(process);
                 log::error!("singbox结束进程异常! {error}");
                 Err(error)
             }
         }
     }
 
+    /// 等待内核 API 就绪。
+    ///
+    /// 启动命令执行完毕不代表内核真正可用，因此按固定间隔调用内核 API 探测，
+    /// 直到取得版本号才视为启动成功；进程提前退出或超时都返回失败原因。
+    #[cfg(feature = "grpc")]
+    pub async fn wait_ready(&self, timeout: Duration) -> Result<()> {
+        let start = Instant::now();
+        let mut last: Option<anyhow::Error> = None;
+
+        loop {
+            let state = self.state()?;
+            if !state.running {
+                let reason = state.reason.unwrap_or_else(|| "内核进程已退出".to_string());
+                bail!("内核启动失败: {reason}");
+            }
+
+            if let Some(grpc) = self.grpc()? {
+                match grpc.version().await {
+                    Ok(version) => {
+                        log::info!("内核 API 就绪, 版本: {}", version.version);
+                        return Ok(());
+                    }
+                    Err(error) => last = Some(error),
+                }
+            }
+
+            if start.elapsed() >= timeout {
+                let reason = match last {
+                    Some(error) => format!("{error:#}"),
+                    None => "内核 API 未响应".to_string(),
+                };
+                bail!("等待内核 API 就绪超时: {reason}");
+            }
+
+            tokio::time::sleep(Duration::from_millis(200)).await;
+        }
+    }
+
     /// 将 json 规则集转换为 srs 规则集。
-    pub fn json_to_srs(&mut self, json_path: &Path, srs_path: &Path) -> Result<()> {
+    pub fn json_to_srs(&self, json_path: &Path, srs_path: &Path) -> Result<()> {
         let json = json_path
             .to_str()
             .with_context(|| format!("json 路径非 UTF-8: {}", json_path.display()))?;
@@ -153,17 +204,26 @@ impl SingBox {
     /// 内核运行中时返回可用客户端，尚未构造则先按当前 API 地址构造并保存；
     /// 内核未运行时返回 `None`。
     pub fn grpc(&self) -> Result<Option<Arc<SingBoxGrpc>>> {
-        if self.process.is_none() {
-            return Ok(None);
-        }
+        let api = {
+            let inner = self.lock();
+            if inner.process.is_none() {
+                return Ok(None);
+            }
+            inner.api.clone()
+        };
 
         if let Some(grpc) = self.grpc.load_full() {
             return Ok(Some(grpc));
         }
 
-        let grpc = Arc::new(SingBoxGrpc::new(&self.api)?);
+        let grpc = Arc::new(SingBoxGrpc::new(&api)?);
         self.grpc.store(Some(grpc.clone()));
         Ok(Some(grpc))
+    }
+
+    /// 取内部状态，锁被污染时继续使用其内容。
+    fn lock(&self) -> MutexGuard<'_, Inner> {
+        self.inner.lock().unwrap_or_else(|error| error.into_inner())
     }
 
     /// 检查子进程退出码，非零视为失败。
