@@ -163,5 +163,9 @@ fn read() -> Result<Vec<DirectoryEntry>, SharedString> {
             label: "规则",
             path: directory.rule.clone(),
         },
+        DirectoryEntry {
+            label: "内核",
+            path: directory.singbox_workspace.clone(),
+        },
     ])
 }

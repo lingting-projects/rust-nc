@@ -10,8 +10,8 @@ use serde::Serialize;
 
 use crate::constants::{
     FAKE_IPV4, FAKE_IPV6, INNER_IPV4, INNER_IPV6, LOOPBACK_IPV4, LOOPBACK_IPV6, OUT_DIRECT,
-    ROUTE_IPV4, TAG_HTTP_CLIENT,
-    ROUTE_IPV6, TAG_AUTO, TAG_FALLBACK, TAG_SELECTOR, VIRTUAL_IPV4, VIRTUAL_IPV6,
+    ROUTE_IPV4, ROUTE_IPV6, TAG_AUTO, TAG_FALLBACK, TAG_HTTP_CLIENT, TAG_SELECTOR, VIRTUAL_IPV4,
+    VIRTUAL_IPV6,
 };
 use crate::platform::Kernel;
 use crate::source::Source;
@@ -29,6 +29,13 @@ pub(crate) fn build(kernel: &Kernel, source: Source) -> Result<String> {
         log: LogConfig {
             level: if kernel.config.debug { "debug" } else { "info" }.to_string(),
             timestamp: true,
+            // 内核日志固定写入工作目录下的日志文件, 不跟随进程标准输出
+            output: kernel
+                .config
+                .log_path
+                .to_str()
+                .map(str::to_string)
+                .unwrap_or_default(),
         },
         experimental: ExperimentalConfig {
             cache_file: ExperimentalCache {
@@ -67,6 +74,8 @@ struct SingBoxConfig {
 struct LogConfig {
     level: String,
     timestamp: bool,
+    /// 日志输出目标, 传文件路径时内核只写该文件
+    output: String,
 }
 
 #[derive(Serialize)]

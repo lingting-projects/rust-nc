@@ -90,8 +90,11 @@ func setLog(color bool) {
 		DisableColors: !color,
 	}
 	factory := log.NewDefaultFactory(context.Background(), formatter, os.Stdout, "", nil, false)
-	logger := factory.Logger()
-	log.SetStdLogger(logger)
+	// 工厂必须启动, 否则日志会滞留在待输出队列, 内核异常原因将无处可见
+	if err := factory.Start(); err != nil {
+		log.Error("内核日志初始化失败: ", err)
+	}
+	log.SetStdLogger(factory.Logger())
 }
 
 func readConfig(ctx context.Context, path string) (option.Options, error) {
@@ -172,7 +175,7 @@ func Check(configPath string, workDir string) string {
 	return ""
 }
 
-func Start(configPath string, workDir string, pid int) SingBoxError {
+func Start(configPath string, workDir string, pid int) (SingBoxError, error) {
 	setLog(false)
 	osSignals := make(chan os.Signal, 1)
 	signal.Notify(osSignals, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
@@ -206,7 +209,7 @@ func Start(configPath string, workDir string, pid int) SingBoxError {
 			log.Error("实例创建异常: ", _e)
 			// 创建异常, 但是不存在已启动实例
 			if instance == nil {
-				return StartCreateError
+				return StartCreateError, _e
 			}
 		} else {
 			if instance != nil {
@@ -221,7 +224,7 @@ func Start(configPath string, workDir string, pid int) SingBoxError {
 			err := instance.Start()
 			if err != nil {
 				log.Error("实例启动异常: ", err)
-				return StartError
+				return StartError, err
 			}
 		}
 
@@ -248,9 +251,9 @@ func Start(configPath string, workDir string, pid int) SingBoxError {
 		err := instance.Close()
 		if err != nil {
 			log.Error("实例关闭异常: ", err)
-			return StopError
+			return StopError, err
 		}
-		return Nil
+		return Nil, nil
 	}
 }
 

@@ -1,5 +1,6 @@
+use std::fs::File;
 use std::path::{Path, PathBuf};
-use std::process::{Command, ExitStatus};
+use std::process::{Command, ExitStatus, Stdio};
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use anyhow::{Context, Result, bail};
@@ -18,6 +19,9 @@ pub const VERSION: &str = "v1.14.3";
 
 /// 内核进程可执行文件名，位于安装目录下。
 pub const BIN_NAME: &str = "lingting-nc-singbox";
+
+/// 内核异常时附加到失败原因中的日志行数。
+const TAIL_LINES: usize = 10;
 
 /// 内核运行状态。
 #[derive(Debug, Clone, Default)]
@@ -49,6 +53,8 @@ struct Inner {
     reason: Option<String>,
     /// 内核 API 监听地址，用于构造 gRPC 客户端。
     api: String,
+    /// 内核工作目录，进程异常时据此读取日志尾部的原始错误。
+    work: PathBuf,
 }
 
 impl SingBox {
@@ -67,6 +73,7 @@ impl SingBox {
                 error: false,
                 reason: None,
                 api: String::new(),
+                work: PathBuf::new(),
             }),
             grpc: ArcSwapOption::empty(),
         })
@@ -84,7 +91,7 @@ impl SingBox {
                 if let Err(error) = Self::check(status) {
                     log::error!("singbox执行异常! {error}");
                     inner.error = true;
-                    inner.reason = Some(error.to_string());
+                    inner.reason = Some(failure(&inner.work, error.to_string()));
                 }
             }
         }
@@ -110,16 +117,22 @@ impl SingBox {
             .to_str()
             .with_context(|| format!("工作目录非 UTF-8: {}", work_dir.display()))?;
 
+        // 三个日志文件都在工作目录下, 每次启动都重新创建, 只保留本次启动的内容
+        truncate(work_dir, lib_core::constants::KERNEL_LOG_FILE)?;
+        let out = log_file(work_dir, lib_core::constants::KERNEL_STDOUT_FILE)?;
+        let err = log_file(work_dir, lib_core::constants::KERNEL_STDERR_FILE)?;
         let mut cmd = Command::new(&self.bin);
         cmd.arg("start")
             .current_dir(work_dir)
             .arg(config)
             .arg(work)
             // 父进程 pid, 内核据此判断是否需要退出
-            .arg(std::process::id().to_string());
-
+            .arg(std::process::id().to_string())
+            .stdout(out)
+            .stderr(err);
         inner.process = Some(Process::new(cmd)?);
         inner.api = api.to_string();
+        inner.work = work_dir.to_path_buf();
         inner.error = false;
         inner.reason = None;
         // 上一轮连接属于旧进程, 启动新进程时丢弃
@@ -236,10 +249,63 @@ impl SingBox {
     }
 }
 
+/// 进程异常时补充内核日志中的原始错误。
+///
+/// 内核只把可读的失败原因写进日志，进程退出码本身没有信息量，
+/// 因此把日志尾部（最近几行）拼到原因后面，界面与 tooltip 可直接看到真实原因。
+fn failure(work_dir: &Path, reason: String) -> String {
+    match tail(work_dir) {
+        Some(detail) => format!("{reason}\n{detail}"),
+        None => reason,
+    }
+}
+
+/// 读取工作目录下内核日志的尾部内容，取不到时返回 `None`。
+///
+/// 内核在实例创建阶段失败时只把原因写到标准输出，尚未开始写自身日志，
+/// 因此按「内核日志 → 标准输出 → 异常输出」的顺序取第一个有内容的文件。
+fn tail(work_dir: &Path) -> Option<String> {
+    let names = [
+        lib_core::constants::KERNEL_LOG_FILE,
+        lib_core::constants::KERNEL_STDOUT_FILE,
+        lib_core::constants::KERNEL_STDERR_FILE,
+    ];
+
+    names
+        .iter()
+        .filter_map(|name| std::fs::read_to_string(work_dir.join(name)).ok())
+        .find_map(|content| {
+            let lines: Vec<&str> = content
+                .lines()
+                .map(str::trim)
+                .filter(|line| !line.is_empty())
+                .collect();
+            if lines.is_empty() {
+                return None;
+            }
+
+            let start = lines.len().saturating_sub(TAIL_LINES);
+            Some(lines[start..].join("\n"))
+        })
+}
 impl Drop for SingBox {
     fn drop(&mut self) {
         let _ = self.stop();
     }
+}
+
+/// 以截断方式创建日志文件，保证只保留本次启动的日志。
+fn log_file(work_dir: &Path, name: &str) -> Result<Stdio> {
+    let path = work_dir.join(name);
+    let file =
+        File::create(&path).with_context(|| format!("创建内核日志文件失败: {}", path.display()))?;
+    Ok(Stdio::from(file))
+}
+
+/// 清空工作目录下的日志文件, 文件不存在时直接创建。
+fn truncate(work_dir: &Path, name: &str) -> Result<()> {
+    log_file(work_dir, name)?;
+    Ok(())
 }
 
 /// 创建内核实例，内核可执行文件位于安装目录。

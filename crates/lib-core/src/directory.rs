@@ -18,6 +18,8 @@ pub struct Directorys {
     pub config: PathBuf,
     // 规则文件根文件夹, 子目录是规则id, 子目录中的才是规则相关文件
     pub rule: PathBuf,
+    // sing-box 工作目录, 内核在此目录下启动, 日志与缓存等运行时文件都落在这里
+    pub singbox_workspace: PathBuf,
 }
 
 pub fn directorys() -> Result<Arc<Directorys>> {
@@ -40,10 +42,12 @@ pub fn directorys() -> Result<Arc<Directorys>> {
         install: directory.install,
         config: create_directory(root.join("config"))?,
         rule: create_directory(root.join("rule"))?,
+        singbox_workspace: create_directory(root.join("singbox"))?,
     });
     DIRECTORY.store(Some(v.clone()));
     Ok(v)
 }
+
 fn create_directory(directory: PathBuf) -> Result<PathBuf> {
     fs::create_dir_all(&directory)
         .with_context(|| format!("创建应用目录失败: {}", directory.display()))?;

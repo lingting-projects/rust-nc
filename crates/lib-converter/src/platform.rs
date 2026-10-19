@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use indexmap::IndexMap;
 use lib_pick::{PickNode, PickNodes};
 
@@ -34,6 +36,8 @@ pub struct PlatformConfig {
     pub geo_cn: bool,
     /// 是否输出调试日志
     pub debug: bool,
+    /// 内核自身日志输出文件, 空表示由内核自行决定
+    pub log_path: PathBuf,
     /// 直连规则
     pub rules_direct: Vec<Rule>,
     /// 代理规则
@@ -62,6 +66,7 @@ impl Default for PlatformConfig {
             ipv6: true,
             geo_cn: true,
             debug: false,
+            log_path: PathBuf::new(),
             rules_direct: Vec::new(),
             rules_proxy: Vec::new(),
             rules_reject: Vec::new(),

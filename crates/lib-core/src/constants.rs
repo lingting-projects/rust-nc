@@ -52,6 +52,12 @@ pub const KERNEL_DNS_PROXY: &[&str] = &[
     // OpenDNS
     "https://208.67.222.22/dns-query",
 ];
+/// 内核自身日志文件名, 位于内核工作目录, 每次启动重写
+pub const KERNEL_LOG_FILE: &str = "kernel.log";
+/// 内核标准输出日志文件名, 位于内核工作目录, 每次启动重写
+pub const KERNEL_STDOUT_FILE: &str = "stdout.log";
+/// 内核异常输出日志文件名, 位于内核工作目录, 每次启动重写
+pub const KERNEL_STDERR_FILE: &str = "stderr.log";
 
 // endregion
 

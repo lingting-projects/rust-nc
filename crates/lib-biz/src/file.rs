@@ -33,6 +33,16 @@ pub fn sing_box_json(id: &str) -> Result<PathBuf> {
     Ok(sing_box_dir(id)?.join("config.json"))
 }
 
+/// 内核工作目录: `{singbox_workspace}`, 内核在此目录下启动, 全部配置共用。
+pub fn sing_box_workspace() -> Result<PathBuf> {
+    Ok(directorys()?.singbox_workspace.clone())
+}
+
+/// 内核自身日志文件, 位于工作目录下, 每次启动重写。
+pub fn sing_box_log() -> Result<PathBuf> {
+    Ok(sing_box_workspace()?.join(lib_core::constants::KERNEL_LOG_FILE))
+}
+
 /// 删除规则文件目录。
 pub fn remove_rule(id: &str) -> Result<()> {
     remove_dir(&rule_dir(id)?)

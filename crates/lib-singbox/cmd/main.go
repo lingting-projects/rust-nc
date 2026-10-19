@@ -44,10 +44,11 @@ func handleStart() {
 		}
 	}
 
-	err := core.Start(configPath, workDir, pid)
-	if !errors.Is(core.Nil, err) {
-		fmt.Printf("启动失败[%d]: %s\n", err.ToInt(), err.Error())
-		os.Exit(err.ToInt())
+	code, err := core.Start(configPath, workDir, pid)
+	if !errors.Is(core.Nil, code) {
+		// 同时输出原始错误, 便于定位内核自身的异常原因
+		fmt.Printf("启动失败[%d]: %s: %v\n", code.ToInt(), code.Error(), err)
+		os.Exit(code.ToInt())
 	}
 }
 

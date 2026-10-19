@@ -14,7 +14,7 @@ const GAP: Rems = rems(1.);
 /// 设置页面：由若干独立的分区纵向排列组成。
 ///
 /// 页面只负责分区的顺序与间距，每个分区自己负责读取数据与呈现；
-/// 当前有数据路径与内核两个分区。
+/// 当前有内核与数据路径两个分区。
 pub struct SettingsPage {
     /// 数据路径分区，目录在页面构造时读取一次。
     directories: Directories,
@@ -41,7 +41,7 @@ impl Render for SettingsPage {
             .min_h_0()
             .gap(GAP)
             .overflow_y_scrollbar()
-            .child(self.directories.clone())
             .child(self.kernel.clone())
+            .child(self.directories.clone())
     }
 }

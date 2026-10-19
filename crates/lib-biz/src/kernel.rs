@@ -134,7 +134,8 @@ impl SingBoxInstance {
 
         let kernel = self.setting(&context).await?;
         let api = format!("{}:{}", kernel.ui_listen, kernel.ui_port);
-        let work = file::sing_box_dir(id)?;
+        // 内核统一在 singbox_workspace 下启动, 日志与运行时文件都落在这里
+        let work = file::sing_box_workspace()?;
         let singbox = self.singbox()?;
 
         self.set(Status::Starting, Some(id), None);
