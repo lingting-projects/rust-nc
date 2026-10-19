@@ -2,10 +2,12 @@ use anyhow::Result;
 use lib_biz::config::ConfigBiz;
 use lib_biz::config_sync::ConfigSync;
 use lib_biz::timer;
+use service_core::manager::setting_manager::SettingManager;
 use service_core::service::config_service::ConfigService;
 use service_core::service::rule_service::RuleService;
 use service_core::service::subscribe_service::SubscribeService;
 use types_core::dto::config::ConfigUpsertDTO;
+use types_core::dto::setting::SettingKernel;
 use types_core::entity::config::Config;
 use types_core::entity::rule::Rule;
 use types_core::entity::subscribe::Subscribe;
@@ -81,5 +83,27 @@ impl Services {
         if let Err(error) = timer::start() {
             eprintln!("启动定时同步失败: {error:#}");
         }
+    }
+}
+
+impl Services {
+    /// 读取内核设置，供设置页面的内核分区展示。
+    pub async fn kernel_setting(&self) -> Result<SettingKernel> {
+        SettingManager::new(self.context(), self.cache_dir.clone())
+            .kernel()
+            .await
+    }
+
+    /// 只写入内核监听设置。
+    pub async fn save_kernel_listen(
+        &self,
+        ui_listen: &str,
+        ui_port: u16,
+        mixed_listen: &str,
+        mixed_port: u16,
+    ) -> Result<()> {
+        SettingManager::new(self.context(), self.cache_dir.clone())
+            .upsert_kernel_listen(ui_listen, ui_port, mixed_listen, mixed_port)
+            .await
     }
 }

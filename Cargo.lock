@@ -674,6 +674,7 @@ dependencies = [
  "lib-biz",
  "lib-core",
  "lib-db",
+ "lib-singbox",
  "lib-system",
  "lingting-gpui-kit",
  "log",

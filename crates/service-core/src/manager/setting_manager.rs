@@ -88,6 +88,28 @@ impl SettingManager {
         })
     }
 
+    /// 只写入内核监听设置，其余设置保持不变。
+    ///
+    /// 设置页面的内核分区单独保存，避免为了改监听端口而读取并回写整份设置。
+    pub async fn upsert_kernel_listen(
+        &self,
+        ui_listen: &str,
+        ui_port: u16,
+        mixed_listen: &str,
+        mixed_port: u16,
+    ) -> Result<()> {
+        let items = [
+            (AppConfigKey::SettingKernelUiListen, ui_listen.to_string()),
+            (AppConfigKey::SettingKernelUiPort, ui_port.to_string()),
+            (
+                AppConfigKey::SettingKernelMixedListen,
+                mixed_listen.to_string(),
+            ),
+            (AppConfigKey::SettingKernelMixedPort, mixed_port.to_string()),
+        ];
+        self.app_config.set_all(&items).await
+    }
+
     /// 写入设置，先同步开机自启状态再落库。
     pub async fn upsert(&self, setting: &Setting) -> Result<()> {
         self.sync_startup(setting.software.startup).await?;

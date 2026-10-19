@@ -4,6 +4,8 @@ ui/
 node_modules/
 build/
 
+.plan/
+
 ### IntelliJ IDEA ###
 .idea/
 *.iws

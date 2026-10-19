@@ -3,11 +3,30 @@
 /// 内核面板监听地址
 pub const KERNEL_UI_LISTEN: &str = "127.0.0.1";
 /// 内核面板监听端口
-pub const KERNEL_UI_PORT: u16 = 9090;
+///
+/// 正式版本使用 [`KERNEL_UI_PORT_RELEASE`]，开发构建使用 [`KERNEL_UI_PORT_DEV`]，
+/// 两者错开端口，避免开发构建与正式版本同时运行时抢占同一端口。
+#[cfg(not(debug_assertions))]
+pub const KERNEL_UI_PORT: u16 = KERNEL_UI_PORT_RELEASE;
+#[cfg(debug_assertions)]
+pub const KERNEL_UI_PORT: u16 = KERNEL_UI_PORT_DEV;
+/// 内核面板监听端口: 正式版本默认值
+pub const KERNEL_UI_PORT_RELEASE: u16 = 9090;
+/// 内核面板监听端口: 开发环境默认值
+pub const KERNEL_UI_PORT_DEV: u16 = 19090;
 /// 混合代理监听地址
 pub const KERNEL_MIXED_LISTEN: &str = "127.0.0.1";
 /// 混合代理端口
-pub const KERNEL_MIXED_PORT: u16 = 7890;
+///
+/// 与 [`KERNEL_UI_PORT`] 同理，开发构建与正式版本使用不同的默认端口。
+#[cfg(not(debug_assertions))]
+pub const KERNEL_MIXED_PORT: u16 = KERNEL_MIXED_PORT_RELEASE;
+#[cfg(debug_assertions)]
+pub const KERNEL_MIXED_PORT: u16 = KERNEL_MIXED_PORT_DEV;
+/// 混合代理端口: 正式版本默认值
+pub const KERNEL_MIXED_PORT_RELEASE: u16 = 7890;
+/// 混合代理端口: 开发环境默认值
+pub const KERNEL_MIXED_PORT_DEV: u16 = 17890;
 /// 国内 dns
 pub const KERNEL_DNS_CN: &[&str] = &[
     // 阿里

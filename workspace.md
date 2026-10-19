@@ -40,7 +40,7 @@
 ## 依赖方向
 
 ```text
-bin-gpui -> lib-biz / service-core / lib-db / lib-core / types-core
+bin-gpui -> lib-biz / service-core / lib-db / lib-core / lib-singbox / types-core
 bin-cloudflare -> lib-converter / lib-fetch / lib-pick / lib-core
 lib-biz -> service-core / lib-converter / lib-fetch / lib-pick / lib-db / lib-core / types-core
 service-core -> lib-db / lib-system / lib-core / types-core
