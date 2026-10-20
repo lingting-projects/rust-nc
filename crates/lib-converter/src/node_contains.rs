@@ -81,18 +81,18 @@ impl NodeContains {
     }
 
     fn match_name(&self, node: &PickNode) -> bool {
-        // 未设置名称关键字时不限制名称, 否则包含条件会因该维度无关键字而过滤掉全部节点
+        let name = node.name();
+        // 名称为空的节点无法参与关键字匹配, 由 non_name 决定
+        if name.trim().is_empty() {
+            return self.non_name;
+        }
+
+        // 未设置名称关键字时不限制名称
         if self.name_contains.is_empty() {
             return true;
         }
 
-        let name = node.name();
-        if self.name_contains.iter().any(|key| name.contains(key)) {
-            return true;
-        }
-
-        // 名称未命中任何关键字时, 由 non_name 决定是否视为命中
-        self.non_name
+        self.name_contains.iter().any(|key| name.contains(key))
     }
 }
 

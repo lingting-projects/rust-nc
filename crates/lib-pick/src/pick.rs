@@ -106,6 +106,7 @@ fn pick_link(source: &str) -> Result<Option<PickNode>> {
         "trojan" => parse_trojan(rest, &mut map)?,
         "vless" => parse_vless(rest, &mut map)?,
         "hysteria2" | "hy2" => parse_trojan(rest, &mut map)?,
+        "anytls" => parse_trojan(rest, &mut map)?,
         _ => return Ok(None),
     }
 
@@ -157,8 +158,9 @@ fn parse_host(source: &str, map: &mut IndexMap<String, Value>) -> Result<()> {
         None => (host, ""),
     };
 
+    // 部分订阅把端口写成 `host:port/`, 末尾斜杠不属于端口
     let (server, port) = match host.rsplit_once(':') {
-        Some((server, port)) => (server, port),
+        Some((server, port)) => (server, port.trim_end_matches('/')),
         None => (host, "443"),
     };
 

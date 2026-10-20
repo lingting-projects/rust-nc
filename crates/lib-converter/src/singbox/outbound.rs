@@ -126,9 +126,12 @@ impl Outbound {
     fn pure_node(node: &PickNode) -> Self {
         let mut attributes = IndexMap::new();
 
-        // 分享链接中的 type 表示传输层, sing-box 用 transport 描述
-        if let Some(transport) = node.string("type") {
-            attributes.insert("transport".to_string(), transport_of(node, &transport));
+        // 分享链接中的 type 表示传输层, sing-box 用 transport 描述; 纯 tcp 不需要
+        if let Some(transport) = node
+            .string("type")
+            .and_then(|kind| transport_of(node, &kind))
+        {
+            attributes.insert("transport".to_string(), transport);
         }
 
         if node.protocol == "hysteria2" {
@@ -211,24 +214,58 @@ fn tls_of(node: &PickNode) -> IndexMap<String, Value> {
     tls
 }
 
+/// 分享链接传输层类型到 sing-box 传输层类型的映射。
+///
+/// sing-box 只识别这些类型, 纯 tcp 不需要传输层配置。
+const TRANSPORTS: &[(&str, &str)] = &[
+    ("ws", "ws"),
+    ("grpc", "grpc"),
+    ("http", "http"),
+    ("h2", "http"),
+    ("httpupgrade", "httpupgrade"),
+    ("quic", "quic"),
+];
+
 /// 分享链接中的传输层参数转换为 sing-box transport。
-fn transport_of(node: &PickNode, kind: &str) -> Value {
+///
+/// 每种传输层只接受自己的字段, 多余字段会让内核校验失败, 因此按类型分别输出。
+fn transport_of(node: &PickNode, kind: &str) -> Option<Value> {
+    let kind = TRANSPORTS
+        .iter()
+        .find(|(from, _)| *from == kind)
+        .map(|(_, to)| *to)?;
+
     let mut transport = serde_json::Map::new();
     transport.insert("type".to_string(), Value::String(kind.to_string()));
 
-    if let Some(path) = node.map.get("path") {
-        transport.insert("path".to_string(), path.clone());
+    if let Some(path) = node.string("path").filter(|path| !path.is_empty()) {
+        transport.insert("path".to_string(), Value::String(path));
     }
 
-    if let Some(host) = node.map.get("host") {
-        transport.insert("host".to_string(), host.clone());
+    let host = node.string("host").filter(|host| !host.is_empty());
+    match kind {
+        // ws 的 Host 只能通过请求头传递
+        "ws" => {
+            if let Some(host) = host {
+                let mut headers = serde_json::Map::new();
+                headers.insert("Host".to_string(), Value::String(host));
+                transport.insert("headers".to_string(), Value::Object(headers));
+            }
+        }
+        "http" | "httpupgrade" => {
+            if let Some(host) = host {
+                transport.insert("host".to_string(), Value::String(host));
+            }
+        }
+        "grpc" => {
+            if let Some(service_name) = node.string("serviceName").filter(|name| !name.is_empty()) {
+                transport.insert("service_name".to_string(), Value::String(service_name));
+            }
+        }
+        _ => {}
     }
 
-    if let Some(service_name) = node.map.get("serviceName") {
-        transport.insert("service_name".to_string(), service_name.clone());
-    }
-
-    Value::Object(transport)
+    Some(Value::Object(transport))
 }
 
 /// 节点中不参与出口输出的键。
