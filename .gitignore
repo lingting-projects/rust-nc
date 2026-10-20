@@ -6,6 +6,10 @@ build/
 
 .plan/
 
+# sing-box 测试订阅源, 只保留占位文件
+crates/test-singbox/assets/source/*
+!crates/test-singbox/assets/source/.gitkeep
+
 ### IntelliJ IDEA ###
 .idea/
 *.iws

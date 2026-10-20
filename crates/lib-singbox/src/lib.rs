@@ -88,7 +88,7 @@ impl SingBox {
                 inner.process = None;
                 // 内核退出后 gRPC 连接已失效, 一并清理
                 self.grpc.store(None);
-                if let Err(error) = Self::check(status) {
+                if let Err(error) = Self::status(status) {
                     log::error!("singbox执行异常! {error}");
                     inner.error = true;
                     inner.reason = Some(failure(&inner.work, error.to_string()));
@@ -209,7 +209,25 @@ impl SingBox {
         let mut cmd = Command::new(&self.bin);
         cmd.arg("json2srs").arg(json).arg(srs);
         let status = cmd.status()?;
-        Self::check(status)
+        Self::status(status)
+    }
+
+    /// 校验配置文件能否被内核解析与构建。
+    ///
+    /// 等价于内核自身的 `check` 命令：完整走一遍配置解析与实例构建，随即关闭实例，
+    /// 不接管流量。`work_dir` 为校验时使用的工作目录，配置中的相对路径以它为基准。
+    pub fn check(&self, config_path: &Path, work_dir: &Path) -> Result<()> {
+        let config = config_path
+            .to_str()
+            .with_context(|| format!("配置路径非 UTF-8: {}", config_path.display()))?;
+        let work = work_dir
+            .to_str()
+            .with_context(|| format!("工作目录非 UTF-8: {}", work_dir.display()))?;
+
+        let mut cmd = Command::new(&self.bin);
+        cmd.arg("check").arg(config).arg(work);
+        let status = cmd.status()?;
+        Self::status(status)
     }
 
     /// 取得 gRPC 客户端。
@@ -240,7 +258,7 @@ impl SingBox {
     }
 
     /// 检查子进程退出码，非零视为失败。
-    fn check(status: ExitStatus) -> Result<()> {
+    fn status(status: ExitStatus) -> Result<()> {
         let code = status.code().unwrap_or(-1);
         if code == 0 {
             return Ok(());

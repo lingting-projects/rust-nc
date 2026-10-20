@@ -11,6 +11,7 @@ members = [
     "crates/lib-singbox",
     "crates/lib-system",
     "crates/service-core",
+    "crates/test-singbox",
     "crates/types-core",
 ]
 resolver = "2"
@@ -37,6 +38,7 @@ lib-pick = { path = "crates/lib-pick" }
 lib-singbox = { path = "crates/lib-singbox" }
 lib-system = { path = "crates/lib-system" }
 service-core = { path = "crates/service-core" }
+test-singbox = { path = "crates/test-singbox" }
 types-core = { path = "crates/types-core" }
 
 framework-core = { path = "../../lingting-rust-framework/framework-core" }

@@ -1,0 +1,20 @@
+[package]
+name = "test-singbox"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+description.workspace = true
+license.workspace = true
+# 集成测试专用, 不参与打包
+publish = false
+
+[dependencies]
+lib-converter = { workspace = true }
+lib-pick = { workspace = true }
+lib-singbox = { workspace = true }
+
+anyhow = { workspace = true }
+log = { workspace = true }
+serde_json = { workspace = true }
+simple_logger = { workspace = true }

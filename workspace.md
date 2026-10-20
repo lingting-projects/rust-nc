@@ -16,6 +16,7 @@
 - `lib-singbox`
 - `lib-system`
 - `service-core`
+- `test-singbox`
 - `types-core`
 
 ## 架构边界
@@ -33,6 +34,7 @@
 | `lib-db` | SQLite 数据访问基础设施；提供连接与迁移执行、请求级 `DbContext`、事务上下文及通用查询类型。 |
 | `lib-core` | 公共基础能力；提供应用目录、日志、雪花 ID、时间、公共值类型与 URL、体积等通用工具。 |
 | `service-core` | 领域业务层；每张业务表均有同名 Service 与 crate 内私有 Repository，Repository 仅由同表 Service 调用。跨表流程以 Manager 形式组织在同一 Crate 的 `manager` 模块。 |
+| `test-singbox` | 配置生成的集成测试；读取本地订阅源，用 `lib-pick` 提取节点、`lib-converter` 转换配置、`lib-singbox` 调用内核校验，不参与打包。 |
 | `types-core` | 领域类型；存放实体、DTO、设置与规则等模型，是其他 Crate 引用领域类型的唯一来源。 |
 
 `crates/library-*` 与 `crates/binary-*` 为历史实现，不属于本工作区成员，不得在其上新增功能；能力按上表迁移到对应成员后逐步淘汰。
@@ -51,6 +53,7 @@ lib-pick -> lib-core
 lib-db -> lib-core
 lib-system -> lib-core
 types-core -> lib-core
+test-singbox -> lib-converter / lib-pick / lib-singbox
 lib-core -> framework-*
 ```
 
