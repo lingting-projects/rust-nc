@@ -8,13 +8,13 @@ use gpui_kit::*;
 use directories::Directories;
 use kernel::Kernel;
 
-/// 各分区之间的间隔。
+/// 各卡片之间的间隔。
 const GAP: Rems = rems(1.);
 
 /// 设置页面：由若干独立的分区纵向排列组成。
 ///
 /// 页面只负责分区的顺序与间距，每个分区自己负责读取数据与呈现；
-/// 当前有内核与数据路径两个分区。
+/// 当前有内核（内核设置、内核配置）与数据路径。
 pub struct SettingsPage {
     /// 数据路径分区，目录在页面构造时读取一次。
     directories: Directories,

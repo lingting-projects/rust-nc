@@ -20,6 +20,7 @@ lingting-gpui-kit = { workspace = true }
 
 anyhow = { workspace = true }
 lib-biz = { workspace = true }
+lib-converter = { workspace = true }
 lib-singbox = { workspace = true }
 lib-core = { workspace = true }
 log = { workspace = true }
