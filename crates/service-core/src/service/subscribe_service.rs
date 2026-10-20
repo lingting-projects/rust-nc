@@ -4,7 +4,7 @@ use anyhow::Result;
 use lib_core::next_id;
 use lib_db::DbContext;
 use types_core::dto::subscribe::{SubscribeRefreshDTO, SubscribeUpsertDTO};
-use types_core::entity::subscribe::Subscribe;
+use types_core::entity::subscribe::{Subscribe, SubscribeSource};
 
 use crate::repository::subscribe_repository as repository;
 
@@ -34,8 +34,8 @@ impl SubscribeService {
         repository::find(self.pool(), id).await
     }
 
-    /// 查询订阅解析后的节点 JSON 文本。
-    pub async fn find_nodes(&self, id: &str) -> Result<Option<String>> {
+    /// 查询订阅解析后的节点 JSON 文本与源类型。
+    pub async fn find_nodes(&self, id: &str) -> Result<Option<(String, String)>> {
         repository::find_nodes(self.pool(), id).await
     }
 
@@ -66,6 +66,7 @@ impl SubscribeService {
                 url: dto.url,
                 content: dto.content.unwrap_or_default(),
                 nodes: String::new(),
+                source: SubscribeSource::Unknown,
                 interval: dto.interval,
                 update_time: millis,
                 create_time: millis,
@@ -111,6 +112,7 @@ impl SubscribeService {
         id: &str,
         content: Option<&str>,
         nodes: &str,
+        source: &str,
         refresh_time: i64,
         download: u64,
         upload: u64,
@@ -122,6 +124,7 @@ impl SubscribeService {
             id,
             content,
             nodes,
+            source,
             refresh_time,
             download,
             upload,

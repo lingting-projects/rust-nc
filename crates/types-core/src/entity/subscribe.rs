@@ -1,8 +1,34 @@
-use framework_proc_auto::auto_type;
+use framework_proc_auto::{auto_enum, auto_type};
+
+/// 订阅源类型, 决定已保存的节点按键如何解析。
+///
+/// `unknown` 为默认值, 表示尚未识别出类型, 此时由节点自身内容判定。
+#[auto_enum]
+pub enum SubscribeSource {
+    /// 未知
+    #[strum(serialize = "unknown")]
+    #[serde(rename = "unknown")]
+    Unknown,
+    /// clash 配置, 节点键为 clash 原生字段
+    #[strum(serialize = "clash")]
+    #[serde(rename = "clash")]
+    Clash,
+    /// 分享链接, 节点键为链接参数
+    #[strum(serialize = "pure")]
+    #[serde(rename = "pure")]
+    Pure,
+}
+
+impl Default for SubscribeSource {
+    fn default() -> Self {
+        Self::Unknown
+    }
+}
 
 /// 订阅, 对应 tbl_subscribe。
 ///
-/// `nodes` 为订阅解析后的节点 JSON 文本, 结构由订阅解析逻辑决定。
+/// `nodes` 为订阅解析后的节点 JSON 文本, 结构由订阅解析逻辑决定,
+/// 键的解析方式见 [`SubscribeSource`]。
 /// `download`、`upload`、`max` 单位为 Bytes, 时间字段为毫秒级时间戳。
 #[auto_type(default = false)]
 pub struct Subscribe {
@@ -14,6 +40,8 @@ pub struct Subscribe {
     pub content: String,
     /// 订阅解析后的所有节点, JSON 文本
     pub nodes: String,
+    /// 订阅源类型, 与节点一起落库
+    pub source: SubscribeSource,
     /// 刷新间隔, 单位: 毫秒
     pub interval: i64,
     /// 更新时间: 毫秒级别时间戳

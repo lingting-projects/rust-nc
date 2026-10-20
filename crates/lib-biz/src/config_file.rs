@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use std::str::FromStr;
 use std::sync::Arc;
 
 use anyhow::{Result, anyhow, bail};
@@ -11,6 +12,7 @@ use service_core::service::rule_service::RuleService;
 use service_core::service::subscribe_service::SubscribeService;
 use types_core::dto::setting::SettingKernel;
 use types_core::entity::config::Config;
+use types_core::entity::subscribe::SubscribeSource;
 
 use crate::file;
 
@@ -60,9 +62,9 @@ pub async fn write(context: &Arc<DbContext>, config: &Config) -> Result<PathBuf>
     .await?
 }
 
-/// 读取订阅已同步的节点。
+/// 读取订阅已同步的节点, 按订阅记录的源类型解析。
 async fn nodes(context: &Arc<DbContext>, id: &str) -> Result<PickNodes> {
-    let nodes = SubscribeService::new(context.clone())
+    let (nodes, kind) = SubscribeService::new(context.clone())
         .find_nodes(id)
         .await?
         .unwrap_or_default();
@@ -70,8 +72,13 @@ async fn nodes(context: &Arc<DbContext>, id: &str) -> Result<PickNodes> {
         bail!("订阅尚未同步出节点");
     }
 
-    // 节点 JSON 的协议字段随订阅来源变化, 两种键都尝试
-    PickNodes::from_json(&nodes, KEY_TYPE).or_else(|_| PickNodes::from_json(&nodes, KEY_SCHEME))
+    // 库中文本无法识别时按未知处理
+    match SubscribeSource::from_str(&kind).unwrap_or_default() {
+        SubscribeSource::Clash => PickNodes::from_json_key(&nodes, KEY_TYPE),
+        SubscribeSource::Pure => PickNodes::from_json_key(&nodes, KEY_SCHEME),
+        // 尚未识别源类型时由节点自身内容判定
+        SubscribeSource::Unknown => PickNodes::from_json(&nodes),
+    }
 }
 
 /// 读取内核设置。

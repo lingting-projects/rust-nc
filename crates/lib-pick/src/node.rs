@@ -4,6 +4,7 @@ use indexmap::IndexMap;
 use serde_json::Value;
 
 use crate::area;
+use crate::pick::{KEY_SCHEME, KEY_TYPE};
 use crate::value::JsonValueExt;
 
 /// 节点名称键。
@@ -109,13 +110,37 @@ impl PickNodes {
         Ok(serde_json::to_string(&values)?)
     }
 
-    /// 从 JSON 文本解析, `protocol_key` 为协议所在字段名。
-    pub fn from_json(source: &str, protocol_key: &str) -> Result<Self> {
+    /// 从 JSON 文本解析, 协议字段按节点自身内容识别。
+    ///
+    /// clash 节点的协议字段为 `type`, 分享链接节点为 `scheme`; 分享链接节点同样带
+    /// `type`, 但该键表示传输层, 因此按 `scheme` 是否存在逐个判定。
+    pub fn from_json(source: &str) -> Result<Self> {
+        Self::from_json_with(source, |map| match map.contains_key(KEY_SCHEME) {
+            true => KEY_SCHEME,
+            false => KEY_TYPE,
+        })
+    }
+
+    /// 从 JSON 文本解析, 协议字段固定为 `protocol_key`。
+    ///
+    /// 用于已知来源类型的场景, 例如订阅已记录源类型时按该类型解析。
+    pub fn from_json_key(source: &str, protocol_key: &str) -> Result<Self> {
+        Self::from_json_with(source, |_| protocol_key)
+    }
+
+    /// 按回调取得每个节点的协议字段, 公共解析入口共用。
+    fn from_json_with<'a>(
+        source: &str,
+        protocol_key: impl Fn(&IndexMap<String, Value>) -> &'a str,
+    ) -> Result<Self> {
         let values: Vec<IndexMap<String, Value>> = serde_json::from_str(source)?;
         Ok(Self::new(
             values
                 .into_iter()
-                .map(|map| PickNode::new(map, protocol_key))
+                .map(|map| {
+                    let key = protocol_key(&map);
+                    PickNode::new(map, key)
+                })
                 .collect(),
         ))
     }

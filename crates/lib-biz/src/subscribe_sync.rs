@@ -9,6 +9,7 @@ use lib_pick::{KEY_TYPE, PickNodes, PickRemote, pick};
 use log::{debug, error, info, warn};
 use service_core::service::subscribe_service::SubscribeService;
 use types_core::dto::subscribe::SubscribeRefreshDTO;
+use types_core::entity::subscribe::SubscribeSource;
 
 use crate::scheduler::{Scheduler, SyncTask};
 
@@ -102,8 +103,9 @@ async fn sync(context: &Arc<DbContext>, id: &str) -> Result<()> {
 
     convert(&source.remote.nodes)?;
     let nodes = source.remote.nodes.to_json()?;
+    let kind = source_type(&source.remote.nodes).to_string();
     debug!(
-        "[订阅] [{}] 保存同步结果, 节点数量: {}",
+        "[订阅] [{}] 保存同步结果, 节点数量: {}, 源类型: {kind}",
         subscribe.name,
         source.remote.nodes.len()
     );
@@ -112,6 +114,7 @@ async fn sync(context: &Arc<DbContext>, id: &str) -> Result<()> {
             id,
             source.body.as_deref(),
             &nodes,
+            &kind,
             current_millis()?,
             source.remote.download.unwrap_or(0),
             source.remote.upload.unwrap_or(0),
@@ -167,10 +170,9 @@ async fn source(subscribe: &SubscribeRefreshDTO) -> Result<Source> {
 fn convert(nodes: &PickNodes) -> Result<()> {
     let platform = Platform::SingBox;
     let config = PlatformConfig::default();
-    let converted = if is_clash(nodes) {
-        clash_to(platform, nodes.clone(), config)
-    } else {
-        pure_to(platform, nodes.clone(), config)
+    let converted = match source_type(nodes) {
+        SubscribeSource::Clash => clash_to(platform, nodes.clone(), config),
+        _ => pure_to(platform, nodes.clone(), config),
     }?;
 
     debug!("[订阅] 转换配置完成, 长度: {}", converted.len());
@@ -178,9 +180,13 @@ fn convert(nodes: &PickNodes) -> Result<()> {
 }
 
 /// 由节点识别订阅来源, 依据协议所在的字段名。
-fn is_clash(nodes: &PickNodes) -> bool {
-    nodes
+fn source_type(nodes: &PickNodes) -> SubscribeSource {
+    let clash = nodes
         .nodes
         .first()
-        .is_some_and(|node| node.protocol_key == KEY_TYPE)
+        .is_some_and(|node| node.protocol_key == KEY_TYPE);
+    match clash {
+        true => SubscribeSource::Clash,
+        false => SubscribeSource::Pure,
+    }
 }

@@ -120,7 +120,7 @@ async fn nodes(context: &Arc<DbContext>, config: &Config) -> Result<usize> {
         return Err(anyhow!("订阅不存在: {}", config.subscribe_id));
     };
 
-    let nodes = service
+    let (nodes, _) = service
         .find_nodes(&config.subscribe_id)
         .await?
         .unwrap_or_default();

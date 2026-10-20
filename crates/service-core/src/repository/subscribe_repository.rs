@@ -1,7 +1,9 @@
+use std::str::FromStr;
+
 use anyhow::Result;
 use lib_db::{DbPool, DbRow};
 use types_core::dto::subscribe::SubscribeRefreshDTO;
-use types_core::entity::subscribe::Subscribe;
+use types_core::entity::subscribe::{Subscribe, SubscribeSource};
 
 use super::mapping;
 
@@ -14,7 +16,7 @@ const TABLE: &str = "tbl_subscribe";
 /// 否则行映射读不到 `nodes` 列会整条查询失败。
 const LIST_FIELDS: &str = "`id`,`name`,`url`,\
     CASE WHEN `url` LIKE 'http%' THEN '' ELSE `content` END AS `content`,\
-    '' AS `nodes`,\
+    '' AS `nodes`,`source`,\
     `interval`,`update_time`,`create_time`,`refresh_time`,`download`,`upload`,`max`,`expire_time`";
 
 /// 刷新字段，远端订阅不回传已保存的完整内容。
@@ -42,14 +44,17 @@ pub(crate) async fn find(pool: &DbPool, id: &str) -> Result<Option<Subscribe>> {
     row.as_ref().map(from_row).transpose()
 }
 
-/// 查询订阅解析后的节点 JSON 文本。
-pub(crate) async fn find_nodes(pool: &DbPool, id: &str) -> Result<Option<String>> {
-    let sql = format!("select `nodes` from {TABLE} where `id` = ? limit 1");
+/// 查询订阅解析后的节点 JSON 文本与源类型。
+pub(crate) async fn find_nodes(pool: &DbPool, id: &str) -> Result<Option<(String, String)>> {
+    let sql = format!("select `nodes`,`source` from {TABLE} where `id` = ? limit 1");
     let row = sqlx::query(&sql).bind(id).fetch_optional(pool).await?;
     let Some(row) = row else {
         return Ok(None);
     };
-    Ok(Some(mapping::string(&row, "nodes")?))
+    Ok(Some((
+        mapping::string(&row, "nodes")?,
+        mapping::string(&row, "source")?,
+    )))
 }
 
 /// 查询全部订阅的刷新字段。
@@ -82,9 +87,9 @@ pub(crate) async fn find_need_refresh(
 /// 新增订阅。
 pub(crate) async fn insert(pool: &DbPool, entity: &Subscribe) -> Result<()> {
     let sql = format!(
-        "insert into {TABLE} (`id`,`name`,`url`,`content`,`nodes`,`interval`,\
+        "insert into {TABLE} (`id`,`name`,`url`,`content`,`nodes`,`source`,`interval`,\
          `update_time`,`create_time`,`refresh_time`,`download`,`upload`,`max`,`expire_time`) \
-         values (?,?,?,?,?,?,?,?,?,?,?,?,?)"
+         values (?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
     );
     sqlx::query(&sql)
         .bind(&entity.id)
@@ -92,6 +97,7 @@ pub(crate) async fn insert(pool: &DbPool, entity: &Subscribe) -> Result<()> {
         .bind(&entity.url)
         .bind(&entity.content)
         .bind(&entity.nodes)
+        .bind(entity.source.to_string())
         .bind(entity.interval)
         .bind(entity.update_time)
         .bind(entity.create_time)
@@ -149,6 +155,7 @@ pub(crate) async fn update_refresh(
     id: &str,
     content: Option<&str>,
     nodes: &str,
+    source: &str,
     refresh_time: i64,
     download: u64,
     upload: u64,
@@ -161,7 +168,7 @@ pub(crate) async fn update_refresh(
         ""
     };
     let sql = format!(
-        "update {TABLE} set {content_sql}`nodes` = ?, `refresh_time` = ?, `download` = ?, \
+        "update {TABLE} set {content_sql}`nodes` = ?, `source` = ?, `refresh_time` = ?, `download` = ?, \
          `upload` = ?, `max` = ?, `expire_time` = ? where `id` = ?"
     );
 
@@ -171,6 +178,7 @@ pub(crate) async fn update_refresh(
     }
     query
         .bind(nodes)
+        .bind(source)
         .bind(refresh_time)
         .bind(download as i64)
         .bind(upload as i64)
@@ -196,6 +204,8 @@ fn from_row(row: &DbRow) -> Result<Subscribe> {
         url: mapping::string(row, "url")?,
         content: mapping::string(row, "content")?,
         nodes: mapping::string(row, "nodes")?,
+        // 库中文本无法识别时按未知处理
+        source: SubscribeSource::from_str(&mapping::string(row, "source")?).unwrap_or_default(),
         interval: mapping::millis(row, "interval")?,
         update_time: mapping::millis(row, "update_time")?,
         create_time: mapping::millis(row, "create_time")?,
