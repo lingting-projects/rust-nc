@@ -2,6 +2,8 @@ pub mod config;
 pub mod config_file;
 pub mod config_sync;
 pub mod file;
+pub mod inner_rule_file;
+pub mod inner_rule_sync;
 pub mod kernel;
 pub mod rule;
 pub mod rule_file;

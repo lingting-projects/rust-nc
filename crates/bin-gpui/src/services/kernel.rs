@@ -1,4 +1,5 @@
 use anyhow::Result;
+use lib_biz::inner_rule_sync::InnerRuleSync;
 use lib_biz::kernel::{SingBoxInstance, Status};
 
 use super::Services;
@@ -25,8 +26,11 @@ pub fn kernel_data() -> KernelData {
 }
 
 impl Services {
-    /// 把数据库上下文注入全局内核实例。
+    /// 把数据库上下文注入全局内核实例与内置规则同步调度器。
+    ///
+    /// 内置规则必须先于内核启动下载完成, 因此与内核实例一起初始化。
     pub fn init_kernel(&self) {
+        InnerRuleSync::instance().init(self.context(), self.runtime_handle());
         SingBoxInstance::instance().init(self.context());
     }
 }

@@ -13,6 +13,7 @@ use types_core::dto::setting::SettingKernel;
 
 use crate::config_file;
 use crate::file;
+use crate::inner_rule_sync;
 
 /// 等待内核 API 就绪的超时时间。
 const READY_TIMEOUT: Duration = Duration::from_secs(15);
@@ -130,6 +131,21 @@ impl SingBoxInstance {
         let json = file::sing_box_json(id)?;
         if !json.exists() {
             config_file::write(&context, &config).await?;
+        }
+
+        // 配置只引用本地规则集, 规则集未落盘时内核会一直卡在下载、API 不会监听
+        // 先补一次登记, 避免配置文件已存在但内置规则未登记的情况
+        if let Err(error) = config_file::register_inner_rules(&context, &config).await {
+            let reason = format!("{error:#}");
+            log::error!("[内核] 启动失败: {reason}");
+            self.set(Status::Stopped, None, Some(reason));
+            return Err(error);
+        }
+        if let Err(error) = inner_rule_sync::wait_ready(&context).await {
+            let reason = format!("{error:#}");
+            log::error!("[内核] 启动失败: {reason}");
+            self.set(Status::Stopped, None, Some(reason));
+            return Err(error);
         }
 
         let kernel = self.setting(&context).await?;

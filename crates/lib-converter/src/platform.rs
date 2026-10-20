@@ -34,6 +34,10 @@ pub struct PlatformConfig {
     pub ipv6: bool,
     /// geo cn 直连
     pub geo_cn: bool,
+    /// 内置规则集目录, geo cn 直连规则集由该目录下的本地文件提供
+    ///
+    /// 由内置规则机制提前下载; 为空时退回由内核自行下载远程规则集。
+    pub inner_rule_dir: PathBuf,
     /// 是否输出调试日志
     pub debug: bool,
     /// 内核自身日志输出文件, 空表示由内核自行决定
@@ -65,6 +69,7 @@ impl Default for PlatformConfig {
             fake_ip: true,
             ipv6: true,
             geo_cn: true,
+            inner_rule_dir: PathBuf::new(),
             debug: false,
             log_path: PathBuf::new(),
             rules_direct: Vec::new(),

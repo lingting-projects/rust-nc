@@ -1,11 +1,12 @@
 //! 定时同步任务。
 //!
-//! 三类数据各自有一个扫描任务, 由 `framework-timer` 按固定间隔唤醒:
-//! 取出到达刷新时间的数据 id, 推入对应的同步调度器, 由调度器控制并行上限。
+//! 各类数据各自有一个扫描任务, 由 `framework-timer` 按固定间隔唤醒:
+//! 取出待同步的数据 id, 推入对应的同步调度器, 由调度器控制并行上限。
 //!
 //! 使用前必须通过 [`init`] 注入数据库上下文与异步运行时, 再由 [`start`] 启动运行时。
 
 mod config;
+mod inner_rule;
 mod rule;
 mod subscribe;
 
@@ -18,6 +19,7 @@ use lib_db::DbContext;
 use tokio::runtime::Handle;
 
 pub use config::timer_config_sync;
+pub use inner_rule::timer_inner_rule_sync;
 pub use rule::timer_rule_sync;
 pub use subscribe::timer_subscribe_sync;
 

@@ -2,6 +2,8 @@ use std::sync::LazyLock;
 use std::time::Duration;
 
 use anyhow::Result;
+use bytes::Bytes;
+use futures_util::StreamExt as _;
 use lib_core::MultiStringValue;
 use wreq::Client;
 use wreq::header::HeaderMap;
@@ -55,6 +57,63 @@ pub(crate) async fn post(request: FetchRequest) -> Result<FetchResponse> {
     send(CLIENT.post(&request.url), &request).await
 }
 
+/// 发送 HEAD 请求，只取响应头。
+pub(crate) async fn head(request: FetchRequest) -> Result<FetchResponse> {
+    send(CLIENT.head(&request.url), &request).await
+}
+
+/// 以 GET 请求取得响应体流。
+///
+/// 响应体不做整体收集，由调用方逐块消费，因此大文件不会一次性进内存。
+pub(crate) async fn get_stream(request: FetchRequest) -> Result<FetchStream> {
+    let builder = CLIENT.get(&request.url).headers(headers(&request.headers));
+    let response = builder.send().await?;
+
+    let status = response.status().as_u16();
+    let headers = to_multi_string_value(
+        response
+            .headers()
+            .iter()
+            .map(|(name, value)| (name.as_str(), String::from_utf8_lossy(value.as_bytes()))),
+    );
+
+    Ok(FetchStream {
+        status,
+        headers,
+        body: Box::pin(response.bytes_stream()),
+    })
+}
+
+/// 流式响应：状态码、响应头与逐块到达的响应体。
+pub(crate) struct FetchStream {
+    status: u16,
+    headers: MultiStringValue,
+    body: std::pin::Pin<Box<dyn futures_util::Stream<Item = wreq::Result<Bytes>> + Send>>,
+}
+
+impl FetchStream {
+    /// 是否请求成功。
+    pub(crate) fn is_success(&self) -> bool {
+        (200..300).contains(&self.status)
+    }
+
+    /// 状态码。
+    pub(crate) fn status(&self) -> u16 {
+        self.status
+    }
+
+    /// 读取一个响应头，返回第一个值。
+    pub(crate) fn header(&self, name: &str) -> Option<&String> {
+        self.headers.get_first(name)
+    }
+
+    /// 读取下一块响应体，结束或出错时返回 `None`。
+    pub(crate) async fn next(&mut self) -> Option<Result<Bytes>> {
+        let chunk = self.body.next().await?;
+        Some(chunk.map_err(Into::into))
+    }
+}
+
 /// 写入请求头与请求体后发送请求。
 async fn send(mut builder: wreq::RequestBuilder, request: &FetchRequest) -> Result<FetchResponse> {
     builder = builder.headers(headers(&request.headers));
@@ -75,13 +134,13 @@ async fn send(mut builder: wreq::RequestBuilder, request: &FetchRequest) -> Resu
     Ok(FetchResponse::new(body, headers, status))
 }
 
-/// [`MultiStringValue`] 转请求头, 同名请求头保留多条。
+/// [`MultiStringValue`] 转请求头，同名请求头保留多条。
 fn headers(source: &MultiStringValue) -> HeaderMap {
     let mut headers = HeaderMap::new();
     for (name, value) in pairs(source) {
         if let (Ok(name), Ok(value)) = (
             name.parse::<wreq::header::HeaderName>(),
-            value.parse::<wreq::header::HeaderValue>(),
+            name.parse::<wreq::header::HeaderValue>(),
         ) {
             headers.append(name, value);
         }

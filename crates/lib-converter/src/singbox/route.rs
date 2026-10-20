@@ -1,8 +1,8 @@
 use serde::Serialize;
 
 use crate::constants::{
-    GEO_IP_CN, KEY_DIRECT, KEY_PROXY, KEY_REJECT, OUT_DIRECT, TAG_DNS_CN, TAG_FALLBACK,
-    TAG_HTTP_CLIENT, TAG_SELECTOR,
+    GEO_IP_CN, INNER_RULE_GEO_IP_CN, KEY_DIRECT, KEY_PROXY, KEY_REJECT, OUT_DIRECT, TAG_DNS_CN,
+    TAG_FALLBACK, TAG_HTTP_CLIENT, TAG_SELECTOR,
 };
 use crate::platform::Kernel;
 use crate::rule::{Rule, RuleType};
@@ -96,28 +96,17 @@ pub(crate) fn build(kernel: &Kernel) -> RouteConfig {
     let mut other = Vec::new();
     let mut ip = Vec::new();
 
-    let geo_cn = kernel.config.geo_cn;
+    // geo cn 直连规则的优先级高于自定义 IP 规则
+    if let Some(rule) = geo_cn_rule(kernel) {
+        ip.push(rule);
+    }
+
     let reject = kernel.config.rules_reject.iter();
     let direct = kernel.config.rules_direct.iter();
     let proxy = kernel.config.rules_proxy.iter();
-    collect_rules(
-        reject,
-        KEY_REJECT,
-        geo_cn,
-        &mut process,
-        &mut other,
-        &mut ip,
-    );
-    collect_rules(
-        direct,
-        KEY_DIRECT,
-        geo_cn,
-        &mut process,
-        &mut other,
-        &mut ip,
-    );
-    collect_rules(proxy, KEY_PROXY, geo_cn, &mut process, &mut other, &mut ip);
-
+    collect_rules(reject, KEY_REJECT, &mut process, &mut other, &mut ip);
+    collect_rules(direct, KEY_DIRECT, &mut process, &mut other, &mut ip);
+    collect_rules(proxy, KEY_PROXY, &mut process, &mut other, &mut ip);
     let mut rule_set = Vec::new();
     rule_set.extend(process);
     rule_set.extend(other);
@@ -150,21 +139,14 @@ pub(crate) fn build(kernel: &Kernel) -> RouteConfig {
     }
 }
 
-/// 按类型分类规则, geo cn 直连规则优先放入 IP 规则。
+/// 按类型分类规则。
 fn collect_rules<'a>(
     rules: impl Iterator<Item = &'a Rule>,
     prefix: &str,
-    geo_cn: bool,
     process: &mut Vec<SingBoxRule>,
     other: &mut Vec<SingBoxRule>,
     ip: &mut Vec<SingBoxRule>,
 ) {
-    // geo cn 直连规则的优先级高于自定义 IP 规则
-    if geo_cn && prefix == KEY_DIRECT {
-        let rule = Rule::from_remote(RuleType::Ip, GEO_IP_CN.to_string());
-        ip.push(rule.sing_box(&geo_cn_tag(prefix)));
-    }
-
     for rule in rules {
         let tag = match rule.rule_type {
             RuleType::Process => format!("{}_p_{}", prefix, process.len()),
@@ -178,6 +160,28 @@ fn collect_rules<'a>(
             RuleType::Other => other.push(rule.sing_box(&tag)),
         }
     }
+}
+
+/// geo cn 直连规则集。
+///
+/// 内置规则目录可用时引用其中的本地文件, 内核启动不必联网下载;
+/// 目录未配置时退回远程规则集, 由内核自行下载。
+fn geo_cn_rule(kernel: &Kernel) -> Option<SingBoxRule> {
+    if !kernel.config.geo_cn {
+        return None;
+    }
+
+    let tag = geo_cn_tag(KEY_DIRECT);
+    let dir = &kernel.config.inner_rule_dir;
+    if !dir.as_os_str().is_empty() {
+        let path = dir.join(format!("{}.srs", INNER_RULE_GEO_IP_CN));
+        return Some(
+            Rule::from_local(RuleType::Ip, path.to_string_lossy().to_string()).sing_box(&tag),
+        );
+    }
+
+    let rule = Rule::from_remote(RuleType::Ip, GEO_IP_CN.to_string());
+    Some(rule.sing_box(&tag))
 }
 
 /// geoip cn 规则标签。

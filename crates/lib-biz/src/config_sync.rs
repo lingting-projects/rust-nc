@@ -5,11 +5,13 @@ use lib_core::current_millis;
 use lib_db::DbContext;
 use log::{debug, error, info, warn};
 use service_core::service::config_service::ConfigService;
+use service_core::service::inner_rule_service::InnerRuleService;
 use service_core::service::rule_service::RuleService;
 use service_core::service::subscribe_service::SubscribeService;
 use types_core::entity::config::Config;
 
 use crate::config_file;
+use crate::inner_rule_sync::InnerRuleSync;
 use crate::scheduler::{Scheduler, SyncTask};
 
 /// 全局唯一的配置同步调度器。
@@ -73,12 +75,28 @@ pub(crate) async fn sync(context: &Arc<DbContext>, id: &str) -> Result<()> {
     info!("[配置] [{}] 开始同步", config.name);
     let count = validate(context, &config).await?;
     let path = config_file::write(context, &config).await?;
+    // 配置已引用内置规则集, 立刻推动一次下载, 避免等到内核启动才开始
+    push_inner_rules(context).await?;
     service.touch_refresh(id, current_millis()?).await?;
     info!(
         "[配置] [{}] 同步完成, 节点数量: {count}, 配置文件: {}",
         config.name,
         path.display()
     );
+    Ok(())
+}
+
+/// 推送未就绪的内置规则。
+///
+/// 只负责入队, 下载结果由调度器自行记录日志, 不阻塞配置同步。
+async fn push_inner_rules(context: &Arc<DbContext>) -> Result<()> {
+    let ids = InnerRuleService::new(context.clone())
+        .list_not_ready()
+        .await?
+        .into_iter()
+        .map(|item| item.id)
+        .collect::<Vec<_>>();
+    InnerRuleSync::instance().push_all(ids);
     Ok(())
 }
 

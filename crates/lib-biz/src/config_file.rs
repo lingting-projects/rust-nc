@@ -3,11 +3,13 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use anyhow::{Result, anyhow, bail};
+use lib_converter::constants::{GEO_IP_CN, INNER_RULE_GEO_IP_CN};
 use lib_converter::{NodeContains, Platform, PlatformConfig, Rule, RuleType, clash_to, pure_to};
 use lib_core::directorys;
 use lib_db::DbContext;
 use lib_pick::{KEY_SCHEME, KEY_TYPE, PickNodes};
 use service_core::manager::setting_manager::SettingManager;
+use service_core::service::inner_rule_service::InnerRuleService;
 use service_core::service::rule_service::RuleService;
 use service_core::service::subscribe_service::SubscribeService;
 use types_core::dto::setting::SettingKernel;
@@ -15,6 +17,7 @@ use types_core::entity::config::Config;
 use types_core::entity::subscribe::SubscribeSource;
 
 use crate::file;
+use crate::inner_rule_file;
 
 /// 生成配置的 sing-box 配置文件: `{config}/{id}/sing_box/config.json`。
 ///
@@ -22,6 +25,8 @@ use crate::file;
 pub async fn write(context: &Arc<DbContext>, config: &Config) -> Result<PathBuf> {
     let nodes = nodes(context, &config.subscribe_id).await?;
     let kernel = kernel(context).await?;
+    // 内置规则在生成配置前登记, 保证内核启动前的就绪检查能覆盖到本次引用的规则集
+    register_inner_rules(context, config).await?;
     // 先清空上一次的规则副本, 避免规则变更后残留旧文件
     file::remove_config(&config.id)?;
     let rules = rules(context, config).await?;
@@ -35,6 +40,7 @@ pub async fn write(context: &Arc<DbContext>, config: &Config) -> Result<PathBuf>
         fake_ip: config.fake_ip,
         ipv6: config.ipv6,
         geo_cn: config.geo_cn,
+        inner_rule_dir: inner_rule_file::inner_rule_root()?,
         debug: false,
         log_path: file::sing_box_log()?,
         rules_direct: rules.0,
@@ -85,6 +91,19 @@ async fn nodes(context: &Arc<DbContext>, id: &str) -> Result<PickNodes> {
 async fn kernel(context: &Arc<DbContext>) -> Result<SettingKernel> {
     let cache = directorys()?.cache.clone();
     SettingManager::new(context.clone(), cache).kernel().await
+}
+
+/// 登记配置引用的内置规则。
+///
+/// 只有 geo cn 直连会用到内置规则集, 未启用时无需登记;
+/// 登记后由 [`crate::inner_rule_sync`] 负责下载到本地。重复调用保持已有就绪状态。
+pub async fn register_inner_rules(context: &Arc<DbContext>, config: &Config) -> Result<()> {
+    if !config.geo_cn {
+        return Ok(());
+    }
+
+    let service = InnerRuleService::new(context.clone());
+    service.register(INNER_RULE_GEO_IP_CN, GEO_IP_CN).await
 }
 
 /// 按直连、代理、拒绝的顺序取得规则。

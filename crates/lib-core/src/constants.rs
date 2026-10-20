@@ -81,7 +81,7 @@ pub const NODE_EXCLUDE_NAME_NON: bool = true;
 // region 其他
 
 /// github 加速前缀
-pub const FAST_GITHUB_PREFIX: &str = "https://fastgh.lainbo.com/";
+pub const FAST_GITHUB_PREFIX: &str = "https://v6.gh-proxy.org/";
 /// 连通性测试地址
 pub const TEST_URL: &str = "http://www.gstatic.com/generate_204";
 

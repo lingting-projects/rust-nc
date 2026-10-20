@@ -1,5 +1,5 @@
 mod clash;
-mod constants;
+pub mod constants;
 pub mod ip;
 mod node_contains;
 mod platform;
