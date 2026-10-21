@@ -13,7 +13,7 @@ pub const KERNEL_UI_PORT: u16 = KERNEL_UI_PORT_DEV;
 /// 内核面板监听端口: 正式版本默认值
 pub const KERNEL_UI_PORT_RELEASE: u16 = 9090;
 /// 内核面板监听端口: 开发环境默认值
-pub const KERNEL_UI_PORT_DEV: u16 = 19090;
+pub const KERNEL_UI_PORT_DEV: u16 = 9091;
 /// 混合代理监听地址
 pub const KERNEL_MIXED_LISTEN: &str = "127.0.0.1";
 /// 混合代理端口
@@ -26,7 +26,7 @@ pub const KERNEL_MIXED_PORT: u16 = KERNEL_MIXED_PORT_DEV;
 /// 混合代理端口: 正式版本默认值
 pub const KERNEL_MIXED_PORT_RELEASE: u16 = 7890;
 /// 混合代理端口: 开发环境默认值
-pub const KERNEL_MIXED_PORT_DEV: u16 = 17890;
+pub const KERNEL_MIXED_PORT_DEV: u16 = 7891;
 /// 国内 dns
 pub const KERNEL_DNS_CN: &[&str] = &[
     // 阿里
