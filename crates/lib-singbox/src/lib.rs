@@ -11,8 +11,10 @@ use lib_system::process::Process;
 use std::time::{Duration, Instant};
 
 mod grpc;
+mod url_test;
 
-pub use grpc::SingBoxGrpc;
+pub use grpc::{Group, GroupItem, SingBoxGrpc};
+pub use url_test::UrlTestQueue;
 
 /// 随包分发的 sing-box 版本。
 pub const VERSION: &str = "v1.14.3";
@@ -44,6 +46,8 @@ pub struct SingBox {
     inner: Mutex<Inner>,
     /// gRPC 客户端，仅在内核运行期间存在。
     grpc: ArcSwapOption<SingBoxGrpc>,
+    /// 测速任务队列，随内核对象一起创建，内核启停时注入或清空客户端。
+    url_test: Arc<UrlTestQueue>,
 }
 
 /// 内核实例的内部状态。
@@ -76,6 +80,7 @@ impl SingBox {
                 work: PathBuf::new(),
             }),
             grpc: ArcSwapOption::empty(),
+            url_test: Arc::new(UrlTestQueue::new()),
         })
     }
 
@@ -88,6 +93,7 @@ impl SingBox {
                 inner.process = None;
                 // 内核退出后 gRPC 连接已失效, 一并清理
                 self.grpc.store(None);
+                self.url_test.set_grpc(None);
                 if let Err(error) = Self::status(status) {
                     log::error!("singbox执行异常! {error}");
                     inner.error = true;
@@ -137,6 +143,8 @@ impl SingBox {
         inner.reason = None;
         // 上一轮连接属于旧进程, 启动新进程时丢弃
         self.grpc.store(None);
+        self.url_test.set_grpc(None);
+        self.url_test.clear();
         Ok(())
     }
 
@@ -144,6 +152,9 @@ impl SingBox {
     pub fn stop(&self) -> Result<()> {
         // 无论进程是否成功结束, 旧连接都不再可用
         self.grpc.store(None);
+        // 内核已停止, 排队中的测速不可能成功, 直接丢弃
+        self.url_test.set_grpc(None);
+        self.url_test.clear();
         let Some(mut process) = self.lock().process.take() else {
             return Ok(());
         };
@@ -238,6 +249,8 @@ impl SingBox {
         let api = {
             let inner = self.lock();
             if inner.process.is_none() {
+                // 内核已不在运行, 队列里的客户端也一并失效
+                self.url_test.set_grpc(None);
                 return Ok(None);
             }
             inner.api.clone()
@@ -249,7 +262,16 @@ impl SingBox {
 
         let grpc = Arc::new(SingBoxGrpc::new(&api)?);
         self.grpc.store(Some(grpc.clone()));
+        self.url_test.set_grpc(Some(grpc.clone()));
         Ok(Some(grpc))
+    }
+
+    /// 测速任务队列。
+    ///
+    /// 内核运行中时先用 [`grpc`](Self::grpc) 把客户端交给队列，再推送节点；
+    /// 队列自己按顺序执行，重复推送同一节点会被去重。
+    pub fn url_test(&self) -> Arc<UrlTestQueue> {
+        self.url_test.clone()
     }
 
     /// 取内部状态，锁被污染时继续使用其内容。

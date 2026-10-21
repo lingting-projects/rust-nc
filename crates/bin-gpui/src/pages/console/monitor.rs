@@ -1,18 +1,8 @@
 use std::collections::VecDeque;
+use std::time::Instant;
 
 /// 窗口内保留的采样点数量，按一秒一个点约为一分钟。
 const CAPACITY: usize = 60;
-
-/// 上传速率的基准值，单位 Bytes/s。
-const UPLOAD_BASE: f64 = 820. * 1024.;
-/// 下载速率的基准值，单位 Bytes/s。
-const DOWNLOAD_BASE: f64 = 1_640. * 1024.;
-/// 内存占用的基准值，单位 Bytes。
-const MEMORY_BASE: f64 = 286. * 1024. * 1024.;
-
-/// 启动前的累计流量基数，让总量一上来就有意义。
-const TOTAL_UPLOAD_BASE: f64 = 2.1 * 1024. * 1024. * 1024.;
-const TOTAL_DOWNLOAD_BASE: f64 = 7.8 * 1024. * 1024. * 1024.;
 
 /// 图表使用的一个采样点。
 #[derive(Clone)]
@@ -36,50 +26,59 @@ struct Sample {
 
 /// 实时监控数据。
 ///
-/// 内核监控的接入方式尚未确定，这里先用随机游走生成上传、下载与内存三条曲线，
-/// 让界面与交互先成型；接入真实数据时替换本模块即可，页面不需要改动。
+/// 数据来自内核 gRPC API 推送的运行状态：内存占用直接取内核进程占用，
+/// 上下行速率由累计流量的两次采样差除以实际间隔得到，累计流量本身取内核的累计值。
 pub struct Monitor {
     samples: VecDeque<Sample>,
     total_upload: f64,
     total_download: f64,
-    jitter: Jitter,
+    /// 上一次采样时的累计流量与时刻，用于换算速率。
+    last: Option<(u64, u64, Instant)>,
 }
 
 impl Monitor {
-    /// 创建监控数据，并预填满整个窗口，图表一开始就是完整的。
+    /// 创建空的监控数据，内核启动后由采样逐步填充。
     pub fn new() -> Self {
-        let mut monitor = Self {
+        Self {
             samples: VecDeque::with_capacity(CAPACITY),
-            total_upload: TOTAL_UPLOAD_BASE,
-            total_download: TOTAL_DOWNLOAD_BASE,
-            jitter: Jitter::new(0x9E37_79B9_7F4A_7C15),
-        };
-
-        for _ in 0..CAPACITY {
-            monitor.tick();
+            total_upload: 0.,
+            total_download: 0.,
+            last: None,
         }
-
-        monitor
     }
 
-    /// 前进一秒，产生一个新采样点。
-    pub fn tick(&mut self) {
-        let last = self.samples.back();
-        let (upload, download, memory) = match last {
-            Some(last) => (
-                walk(last.upload, UPLOAD_BASE, 0.25, &mut self.jitter),
-                walk(last.download, DOWNLOAD_BASE, 0.25, &mut self.jitter),
-                walk(last.memory, MEMORY_BASE, 0.03, &mut self.jitter),
-            ),
-            None => (UPLOAD_BASE, DOWNLOAD_BASE, MEMORY_BASE),
+    /// 清空监控数据，内核停止后调用，避免下次启动残留上一轮曲线。
+    pub fn reset(&mut self) {
+        self.samples.clear();
+        self.total_upload = 0.;
+        self.total_download = 0.;
+        self.last = None;
+    }
+
+    /// 用一个内核状态快照推进一次采样。
+    ///
+    /// `upload_total`、`download_total` 是内核启动以来的累计流量，`memory` 是内核进程占用。
+    pub fn push(&mut self, upload_total: u64, download_total: u64, memory: u64) {
+        let now = Instant::now();
+        // 首个采样没有参照，速率按 0 处理；之后按实际间隔换算。
+        let (upload, download) = match self.last {
+            Some((last_upload, last_download, last_at)) => {
+                let seconds = now.duration_since(last_at).as_secs_f64().max(0.001);
+                (
+                    upload_total.saturating_sub(last_upload) as f64 / seconds,
+                    download_total.saturating_sub(last_download) as f64 / seconds,
+                )
+            }
+            None => (0., 0.),
         };
 
-        self.total_upload += upload;
-        self.total_download += download;
+        self.last = Some((upload_total, download_total, now));
+        self.total_upload = upload_total as f64;
+        self.total_download = download_total as f64;
         self.samples.push_back(Sample {
             upload,
             download,
-            memory,
+            memory: memory as f64,
         });
         while self.samples.len() > CAPACITY {
             self.samples.pop_front();
@@ -125,36 +124,5 @@ impl Monitor {
     /// 累计下载量，单位 Bytes。
     pub fn total_download(&self) -> f64 {
         self.total_download
-    }
-}
-
-/// 以 `base` 为中心做一次小幅游走，结果不会低于 0。
-fn walk(current: f64, base: f64, amplitude: f64, jitter: &mut Jitter) -> f64 {
-    // 向基准值回拉，避免长时间游走偏出合理区间。
-    let pull = (base - current) * 0.1;
-    (current + pull + base * amplitude * jitter.signed()).max(0.)
-}
-
-/// 模拟数据的随机源，用 xorshift 避免为 mock 引入额外依赖。
-struct Jitter(u64);
-
-impl Jitter {
-    fn new(seed: u64) -> Self {
-        Self(seed)
-    }
-
-    /// 返回 `[0, 1)` 内的随机数。
-    fn next(&mut self) -> f64 {
-        let mut value = self.0;
-        value ^= value << 13;
-        value ^= value >> 7;
-        value ^= value << 17;
-        self.0 = value;
-        (value >> 11) as f64 / (1u64 << 53) as f64
-    }
-
-    /// 返回 `[-1, 1)` 内的随机数。
-    fn signed(&mut self) -> f64 {
-        self.next() * 2. - 1.
     }
 }

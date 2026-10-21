@@ -3,7 +3,7 @@ mod kernel;
 mod rule;
 mod subscribe;
 
-pub use kernel::{KernelData, kernel_data};
+pub use kernel::{GroupInfo, GroupNode, KernelData, kernel_data};
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -111,6 +111,14 @@ pub fn init(cx: &mut App) {
 /// 读取数据层。未初始化时返回 `None`。
 pub fn get(cx: &App) -> Option<&AppServices> {
     cx.try_global::<AppServices>()
+}
+
+/// 读取可用的数据层，未初始化或初始化失败时返回 `None`。
+pub fn ready(cx: &App) -> Option<Arc<Services>> {
+    match get(cx)? {
+        AppServices::Ready(services) => Some(services.clone()),
+        AppServices::Failed(_) => None,
+    }
 }
 
 /// 打开数据库并建好运行时。

@@ -25,10 +25,12 @@ pub fn render(
     theme: &gpui_kit::component::Theme,
 ) -> AnyElement {
     let points = monitor.points();
+    // 内核刚启动时还没有采样点，此时按占位处理，避免图表拿到空数据。
+    let ready = running && !points.is_empty();
 
     let mut rows: Vec<AnyElement> = Vec::new();
     if sections.contains(&MonitorSection::Basic) {
-        rows.push(if running {
+        rows.push(if ready {
             basic(monitor, theme).into_any_element()
         } else {
             basic_placeholder(theme).into_any_element()
@@ -37,14 +39,14 @@ pub fn render(
 
     let mut columns: Vec<AnyElement> = Vec::new();
     if sections.contains(&MonitorSection::Traffic) {
-        columns.push(if running {
+        columns.push(if ready {
             traffic(&points, theme).into_any_element()
         } else {
             chart_placeholder("流量", theme).into_any_element()
         });
     }
     if sections.contains(&MonitorSection::Memory) {
-        columns.push(if running {
+        columns.push(if ready {
             memory(&points, theme).into_any_element()
         } else {
             chart_placeholder("内存", theme).into_any_element()

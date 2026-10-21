@@ -79,7 +79,7 @@ pub enum LoadState {
 
 /// 控制台页面：自上而下四段——控制栏、预览栏、监控控制栏、实时监控。
 ///
-/// 配置与订阅来自 `service-core`，内核状态取自全局内核实例，实时监控仍是本地模拟。
+/// 配置与订阅来自 `service-core`，内核状态取自全局内核实例，实时监控取自内核 gRPC API。
 pub struct Console {
     load: LoadState,
     kernel: Kernel,
@@ -108,16 +108,59 @@ impl Console {
                     .await;
 
                 // 每秒同步一次内核状态：内核可能自行退出，状态变化后界面跟随。
-                if this
+                let Some((services, running)) = this
                     .update(cx, |console, cx| {
                         let changed = console.sync_kernel();
-                        let running = console.kernel.running();
-                        if running {
-                            console.monitor.tick();
+                        if !console.kernel.running() {
+                            // 内核停止后没有数据可读，清掉上一轮曲线避免下次启动残留
+                            console.monitor.reset();
                         }
-                        if changed || running {
+                        if changed {
                             cx.notify();
                         }
+                        (services::ready(cx), console.kernel.running())
+                    })
+                    .ok()
+                else {
+                    return;
+                };
+
+                if !running {
+                    continue;
+                }
+
+                // 采样跑在数据层的运行时上，界面线程只等结果，不阻塞渲染。
+                let status = match services {
+                    Some(services) => {
+                        let loader = services.clone();
+                        match services
+                            .spawn(async move { loader.kernel_status().await })
+                            .await
+                        {
+                            Ok(Ok(status)) => status,
+                            Ok(Err(error)) => {
+                                log::warn!("[控制台] 读取内核状态失败: {error:#}");
+                                None
+                            }
+                            Err(error) => {
+                                log::warn!("[控制台] 读取内核状态任务异常: {error}");
+                                None
+                            }
+                        }
+                    }
+                    None => None,
+                };
+
+                let Some(status) = status else {
+                    continue;
+                };
+
+                if this
+                    .update(cx, |console, cx| {
+                        console
+                            .monitor
+                            .push(status.upload, status.download, status.memory);
+                        cx.notify();
                     })
                     .is_err()
                 {

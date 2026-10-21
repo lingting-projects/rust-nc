@@ -10,7 +10,8 @@ pub mod proto {
 pub use proto::started_service_client::StartedServiceClient;
 pub use proto::{
     CloseConnectionRequest, Connection, ConnectionEvent, ConnectionEventType, Group, GroupItem,
-    SelectOutboundRequest, SubscribeConnectionsRequest, UrlTestRequest, Version,
+    SelectOutboundRequest, Status, SubscribeConnectionsRequest, SubscribeStatusRequest,
+    UrlTestRequest, Version,
 };
 
 /// 连接信息快照。
@@ -104,6 +105,29 @@ impl SingBoxGrpc {
             .context("读取内核版本失败")?
             .into_inner();
         Ok(version)
+    }
+
+    /// 读取一次内核运行状态快照。
+    ///
+    /// 内核的 `SubscribeStatus` 是流式接口，但界面按秒轮询即可，
+    /// 因此这里只取首个推送后立即断开，避免长期持有一条流。
+    pub async fn status(&self) -> Result<Status> {
+        let request = SubscribeStatusRequest {
+            interval: std::time::Duration::from_secs(1).as_millis() as i64,
+        };
+        let mut stream = self
+            .client()
+            .subscribe_status(self.request(request))
+            .await
+            .context("订阅内核状态失败")?
+            .into_inner();
+
+        let status = stream
+            .message()
+            .await
+            .context("读取内核状态失败")?
+            .context("内核未推送状态")?;
+        Ok(status)
     }
 
     /// 读取出站分组，分组内的节点即节点切换的候选项。

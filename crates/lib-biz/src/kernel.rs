@@ -113,6 +113,39 @@ impl SingBoxInstance {
         Ok(singbox)
     }
 
+    /// 内核 gRPC 客户端，内核未运行时返回 `None`。
+    pub fn grpc(&self) -> Result<Option<Arc<lib_singbox::SingBoxGrpc>>> {
+        self.singbox()?.grpc()
+    }
+
+    /// 读取出站分组，分组内的节点即节点切换的候选项。
+    pub async fn groups(&self) -> Result<Vec<lib_singbox::Group>> {
+        let Some(grpc) = self.grpc()? else {
+            bail!("内核未运行");
+        };
+        grpc.groups().await
+    }
+
+    /// 在分组 `group_tag` 中切换到节点 `outbound_tag`。
+    pub async fn select(&self, group_tag: &str, outbound_tag: &str) -> Result<()> {
+        let Some(grpc) = self.grpc()? else {
+            bail!("内核未运行");
+        };
+        grpc.select(group_tag, outbound_tag).await
+    }
+
+    /// 推送一个节点到测速队列，返回是否成功入队。
+    ///
+    /// 队列按顺序逐个测速并自行去重，因此这里只负责把客户端交给队列后入队。
+    pub fn url_test(&self, outbound_tag: &str) -> Result<bool> {
+        let Some(grpc) = self.grpc()? else {
+            bail!("内核未运行");
+        };
+        let queue = self.singbox()?.url_test();
+        queue.set_grpc(Some(grpc));
+        Ok(queue.push(outbound_tag))
+    }
+
     /// 启动配置 `id` 的内核。
     ///
     /// 启动命令执行完毕不代表内核可用，因此等内核 API 探测通过后才置为运行中。
