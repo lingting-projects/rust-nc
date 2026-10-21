@@ -3,7 +3,7 @@ mod kernel;
 mod rule;
 mod subscribe;
 
-pub use kernel::{GroupInfo, GroupNode, KernelData, kernel_data};
+pub use kernel::{ConnectionInfo, GroupInfo, GroupNode, KernelData, kernel_data};
 
 use std::path::PathBuf;
 use std::sync::Arc;

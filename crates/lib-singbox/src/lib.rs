@@ -13,7 +13,7 @@ use std::time::{Duration, Instant};
 mod grpc;
 mod url_test;
 
-pub use grpc::{Group, GroupItem, SingBoxGrpc};
+pub use grpc::{Connection, Group, GroupItem, ProcessInfo, SingBoxGrpc};
 pub use url_test::UrlTestQueue;
 
 /// 随包分发的 sing-box 版本。

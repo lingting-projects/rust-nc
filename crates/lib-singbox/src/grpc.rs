@@ -10,8 +10,8 @@ pub mod proto {
 pub use proto::started_service_client::StartedServiceClient;
 pub use proto::{
     CloseConnectionRequest, Connection, ConnectionEvent, ConnectionEventType, Group, GroupItem,
-    SelectOutboundRequest, Status, SubscribeConnectionsRequest, SubscribeStatusRequest,
-    UrlTestRequest, Version,
+    ProcessInfo, SelectOutboundRequest, Status, SubscribeConnectionsRequest,
+    SubscribeStatusRequest, UrlTestRequest, Version,
 };
 
 /// 连接信息快照。

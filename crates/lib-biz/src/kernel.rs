@@ -146,6 +146,25 @@ impl SingBoxInstance {
         Ok(queue.push(outbound_tag))
     }
 
+    /// 读取当前连接快照。
+    ///
+    /// 连接订阅是流式接口，这里只取首个推送后立即断开，由调用方按固定间隔轮询。
+    pub async fn connections(&self) -> Result<Vec<lib_singbox::Connection>> {
+        let Some(grpc) = self.grpc()? else {
+            bail!("内核未运行");
+        };
+        let snapshot = grpc.connections(Duration::from_secs(0)).await?;
+        Ok(snapshot.connections)
+    }
+
+    /// 关闭指定连接。
+    pub async fn close_connection(&self, id: &str) -> Result<()> {
+        let Some(grpc) = self.grpc()? else {
+            bail!("内核未运行");
+        };
+        grpc.close_connection(id).await
+    }
+
     /// 启动配置 `id` 的内核。
     ///
     /// 启动命令执行完毕不代表内核可用，因此等内核 API 探测通过后才置为运行中。

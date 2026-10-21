@@ -1,4 +1,5 @@
 mod config;
+mod connection;
 mod console;
 mod node;
 mod rule;
@@ -6,6 +7,7 @@ mod settings;
 mod subscribe;
 
 pub use config::ConfigPage;
+pub use connection::ConnectionPage;
 pub use console::Console;
 pub use node::NodePage;
 pub use rule::RulePage;

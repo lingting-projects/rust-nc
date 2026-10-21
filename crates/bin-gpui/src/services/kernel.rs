@@ -144,3 +144,77 @@ impl Services {
         SingBoxInstance::instance().url_test(outbound_tag)
     }
 }
+
+impl Services {
+    /// 读取当前连接快照。
+    ///
+    /// 内核的 `SubscribeConnections` 是流式接口，这里取首个推送后立即断开，
+    /// 由页面按固定间隔轮询；速率也由两次快照的累计流量差分得到。
+    pub async fn kernel_connections(&self) -> Result<Vec<ConnectionInfo>> {
+        let connections = SingBoxInstance::instance().connections().await?;
+        Ok(connections.into_iter().map(ConnectionInfo::of).collect())
+    }
+
+    /// 关闭指定连接。
+    pub async fn kernel_close_connection(&self, id: &str) -> Result<()> {
+        SingBoxInstance::instance().close_connection(id).await
+    }
+}
+
+/// 一条内核连接。
+#[derive(Clone)]
+pub struct ConnectionInfo {
+    /// 连接 id，断开连接时使用。
+    pub id: String,
+    /// 入站标签，即流量从哪个入站进入。
+    pub inbound: String,
+    /// 入站类型，用于在详情里说明入站形态。
+    pub inbound_type: String,
+    /// 网络类型，例如 `tcp`、`udp`。
+    pub network: String,
+    /// 进程名，取不到时为空。
+    pub process: String,
+    /// 目标地址，域名请求优先展示域名。
+    pub destination: String,
+    /// 命中的规则，未命中时为空。
+    pub rule: String,
+    /// 出站链路，从第一个出站到最后一个出站。
+    pub chain: Vec<String>,
+    /// 源地址。
+    pub source: String,
+    /// 连接建立时间，毫秒时间戳。
+    pub created_at: i64,
+    /// 累计上传字节数。
+    pub upload: u64,
+    /// 累计下载字节数。
+    pub download: u64,
+}
+
+impl ConnectionInfo {
+    /// 由内核连接快照转换。
+    fn of(connection: lib_singbox::Connection) -> Self {
+        // 域名请求的 destination 是解析后的地址，域名本身在 domain 里，展示时优先用域名。
+        let destination = match connection.domain.is_empty() {
+            true => connection.destination,
+            false => connection.domain,
+        };
+
+        Self {
+            id: connection.id,
+            inbound: connection.inbound,
+            inbound_type: connection.inbound_type,
+            network: connection.network,
+            process: connection
+                .process_info
+                .map(|info| info.process_path)
+                .unwrap_or_default(),
+            destination,
+            rule: connection.rule,
+            chain: connection.chain_list,
+            source: connection.source,
+            created_at: connection.created_at,
+            upload: connection.uplink_total.max(0) as u64,
+            download: connection.downlink_total.max(0) as u64,
+        }
+    }
+}
