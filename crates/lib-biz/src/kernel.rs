@@ -6,7 +6,7 @@ use anyhow::{Result, anyhow, bail};
 use arc_swap::ArcSwapOption;
 use lib_core::directorys;
 use lib_db::DbContext;
-use lib_singbox::SingBox;
+use lib_singbox::{Phase, SingBox};
 use service_core::manager::setting_manager::SettingManager;
 use service_core::service::config_service::ConfigService;
 use types_core::dto::setting::SettingKernel;
@@ -22,6 +22,9 @@ const READY_TIMEOUT: Duration = Duration::from_secs(15);
 static INSTANCE: LazyLock<SingBoxInstance> = LazyLock::new(SingBoxInstance::new);
 
 /// 内核运行状态。
+///
+/// 与 `lib-singbox` 的进程阶段一一对应，另外多出「停止中」，
+/// 供界面在停止过程尚未完成时给出准确的反馈。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Status {
     /// 未运行
@@ -31,6 +34,19 @@ pub enum Status {
     Starting,
     /// 运行中
     Running,
+    /// 停止中
+    Stopping,
+}
+
+impl From<Phase> for Status {
+    fn from(phase: Phase) -> Self {
+        match phase {
+            Phase::Stopped => Status::Stopped,
+            Phase::Starting => Status::Starting,
+            Phase::Running => Status::Running,
+            Phase::Stopping => Status::Stopping,
+        }
+    }
 }
 
 /// 内核实例。
@@ -40,6 +56,7 @@ pub enum Status {
 pub struct SingBoxInstance {
     /// 内核对象，尚未创建时为空
     singbox: ArcSwapOption<SingBox>,
+    /// 配置 id 与失败原因；进程阶段直接读内核对象，不在这里再存一份
     inner: Mutex<Inner>,
     /// 启停操作的串行锁，避免并发启动或启动未完成时停止
     action: tokio::sync::Mutex<()>,
@@ -50,7 +67,6 @@ pub struct SingBoxInstance {
 struct Inner {
     /// 服务运行时的数据库上下文，未初始化时为空
     context: Option<Arc<DbContext>>,
-    status: Status,
     /// 正在运行的配置 id
     config_id: Option<String>,
     /// 最近一次异常的原因
@@ -77,22 +93,46 @@ impl SingBoxInstance {
         self.lock().context = Some(context);
     }
 
-    /// 内核状态，读取前先同步进程的真实状态。
+    /// 内核状态。
+    ///
+    /// 直接读内核对象的进程阶段，不加锁也不做 IO：界面每帧都会调用，
+    /// 进程退出由内核对象自己的监控线程发现并更新。
     pub fn status(&self) -> Status {
-        if let Err(error) = self.refresh() {
-            log::warn!("[内核] 刷新状态失败: {error:#}");
+        match self.singbox.load_full() {
+            Some(singbox) => singbox.phase().into(),
+            // 内核对象尚未创建，等同于未运行
+            None => Status::Stopped,
         }
-        self.lock().status
     }
 
     /// 正在运行的配置 id，未运行时为 `None`。
+    ///
+    /// 内核已被监控线程判定退出时同步清掉，避免界面还显示上一轮的配置。
     pub fn config_id(&self) -> Option<String> {
-        self.lock().config_id.clone()
+        let singbox = self.singbox.load_full();
+        let running = singbox.is_some_and(|singbox| singbox.phase().is_running());
+        let mut inner = self.lock();
+        if !running {
+            inner.config_id = None;
+        }
+        inner.config_id.clone()
     }
 
     /// 最近一次异常的原因。
+    ///
+    /// 启动失败由启动流程记录；运行期间异常退出由内核对象的监控线程记录，
+    /// 这里在内核已停止时一并取回，界面据此展示启动/运行失败日志。
     pub fn reason(&self) -> Option<String> {
-        self.lock().reason.clone()
+        let singbox = self.singbox.load_full();
+        let mut inner = self.lock();
+
+        if let Some(singbox) = singbox
+            && !singbox.phase().is_running()
+            && let Some(reason) = singbox.reason()
+        {
+            inner.reason = Some(reason);
+        }
+        inner.reason.clone()
     }
 
     /// 内核对象，尚未创建时按安装目录创建并保存。
@@ -196,6 +236,7 @@ impl SingBoxInstance {
     /// 启动配置 `id` 的内核。
     ///
     /// 启动命令执行完毕不代表内核可用，因此等内核 API 探测通过后才置为运行中。
+    /// 进程本身由内核对象的监控线程创建，这里只登记意图并等待结果。
     pub async fn start(&self, id: &str) -> Result<()> {
         let _action = self.action.lock().await;
         if self.status() != Status::Stopped {
@@ -212,19 +253,19 @@ impl SingBoxInstance {
         if !json.exists() {
             config_file::write(&context, &config).await?;
         }
-
         // 配置只引用本地规则集, 规则集未落盘时内核会一直卡在下载、API 不会监听
         // 先补一次登记, 避免配置文件已存在但内置规则未登记的情况
         if let Err(error) = config_file::register_inner_rules(&context, &config).await {
             let reason = format!("{error:#}");
             log::error!("[内核] 启动失败: {reason}");
-            self.set(Status::Stopped, None, Some(reason));
+            self.set(None, Some(reason));
             return Err(error);
         }
+
         if let Err(error) = inner_rule_sync::wait_ready(&context).await {
             let reason = format!("{error:#}");
             log::error!("[内核] 启动失败: {reason}");
-            self.set(Status::Stopped, None, Some(reason));
+            self.set(None, Some(reason));
             return Err(error);
         }
 
@@ -233,19 +274,18 @@ impl SingBoxInstance {
         // 内核统一在 singbox_workspace 下启动, 日志与运行时文件都落在这里
         let work = file::sing_box_workspace()?;
         let singbox = self.singbox()?;
-
-        self.set(Status::Starting, Some(id), None);
+        self.set(Some(id), None);
         if let Err(error) = Self::launch(&singbox, &json, &work, &api).await {
             // 启动失败时不留残余进程, 状态回到未运行
             let _ = singbox.stop();
             let reason = format!("{error:#}");
             log::error!("[内核] 启动失败: {reason}");
-            self.set(Status::Stopped, None, Some(reason));
+            self.set(None, Some(reason));
             return Err(error);
         }
 
         log::info!("[内核] 已启动, 配置: {id}, API: {api}");
-        self.set(Status::Running, Some(id), None);
+        self.set(Some(id), None);
         Ok(())
     }
 
@@ -267,23 +307,26 @@ impl SingBoxInstance {
     }
 
     /// 停止内核。
+    ///
+    /// 结束进程由内核对象的监控线程完成，这里只登记停止意图并等待进程回收。
     pub async fn stop(&self) -> Result<()> {
         let _action = self.action.lock().await;
         let Some(singbox) = self.singbox.load_full() else {
-            self.set(Status::Stopped, None, None);
+            self.set(None, None);
             return Ok(());
         };
 
+        self.set(None, None);
         let result = singbox.stop();
         match &result {
             Ok(()) => {
                 log::info!("[内核] 已停止");
-                self.set(Status::Stopped, None, None);
+                self.set(None, None);
             }
             Err(error) => {
                 let reason = format!("{error:#}");
                 log::error!("[内核] 停止失败: {reason}");
-                self.set(Status::Stopped, None, Some(reason));
+                self.set(None, Some(reason));
             }
         }
         result
@@ -295,26 +338,11 @@ impl SingBoxInstance {
         singbox.wait_ready(READY_TIMEOUT).await
     }
 
-    /// 同步进程的真实状态，进程已退出时回到未运行。
-    fn refresh(&self) -> Result<()> {
-        let Some(singbox) = self.singbox.load_full() else {
-            return Ok(());
-        };
-        let state = singbox.state()?;
-
+    /// 同步正在运行的配置 id 与失败原因。
+    ///
+    /// 进程阶段由内核对象持有，这里只记录阶段之外的信息。
+    fn set(&self, config_id: Option<&str>, reason: Option<String>) {
         let mut inner = self.lock();
-        if inner.status == Status::Running && !state.running {
-            inner.status = Status::Stopped;
-            inner.config_id = None;
-            inner.reason = state.reason;
-        }
-        Ok(())
-    }
-
-    /// 更新状态与关联信息。
-    fn set(&self, status: Status, config_id: Option<&str>, reason: Option<String>) {
-        let mut inner = self.lock();
-        inner.status = status;
         inner.config_id = config_id.map(str::to_string);
         inner.reason = reason;
     }

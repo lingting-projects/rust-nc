@@ -225,7 +225,6 @@ impl Console {
                 Ok(Err(error)) => Err(format!("{error:#}")),
                 Err(error) => Err(format!("读取任务异常: {error}")),
             };
-
             this.update_in(cx, |console, window, cx| {
                 console.refreshing = false;
                 console.load = match result {

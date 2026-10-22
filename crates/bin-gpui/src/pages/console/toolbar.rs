@@ -76,6 +76,7 @@ fn status(console: &Console, cx: &Context<Console>) -> impl IntoElement {
     let (text, color) = match console.kernel.status {
         Status::Running => ("运行中", theme.success),
         Status::Starting => ("启动中", theme.warning),
+        Status::Stopping => ("停止中", theme.warning),
         Status::Stopped if console.kernel.reason.is_some() => ("启动失败", theme.danger),
         Status::Stopped => ("未运行", theme.muted_foreground),
     };
