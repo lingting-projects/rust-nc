@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"runtime/debug"
 	"sync/atomic"
 	"syscall"
@@ -175,11 +176,22 @@ func Check(configPath string, workDir string) string {
 	return ""
 }
 
-func Start(configPath string, workDir string, pid int) (SingBoxError, error) {
+// Start 启动内核。
+//
+// reload 为重载标记文件名, 由上层传入: 上层生成新配置后在工作目录创建该文件,
+// 内核发现后重建实例。为空表示未启用自动重载, 此时只响应信号。
+func Start(configPath string, workDir string, pid int, reload string) (SingBoxError, error) {
 	setLog(false)
 	osSignals := make(chan os.Signal, 1)
 	signal.Notify(osSignals, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
 	defer signal.Stop(osSignals)
+
+	// Windows 无法向子进程发送 SIGHUP, 因此重载统一走标记文件, 信号只保留给其他平台。
+	reloadFile := ""
+	if reload != "" {
+		reloadFile = filepath.Join(workDir, reload)
+		log.Info("自动重载已启用, 标记文件: ", reloadFile)
+	}
 
 	var (
 		restart  atomic.Bool
@@ -231,6 +243,19 @@ func Start(configPath string, workDir string, pid int) (SingBoxError, error) {
 		for {
 			if stop.Load() || restart.Load() {
 				break
+			}
+
+			// 上层刷新配置后会创建标记文件, 发现即重建实例; 未启用时不做检查
+			if reloadFile != "" {
+				if _, err := os.Stat(reloadFile); err == nil {
+					log.Info("发现重载标记, 标记为需要重启")
+					// 先删除标记, 避免重建时再次触发
+					if err = os.Remove(reloadFile); err != nil {
+						log.Error("删除重载标记失败: ", err)
+					}
+					restart.Store(true)
+					break
+				}
 			}
 
 			if !isAlive(pid) {

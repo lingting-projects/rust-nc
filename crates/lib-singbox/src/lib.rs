@@ -138,13 +138,22 @@ impl SingBox {
         truncate(work_dir, lib_core::constants::KERNEL_LOG_FILE)?;
         let out = log_file(work_dir, lib_core::constants::KERNEL_STDOUT_FILE)?;
         let err = log_file(work_dir, lib_core::constants::KERNEL_STDERR_FILE)?;
+        // 上次异常退出可能遗留重载标记, 启动前清掉, 避免内核一启动就重载
+        remove_reload(work_dir);
         let mut cmd = Command::new(&self.bin);
+        // 参数一律按 key 传入, 便于手动启动内核做测试
         cmd.arg("start")
             .current_dir(work_dir)
+            .arg("-c")
             .arg(config)
+            .arg("-w")
             .arg(work)
             // 父进程 pid, 内核据此判断是否需要退出
+            .arg("-p")
             .arg(std::process::id().to_string())
+            // 重载标记文件名, 内核据此判断是否启用自动重载
+            .arg("-r")
+            .arg(lib_core::constants::KERNEL_RELOAD_FILE)
             .stdout(out)
             .stderr(err);
         inner.process = Some(Process::new(cmd)?);
@@ -190,6 +199,30 @@ impl SingBox {
                 Err(error)
             }
         }
+    }
+
+    /// 让内核重载配置, 不重启进程。
+    ///
+    /// 内核按秒检查工作目录下的重载标记文件, 发现后自行删除并按新配置重建实例。
+    /// 标记文件是跨平台的重载方式, Windows 无法向子进程发送 SIGHUP, 因此不依赖信号。
+    ///
+    /// 旧实例会随重载关闭, 其 gRPC 连接、连接订阅与测速队列随之失效;
+    /// 因此这里先把客户端作废, 重载后的第一次取用会按新配置的监听地址重建。
+    /// 内核未运行时返回错误, 避免调用方误以为刷新成功。
+    pub fn reload(&self, work_dir: &Path) -> Result<()> {
+        if self.lock().process.is_none() {
+            bail!("内核未运行");
+        }
+
+        let flag = work_dir.join(lib_core::constants::KERNEL_RELOAD_FILE);
+        std::fs::write(&flag, [])
+            .with_context(|| format!("创建内核重载标记失败: {}", flag.display()))?;
+
+        self.grpc.store(None);
+        self.url_test.set_grpc(None);
+        self.connections.subscribe(None);
+        self.connections.reset();
+        Ok(())
     }
 
     /// 等待内核 API 就绪。
@@ -240,7 +273,7 @@ impl SingBox {
             .with_context(|| format!("srs 路径非 UTF-8: {}", srs_path.display()))?;
 
         let mut cmd = Command::new(&self.bin);
-        cmd.arg("json2srs").arg(json).arg(srs);
+        cmd.arg("json2srs").arg("-c").arg(json).arg("-o").arg(srs);
         let status = cmd.status()?;
         Self::status(status)
     }
@@ -258,7 +291,7 @@ impl SingBox {
             .with_context(|| format!("工作目录非 UTF-8: {}", work_dir.display()))?;
 
         let mut cmd = Command::new(&self.bin);
-        cmd.arg("check").arg(config).arg(work);
+        cmd.arg("check").arg("-c").arg(config).arg("-w").arg(work);
         let status = cmd.status()?;
         Self::status(status)
     }
@@ -338,6 +371,16 @@ fn failure(work_dir: &Path, reason: String) -> String {
     match tail(work_dir) {
         Some(detail) => format!("{reason}\n{detail}"),
         None => reason,
+    }
+}
+
+/// 删除工作目录下的重载标记，不存在时视为成功。
+fn remove_reload(work_dir: &Path) {
+    let flag = work_dir.join(lib_core::constants::KERNEL_RELOAD_FILE);
+    if let Err(error) = std::fs::remove_file(&flag)
+        && error.kind() != std::io::ErrorKind::NotFound
+    {
+        log::warn!("删除内核重载标记失败: {error}");
     }
 }
 

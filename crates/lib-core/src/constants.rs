@@ -61,7 +61,8 @@ pub const KERNEL_STDERR_FILE: &str = "stderr.log";
 
 /// 内核重载标记文件名, 位于内核工作目录
 ///
-/// 内核按秒检查该文件, 发现即重新读取配置并重建实例, 用完自行删除。
+/// 由 [`crate`] 之外的启动方经启动参数传给内核, 内核按秒检查该文件,
+/// 发现即重新读取配置并重建实例, 用完自行删除; 未传入时内核不启用自动重载。
 /// Windows 无法向子进程发送 SIGHUP, 因此统一用标记文件触发重载。
 pub const KERNEL_RELOAD_FILE: &str = "reload.flag";
 
