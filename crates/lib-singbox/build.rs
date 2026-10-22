@@ -71,6 +71,11 @@ fn main() {
 /// proto 取自 sing-box 对应版本的 `daemon/started_service.proto` 并保持原样，
 /// 升级版本时随 `go.mod` 一起替换。`protoc` 使用 vendored 二进制，无需本机安装。
 fn build_proto(manifest_dir: &Path) {
+    // gRPC 客户端只在 grpc feature 下编译, 未启用时不必生成代码
+    if env::var_os("CARGO_FEATURE_GRPC").is_none() {
+        return;
+    }
+
     let proto = manifest_dir.join("proto").join("started_service.proto");
     if !proto.exists() {
         return;
@@ -88,20 +93,36 @@ fn build_proto(manifest_dir: &Path) {
     println!("cargo:rerun-if-changed=proto/started_service.proto");
 }
 
+/// 内核构建标签。
+///
+/// - `with_utls` / `with_quic`: TLS 指纹与 QUIC 支持, 节点配置依赖。
+/// - `badlinkname`: 允许 `go:linkname` 访问标准库内部符号。sing-box 的 TLS read-wait
+///   优化依赖它, 缺失时 `badtls.NewReadWaitConn` 直接返回 `ErrInvalid` 静默降级。
+/// - `tfogo_checklinkname0`: 与 `badlinkname` 配套, 需同时传链接器 `-checklinkname=0`。
+///
+/// 不启用 `with_clash_api`: 内核 API 已改为 gRPC (`services[].type = "api"`)。
+static GO_TAGS: &str = "with_utls,with_quic,badlinkname,tfogo_checklinkname0";
+
+/// 内核链接器参数, 对齐官方 `release/LDFLAGS`。
+///
+/// `-X runtime.godebugDefault` 关闭标准库 multipathtcp 并恢复 TLS SHA1 兼容,
+/// `-checklinkname=0` 是 `badlinkname` 的前提。
+static GO_LDFLAGS: &str =
+    "-X runtime.godebugDefault=multipathtcp=0,tlssha1=1 -checklinkname=0 -s -buildid=";
+
 fn build_go(target: &str, bin_path: &Path, manifest_dir: &Path) {
     let mut cmd = Command::new("go");
     cmd.current_dir(manifest_dir)
         .arg("build")
-        .arg("-v")
         .arg("-trimpath")
-        .arg("-tags=with_clash_api,with_utls,with_quic")
-        .arg("-ldflags=-s -buildid=")
+        .arg(format!("-tags={GO_TAGS}"))
+        .arg(format!("-ldflags={GO_LDFLAGS}"))
         .arg("-o")
         .arg(bin_path)
         .arg("./cmd");
 
-    // 启用 cgo
-    cmd.env("CGO_ENABLED", "1");
+    // 依赖图不含 cgo 包, 显式关闭, 避免构建机需要 C 工具链
+    cmd.env("CGO_ENABLED", "0");
 
     // 设置目标平台
     if target.contains("windows") {
