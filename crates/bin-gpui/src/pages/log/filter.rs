@@ -9,7 +9,7 @@ use gpui_kit::component::button::ButtonVariants as _;
 use gpui_kit::component::input::{Input, InputState};
 use gpui_kit::component::searchable_list::SearchableListItem;
 use gpui_kit::component::select::{SearchableVec, Select, SelectEvent, SelectState};
-use gpui_kit::component::{ActiveTheme as _, IconName};
+use gpui_kit::component::{ActiveTheme as _, IconName, Selectable as _};
 use gpui_kit::*;
 use lingting_gpui_kit::card::Card;
 
@@ -97,7 +97,7 @@ pub fn subscribe(
     )
 }
 
-/// 渲染标题栏：搜索框、等级筛选与暂停按钮。
+/// 渲染标题栏：暂停、搜索框、等级筛选与保持底部。
 pub fn render(page: &LogPage, cx: &mut Context<LogPage>) -> AnyElement {
     Card::new()
         .flex_shrink_0()
@@ -105,7 +105,10 @@ pub fn render(page: &LogPage, cx: &mut Context<LogPage>) -> AnyElement {
         .child(
             h_flex()
                 .w_full()
+                .flex_nowrap()
                 .gap_3()
+                // 暂停放在最前面：它控制整屏是否刷新，先于任何筛选条件
+                .child(pause(page, cx))
                 .child(
                     div().flex_1().min_w_0().child(
                         Input::new(&page.query())
@@ -120,7 +123,7 @@ pub fn render(page: &LogPage, cx: &mut Context<LogPage>) -> AnyElement {
                             .accessibility_label("日志等级"),
                     ),
                 )
-                .child(pause(page, cx)),
+                .child(follow(page, cx)),
         )
         .into_any_element()
 }
@@ -145,6 +148,25 @@ fn pause(page: &LogPage, cx: &mut Context<LogPage>) -> AnyElement {
         .icon(icon)
         .tooltip(label)
         .on_click(cx.listener(|page, _, _, cx| page.toggle_pause(cx)))
+        .into_any_element()
+}
+
+/// 保持底部开关。
+///
+/// 开启时列表始终滚动到最新一块，新日志到达不必手动下拉；默认开启，
+/// 因为日志页最常见的用法就是盯着最新输出。向上翻看历史时关掉它即可。
+fn follow(page: &LogPage, cx: &mut Context<LogPage>) -> AnyElement {
+    let follow = page.is_follow();
+    Button::new("log-follow")
+        .ghost()
+        .icon(IconName::GalleryVerticalEnd)
+        .label("保持底部")
+        .selected(follow)
+        .tooltip(match follow {
+            true => "已保持底部，点击停止跟随",
+            false => "点击跟随最新日志",
+        })
+        .on_click(cx.listener(|page, _, _, cx| page.toggle_follow(cx)))
         .into_any_element()
 }
 
