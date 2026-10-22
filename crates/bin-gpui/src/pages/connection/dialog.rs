@@ -7,7 +7,9 @@ use gpui_kit::*;
 
 use lingting_gpui_kit::ex_dialog::ExDialog;
 
-use super::rows::ConnectionRow;
+use lib_singbox::ConnectionRecord;
+
+use super::rows;
 use crate::utils::format;
 
 /// 详情弹窗宽度，单位为 rem，随界面缩放一起变化。
@@ -17,7 +19,7 @@ const DIALOG_WIDTH: Rems = rems(32.);
 ///
 /// 连接会随内核推送持续变化，因此弹窗打开时把整行数据拷贝进去，
 /// 展示的是点击那一刻的快照，不会因为列表刷新而中途改内容。
-pub fn open(row: ConnectionRow, window: &mut Window, cx: &mut App) {
+pub fn open(row: ConnectionRecord, window: &mut Window, cx: &mut App) {
     let title = row.info.destination.clone();
     let width = DIALOG_WIDTH.to_pixels(window.rem_size());
 
@@ -41,7 +43,7 @@ pub fn open(row: ConnectionRow, window: &mut Window, cx: &mut App) {
 }
 
 /// 详情正文：两列描述列表，标签在左、值在右。
-fn details(row: &ConnectionRow) -> impl IntoElement {
+fn details(row: &ConnectionRecord) -> impl IntoElement {
     let info = &row.info;
 
     DescriptionList::new()
@@ -53,7 +55,7 @@ fn details(row: &ConnectionRow) -> impl IntoElement {
         .item("进程", process(&info.process), 2)
         .item("目标", info.destination.clone(), 2)
         .item("规则", text_or_dash(&info.rule), 1)
-        .item("链路", row.chain(), 1)
+        .item("链路", rows::chain(row), 1)
         .item("源地址", info.source.clone(), 1)
         .item("建立时间", format::since(info.created_at), 1)
         .item("下载", format::data_size(info.download), 1)
@@ -63,7 +65,7 @@ fn details(row: &ConnectionRow) -> impl IntoElement {
 }
 
 /// 入口：入站标签与类型，例如 `mixed-in (mixed)`。
-fn inbound(row: &ConnectionRow) -> String {
+fn inbound(row: &ConnectionRecord) -> String {
     let info = &row.info;
     if info.inbound_type.is_empty() {
         return text_or_dash(&info.inbound);

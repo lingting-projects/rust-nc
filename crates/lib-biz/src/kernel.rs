@@ -146,17 +146,26 @@ impl SingBoxInstance {
         Ok(queue.push(outbound_tag))
     }
 
-    /// 读取当前连接快照。
+    /// 连接数据。
     ///
-    /// 连接订阅是流式接口，这里只取首个推送后立即断开，由调用方按固定间隔轮询。
-    pub async fn connections(&self) -> Result<Vec<lib_singbox::Connection>> {
-        let Some(grpc) = self.grpc()? else {
-            bail!("内核未运行");
-        };
-        let snapshot = grpc.connections(Duration::from_secs(0)).await?;
-        Ok(snapshot.connections)
+    /// 内核的 `SubscribeConnections` 是长连接，订阅由 `lib-singbox` 常驻维护，
+    /// 推送结果保存在共享存储里；这里只把存储交给调用方，不重新建流。
+    pub fn connections(&self) -> Result<Arc<lib_singbox::ConnectionStore>> {
+        // 先取一次客户端, 内核未运行时连接数据已经没有意义
+        self.grpc()?;
+        Ok(self.singbox()?.connections())
     }
 
+    /// 清空内存中缓存的全部连接，之后只保留新推送的数据。
+    ///
+    /// 只清缓存，不关闭内核里的连接；内核未运行时没有缓存可清，直接返回。
+    pub fn clear_connections(&self) -> Result<()> {
+        if self.grpc()?.is_none() {
+            return Ok(());
+        }
+        self.singbox()?.connections().clear();
+        Ok(())
+    }
     /// 关闭指定连接。
     pub async fn close_connection(&self, id: &str) -> Result<()> {
         let Some(grpc) = self.grpc()? else {

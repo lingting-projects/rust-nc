@@ -6,8 +6,7 @@ use super::ConnectionPage;
 
 /// 快速状态筛选项，按界面顺序排列。
 ///
-/// 内核只推送仍处于打开状态的连接，因此「关闭」在这里指筛选结果为空，
-/// 保留该选项是为了与常见连接列表的口径一致，切换后给出对应的空状态说明。
+/// 已关闭的连接由 `lib-singbox` 的订阅累积，页面按状态取其中一段展示。
 pub const STATUSES: [(&str, Status); 3] = [
     ("全部", Status::All),
     ("活动", Status::Active),

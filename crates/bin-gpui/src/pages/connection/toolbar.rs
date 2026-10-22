@@ -27,7 +27,7 @@ pub fn render(page: &ConnectionPage, cx: &mut Context<ConnectionPage>) -> impl I
             .gap_3()
             .child(filter::render(page, cx))
             .child(
-                // 暂停只影响轮询，已读到的数据保持展示，按钮文案说明再次点击的结果。
+                // 暂停只影响刷新，已读到的数据保持展示，按钮文案说明再次点击的结果。
                 Button::new("connection-pause")
                     .icon(if paused {
                         IconName::CirclePlay

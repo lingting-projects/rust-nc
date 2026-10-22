@@ -10,10 +10,12 @@ use lib_system::process::Process;
 #[cfg(feature = "grpc")]
 use std::time::{Duration, Instant};
 
+mod connection;
 mod grpc;
 mod url_test;
 
-pub use grpc::{Connection, Group, GroupItem, ProcessInfo, SingBoxGrpc};
+pub use connection::{ConnectionInfo, ConnectionRecord, ConnectionSnapshot, ConnectionStore};
+pub use grpc::{Group, GroupItem, ProcessInfo, SingBoxGrpc};
 pub use url_test::UrlTestQueue;
 
 /// 随包分发的 sing-box 版本。
@@ -48,6 +50,8 @@ pub struct SingBox {
     grpc: ArcSwapOption<SingBoxGrpc>,
     /// 测速任务队列，随内核对象一起创建，内核启停时注入或清空客户端。
     url_test: Arc<UrlTestQueue>,
+    /// 连接数据，内核运行期间由常驻订阅把推送累积成快照。
+    connections: Arc<ConnectionStore>,
 }
 
 /// 内核实例的内部状态。
@@ -81,6 +85,7 @@ impl SingBox {
             }),
             grpc: ArcSwapOption::empty(),
             url_test: Arc::new(UrlTestQueue::new()),
+            connections: Arc::new(ConnectionStore::new()),
         })
     }
 
@@ -94,6 +99,7 @@ impl SingBox {
                 // 内核退出后 gRPC 连接已失效, 一并清理
                 self.grpc.store(None);
                 self.url_test.set_grpc(None);
+                self.connections.subscribe(None);
                 if let Err(error) = Self::status(status) {
                     log::error!("singbox执行异常! {error}");
                     inner.error = true;
@@ -145,6 +151,9 @@ impl SingBox {
         self.grpc.store(None);
         self.url_test.set_grpc(None);
         self.url_test.clear();
+        // 上一轮连接数据同样属于旧进程
+        self.connections.subscribe(None);
+        self.connections.reset();
         Ok(())
     }
 
@@ -155,6 +164,9 @@ impl SingBox {
         // 内核已停止, 排队中的测速不可能成功, 直接丢弃
         self.url_test.set_grpc(None);
         self.url_test.clear();
+        // 连接数据随内核一起作废, 订阅线程保留并等待下一次启动
+        self.connections.subscribe(None);
+        self.connections.reset();
         let Some(mut process) = self.lock().process.take() else {
             return Ok(());
         };
@@ -250,7 +262,9 @@ impl SingBox {
             let inner = self.lock();
             if inner.process.is_none() {
                 // 内核已不在运行, 队列里的客户端也一并失效
+                // 内核已不在运行, 队列里的客户端与连接数据一并失效
                 self.url_test.set_grpc(None);
+                self.connections.subscribe(None);
                 return Ok(None);
             }
             inner.api.clone()
@@ -263,6 +277,8 @@ impl SingBox {
         let grpc = Arc::new(SingBoxGrpc::new(&api)?);
         self.grpc.store(Some(grpc.clone()));
         self.url_test.set_grpc(Some(grpc.clone()));
+        // 客户端就绪后订阅线程才能建立连接订阅
+        self.connections.subscribe(Some(grpc.clone()));
         Ok(Some(grpc))
     }
 
@@ -274,6 +290,13 @@ impl SingBox {
         self.url_test.clone()
     }
 
+    /// 连接数据。
+    ///
+    /// 内核运行期间由常驻订阅持续接收推送，调用方读取快照即可；
+    /// 内核未运行时快照为空。
+    pub fn connections(&self) -> Arc<ConnectionStore> {
+        self.connections.clone()
+    }
     /// 取内部状态，锁被污染时继续使用其内容。
     fn lock(&self) -> MutexGuard<'_, Inner> {
         self.inner.lock().unwrap_or_else(|error| error.into_inner())

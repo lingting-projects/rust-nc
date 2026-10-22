@@ -9,20 +9,10 @@ pub mod proto {
 
 pub use proto::started_service_client::StartedServiceClient;
 pub use proto::{
-    CloseConnectionRequest, Connection, ConnectionEvent, ConnectionEventType, Group, GroupItem,
-    ProcessInfo, SelectOutboundRequest, Status, SubscribeConnectionsRequest,
+    CloseConnectionRequest, Connection, ConnectionEvent, ConnectionEventType, ConnectionEvents,
+    Group, GroupItem, ProcessInfo, SelectOutboundRequest, Status, SubscribeConnectionsRequest,
     SubscribeStatusRequest, UrlTestRequest, Version,
 };
-
-/// 连接信息快照。
-///
-/// 连接订阅是流式的，每次推送都包含增量事件；这里把首个推送解析为
-/// 「当前仍处于打开状态的连接」列表，供界面一次性展示。
-#[derive(Debug, Clone, Default)]
-pub struct ConnectionSnapshot {
-    /// 当前打开的连接。
-    pub connections: Vec<Connection>,
-}
 
 /// sing-box 内核的 gRPC 客户端。
 ///
@@ -173,34 +163,24 @@ impl SingBoxGrpc {
         Ok(())
     }
 
-    /// 读取当前连接信息快照。
+    /// 订阅连接增量事件。
     ///
-    /// `interval` 为内核推送增量事件的间隔，取 0 表示由内核决定。
-    pub async fn connections(&self, interval: std::time::Duration) -> Result<ConnectionSnapshot> {
+    /// 内核按 `interval` 持续推送新增、更新与关闭事件，首个推送为当前全量状态
+    /// （`reset` 为真）。返回的流需要长期持有，流断开即代表内核退出或 API 不可用。
+    pub async fn connection_stream(
+        &self,
+        interval: std::time::Duration,
+    ) -> Result<tonic::codec::Streaming<ConnectionEvents>> {
         let request = SubscribeConnectionsRequest {
             interval: interval.as_millis() as i64,
         };
-        let mut stream = self
+        let stream = self
             .client()
             .subscribe_connections(self.request(request))
             .await
             .context("订阅内核连接失败")?
             .into_inner();
-
-        let events = stream
-            .message()
-            .await
-            .context("读取内核连接失败")?
-            .map(|events| events.events)
-            .unwrap_or_default();
-
-        // 首个推送中的新增事件即当前打开的连接, 已关闭的忽略
-        let connections = events
-            .into_iter()
-            .filter(|event| event.kind() != ConnectionEventType::ConnectionEventClosed)
-            .filter_map(|event| event.connection)
-            .collect();
-        Ok(ConnectionSnapshot { connections })
+        Ok(stream)
     }
 
     /// 关闭指定连接。
@@ -220,14 +200,6 @@ impl SingBoxGrpc {
             .await
             .context("关闭全部连接失败")?;
         Ok(())
-    }
-}
-
-impl ConnectionEvent {
-    /// 事件类型，未知取值按新增处理。
-    fn kind(&self) -> ConnectionEventType {
-        ConnectionEventType::try_from(self.r#type)
-            .unwrap_or(ConnectionEventType::ConnectionEventNew)
     }
 }
 

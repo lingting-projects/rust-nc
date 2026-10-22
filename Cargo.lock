@@ -4584,6 +4584,7 @@ version = "26.6.251-rc"
 dependencies = [
  "anyhow",
  "arc-swap",
+ "indexmap 2.14.2",
  "lib-core",
  "lib-system",
  "log",

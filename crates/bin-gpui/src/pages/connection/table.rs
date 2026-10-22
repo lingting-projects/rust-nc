@@ -1,4 +1,5 @@
 use std::rc::Rc;
+use std::sync::Arc;
 
 use gpui_kit::assets::IconName;
 use gpui_kit::base::{StyledExt as _, h_flex, v_flex};
@@ -9,8 +10,10 @@ use gpui_kit::component::{ActiveTheme as _, Disableable as _, Sizable as _};
 use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
 
+use lib_singbox::{ConnectionRecord, ConnectionSnapshot};
+
 use super::ConnectionPage;
-use super::rows::ConnectionRow;
+use super::rows;
 use crate::utils::format;
 
 /// 各列宽度，单位为 rem，随界面缩放一起变化。
@@ -55,13 +58,13 @@ pub fn create(
     })
 }
 
-/// 把页面的数据、过滤结果与当前缩放同步给表格。
+/// 把页面的快照、过滤结果与当前缩放同步给表格。
 ///
 /// 每帧调用，内容因此总是与页面一致；只有缩放变化时才重建列宽，
 /// 因为列宽由 rem 换算而来，缩放后必须重算，否则表头与单元格会错位。
 pub fn sync(
     table: &Entity<TableState<ConnectionTable>>,
-    items: Rc<Vec<ConnectionRow>>,
+    items: Arc<ConnectionSnapshot>,
     rows: Rc<Vec<usize>>,
     empty_hint: &'static str,
     rem_size: Pixels,
@@ -108,7 +111,7 @@ pub fn placeholder(reason: &str, cx: &App) -> AnyElement {
 /// 委托只持有数据与过滤结果的共享引用，由页面在渲染时同步；
 /// 页面是数据的唯一来源，表格不单独维护一份可变副本。
 pub struct ConnectionTable {
-    items: Rc<Vec<ConnectionRow>>,
+    items: Arc<ConnectionSnapshot>,
     rows: Rc<Vec<usize>>,
     /// 没有行时的说明，由页面按当前筛选条件给出。
     empty_hint: &'static str,
@@ -119,7 +122,7 @@ pub struct ConnectionTable {
 impl ConnectionTable {
     fn new(page: WeakEntity<ConnectionPage>, rem_size: Pixels) -> Self {
         Self {
-            items: Rc::new(Vec::new()),
+            items: Arc::default(),
             rows: Rc::new(Vec::new()),
             empty_hint: "",
             rem_size,
@@ -130,11 +133,11 @@ impl ConnectionTable {
     /// 更新数据、过滤结果与空状态说明，返回是否发生了变化。
     fn set_content(
         &mut self,
-        items: Rc<Vec<ConnectionRow>>,
+        items: Arc<ConnectionSnapshot>,
         rows: Rc<Vec<usize>>,
         empty_hint: &'static str,
     ) -> bool {
-        let changed = !Rc::ptr_eq(&self.items, &items)
+        let changed = !Arc::ptr_eq(&self.items, &items)
             || !Rc::ptr_eq(&self.rows, &rows)
             || self.empty_hint != empty_hint;
         self.items = items;
@@ -153,14 +156,14 @@ impl ConnectionTable {
     }
 
     /// 第 `row_ix` 行对应的连接，行号是过滤后的位置。
-    fn item(&self, row_ix: usize) -> Option<&ConnectionRow> {
-        self.rows.get(row_ix).map(|ix| &self.items[*ix])
+    fn item(&self, row_ix: usize) -> Option<&ConnectionRecord> {
+        self.rows.get(row_ix).map(|ix| &self.items.rows[*ix])
     }
 
     /// 操作列：详情与断开。
     ///
     /// 两个都是图标按钮，用 tooltip 说明含义，并以 `accessibility_label` 给出可读名称。
-    fn action(&self, item: &ConnectionRow, cx: &App) -> AnyElement {
+    fn action(&self, item: &ConnectionRecord, cx: &App) -> AnyElement {
         let page = self.page.clone();
         let id = item.info.id.clone();
         // 已关闭的连接再断开没有意义，按钮保持可见但禁用，状态因此可读。
@@ -246,10 +249,10 @@ impl TableDelegate for ConnectionTable {
         match col_ix {
             0 => self.action(item, cx),
             1 => cell(item, cx, item.info.inbound.clone()),
-            2 => cell(item, cx, item.process()),
+            2 => cell(item, cx, rows::process(item)),
             3 => cell(item, cx, item.info.destination.clone()),
             4 => cell(item, cx, rule(item)),
-            5 => cell(item, cx, item.chain()),
+            5 => cell(item, cx, rows::chain(item)),
             6 => speed(item, cx),
             _ => cell(item, cx, item.info.source.clone()),
         }
@@ -272,7 +275,7 @@ impl TableDelegate for ConnectionTable {
 }
 
 /// 普通文本列：已关闭的连接用次要文字色，与活动连接区分开。
-fn cell(item: &ConnectionRow, cx: &App, text: String) -> AnyElement {
+fn cell(item: &ConnectionRecord, cx: &App, text: String) -> AnyElement {
     div()
         .truncate()
         .when(item.closed, |this| {
@@ -283,7 +286,7 @@ fn cell(item: &ConnectionRow, cx: &App, text: String) -> AnyElement {
 }
 
 /// 速度列：下载在上、上传在下，各自按自适应单位展示。
-fn speed(item: &ConnectionRow, cx: &App) -> AnyElement {
+fn speed(item: &ConnectionRecord, cx: &App) -> AnyElement {
     v_flex()
         .gap_0p5()
         .child(div().child(format::speed(item.download)))
@@ -296,7 +299,7 @@ fn speed(item: &ConnectionRow, cx: &App) -> AnyElement {
 }
 
 /// 规则列：未命中规则时内核给出空值，展示为 `-`。
-fn rule(item: &ConnectionRow) -> String {
+fn rule(item: &ConnectionRecord) -> String {
     if item.info.rule.is_empty() {
         "-".to_string()
     } else {
