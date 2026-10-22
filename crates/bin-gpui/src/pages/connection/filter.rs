@@ -1,4 +1,4 @@
-use gpui_kit::component::Sizable as _;
+use gpui_kit::component::ActiveTheme as _;
 use gpui_kit::component::button::{Toggle, ToggleGroup, ToggleVariant, ToggleVariants as _};
 use gpui_kit::*;
 
@@ -28,25 +28,42 @@ pub enum Status {
 ///
 /// `ToggleGroup` 会接管组内每个 `Toggle` 的点击并统一在组级回调里上报结果，
 /// 因此选中状态由页面持有，点击后按组回传的勾选数组换算出新的筛选值。
+///
+/// 选中项用主色填充加主色文字标出：分段控件里未选中项只有描边，
+/// 只靠默认的浅灰底几乎看不出选中了哪一项。
 pub fn render(page: &ConnectionPage, cx: &mut Context<ConnectionPage>) -> impl IntoElement {
     let current = page.status();
     let entity = cx.entity();
+    let primary = cx.theme().primary;
 
     ToggleGroup::new("connection-status")
         .segmented()
-        .small()
         .with_variant(ToggleVariant::Outline)
         .children(STATUSES.iter().map(|(label, status)| {
-            Toggle::new(format!("connection-status:{}", label))
+            let checked = current == *status;
+            let toggle = Toggle::new(format!("connection-status:{}", label))
                 .label(*label)
-                .checked(current == *status)
+                .checked(checked);
+            if checked {
+                toggle
+                    .bg(primary.opacity(0.12))
+                    .text_color(primary)
+                    .border_color(primary)
+                    .font_weight(FontWeight::SEMIBOLD)
+            } else {
+                toggle
+            }
         }))
         .on_click(move |checks, _, cx| {
-            // 分段控件同时只会有一个选中项，取第一个被勾选的位置即可。
+            // 组回传的是「只把被点击项取反」的结果：点未选中项时，原来的选中项仍为 true。
+            // 因此不能取第一个 true，否则从「活动」切到「全部」后，再点「活动」
+            // 或「关闭」时第一个 true 仍是「全部」，界面就卡在「全部」回不去。
+            // 与当前选中项不一致的那一项才是被点击的项。
             let Some(status) = checks
                 .iter()
-                .position(|checked| *checked)
-                .map(|ix| STATUSES[ix].1)
+                .enumerate()
+                .find(|(ix, checked)| **checked != (current == STATUSES[*ix].1))
+                .map(|(ix, _)| STATUSES[ix].1)
             else {
                 return;
             };

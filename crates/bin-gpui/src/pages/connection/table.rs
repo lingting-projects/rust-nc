@@ -6,7 +6,7 @@ use gpui_kit::base::{StyledExt as _, h_flex, v_flex};
 use gpui_kit::component::button::Button;
 use gpui_kit::component::button::ButtonVariants as _;
 use gpui_kit::component::table::{Column, DataTable, TableDelegate, TableState};
-use gpui_kit::component::{ActiveTheme as _, Disableable as _, Sizable as _};
+use gpui_kit::component::{ActiveTheme as _, Icon, Sizable as _};
 use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
 
@@ -19,7 +19,9 @@ use crate::utils::format;
 /// 各列宽度，单位为 rem，随界面缩放一起变化。
 ///
 /// 操作列固定在左侧，其余列按表格剩余宽度排布并支持横向滚动。
-const ACTION_WIDTH: Rems = rems(7.);
+/// 操作列只放两个小号图标按钮（各 1.5rem）加 0.25rem 间隔，
+/// 列宽 4.5rem 扣掉单元格左右内边距后还剩约 0.5rem 留白。
+const ACTION_WIDTH: Rems = rems(4.5);
 const INBOUND_WIDTH: Rems = rems(8.);
 const PROCESS_WIDTH: Rems = rems(10.);
 const DESTINATION_WIDTH: Rems = rems(16.);
@@ -163,10 +165,11 @@ impl ConnectionTable {
     /// 操作列：详情与断开。
     ///
     /// 两个都是图标按钮，用 tooltip 说明含义，并以 `accessibility_label` 给出可读名称。
+    /// 只有活动连接才展示断开按钮：已关闭的连接再断开没有意义，
+    /// 留一个禁用按钮既占位又让人以为还能点。
     fn action(&self, item: &ConnectionRecord, cx: &App) -> AnyElement {
         let page = self.page.clone();
         let id = item.info.id.clone();
-        // 已关闭的连接再断开没有意义，按钮保持可见但禁用，状态因此可读。
         let closed = item.closed;
         // 按钮标识跟随连接 id：过滤后行号会变，用行号会串掉按钮的内部状态。
         let detail_id: ElementId = format!("connection-detail:{}", item.info.id).into();
@@ -190,23 +193,24 @@ impl ConnectionTable {
                         }
                     }),
             )
-            .child(
-                Button::new(close_id)
-                    .ghost()
-                    .small()
-                    .icon(IconName::Unplug)
-                    .text_color(cx.theme().danger)
-                    .tooltip(if closed { "连接已关闭" } else { "断开" })
-                    .accessibility_label("断开")
-                    .disabled(closed)
-                    .on_click({
-                        let page = page.clone();
-                        move |_, _, cx| {
-                            page.update(cx, |page, cx| page.close_connection(&id, cx))
-                                .ok();
-                        }
-                    }),
-            )
+            .when(!closed, |this| {
+                this.child(
+                    Button::new(close_id)
+                        .ghost()
+                        .small()
+                        .icon(IconName::Unplug)
+                        .text_color(cx.theme().danger)
+                        .tooltip("断开")
+                        .accessibility_label("断开")
+                        .on_click({
+                            let page = page.clone();
+                            move |_, _, cx| {
+                                page.update(cx, |page, cx| page.close_connection(&id, cx))
+                                    .ok();
+                            }
+                        }),
+                )
+            })
             .into_any_element()
     }
 }
@@ -286,13 +290,24 @@ fn cell(item: &ConnectionRecord, cx: &App, text: String) -> AnyElement {
 }
 
 /// 速度列：下载在上、上传在下，各自按自适应单位展示。
+///
+/// 两行固定排布，即使某一项为 0 也占着自己那一行：只有一个数值时，
+/// 看不出它到底是下载还是上传。行高与字距收在同一处，
+/// 两行叠起来不高于一行文本在行高里的占位，避免撑破表格行高。
 fn speed(item: &ConnectionRecord, cx: &App) -> AnyElement {
     v_flex()
-        .gap_0p5()
-        .child(div().child(format::speed(item.download)))
+        .line_height(relative(1.))
         .child(
-            div()
+            h_flex()
+                .gap_1()
+                .child(Icon::new(IconName::ArrowDown).xsmall())
+                .child(format::speed(item.download)),
+        )
+        .child(
+            h_flex()
+                .gap_1()
                 .text_color(cx.theme().muted_foreground)
+                .child(Icon::new(IconName::ArrowUp).xsmall())
                 .child(format::speed(item.upload)),
         )
         .into_any_element()
