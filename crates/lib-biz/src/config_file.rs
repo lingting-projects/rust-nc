@@ -41,7 +41,7 @@ pub async fn write(context: &Arc<DbContext>, config: &Config) -> Result<PathBuf>
         ipv6: config.ipv6,
         geo_cn: config.geo_cn,
         inner_rule_dir: inner_rule_file::inner_rule_root()?,
-        debug: false,
+        log_level: kernel.log_level,
         log_path: file::sing_box_log()?,
         rules_direct: rules.0,
         rules_proxy: rules.1,

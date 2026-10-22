@@ -14,9 +14,8 @@ use lingting_gpui_kit::desktop_sidebar_layout::{DesktopSidebarLayout, init_route
 use lingting_gpui_kit::router::RouteDefinition;
 
 use crate::assets::AppAssets;
-use crate::blocks::Placeholder;
 use crate::pages::{
-    ConfigPage, ConnectionPage, Console, NodePage, RulePage, SettingsPage, SubscribePage,
+    ConfigPage, ConnectionPage, Console, LogPage, NodePage, RulePage, SettingsPage, SubscribePage,
 };
 
 /// 应用标题。
@@ -71,8 +70,7 @@ fn routes() -> Vec<RouteDefinition> {
         .icon(IconName::Gauge),
         RouteDefinition::new("/node", "节点", NodePage::new).icon(IconName::Server),
         RouteDefinition::new("/connection", "连接", ConnectionPage::new).icon(IconName::Link),
-        RouteDefinition::new("/logs", "日志", |_, _| Placeholder::new("日志"))
-            .icon(IconName::ScrollText),
+        RouteDefinition::new("/logs", "日志", LogPage::new).icon(IconName::ScrollText),
         RouteDefinition::new("/subscribe", "订阅", |window, cx| {
             SubscribePage::new(window, cx)
         })

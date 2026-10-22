@@ -97,6 +97,37 @@ pub fn input_row(
         .into_any_element()
 }
 
+/// 一行可编辑的下拉项：左侧标签，右侧下拉框，说明贴在下方。
+pub fn select_row(
+    label: &'static str,
+    select: AnyElement,
+    hint: Option<&'static str>,
+    cx: &App,
+) -> AnyElement {
+    let hint = hint.map(|text| {
+        div()
+            .text_xs()
+            .text_color(cx.theme().muted_foreground)
+            .child(text)
+            .into_any_element()
+    });
+
+    h_flex()
+        .w_full()
+        .items_start()
+        .gap(COLUMN_GAP)
+        .child(label_cell(label, cx))
+        .child(
+            v_flex()
+                .flex_1()
+                .min_w_0()
+                .gap_1()
+                .child(select)
+                .children(hint),
+        )
+        .into_any_element()
+}
+
 /// 行首的标签单元格。
 fn label_cell(label: &'static str, cx: &App) -> AnyElement {
     div()

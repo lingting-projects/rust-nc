@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::{Result, bail};
+use lib_core::LogLevel;
 use lib_db::DbContext;
 use lib_system::startup;
 use types_core::dto::setting::{Setting, SettingKernel, SettingRun, SettingSoftware};
@@ -43,6 +44,7 @@ impl SettingManager {
             AppConfigKey::SettingKernelMixedPort,
             AppConfigKey::SettingKernelDnsCn,
             AppConfigKey::SettingKernelDnsProxy,
+            AppConfigKey::SettingKernelLogLevel,
         ];
         let map = self.app_config.map(&keys).await?;
         let default = SettingKernel::default();
@@ -55,6 +57,7 @@ impl SettingManager {
             mixed_port: number(&map, &keys[4]).unwrap_or(default.mixed_port),
             dns_cn: list(&map, &keys[5]).unwrap_or(default.dns_cn),
             dns_proxy: list(&map, &keys[6]).unwrap_or(default.dns_proxy),
+            log_level: level(&map, &keys[7]).unwrap_or(default.log_level),
         })
     }
 
@@ -110,6 +113,16 @@ impl SettingManager {
         self.app_config.set_all(&items).await
     }
 
+    /// 写入内核日志等级。
+    ///
+    /// 与监听设置分开保存：日志等级只影响新生成的配置，
+    /// 需要用户自行刷新配置并重启内核后才生效。
+    pub async fn upsert_kernel_log_level(&self, log_level: LogLevel) -> Result<()> {
+        self.app_config
+            .set(&AppConfigKey::SettingKernelLogLevel, log_level.as_str())
+            .await
+    }
+
     /// 写入设置，先同步开机自启状态再落库。
     pub async fn upsert(&self, setting: &Setting) -> Result<()> {
         self.sync_startup(setting.software.startup).await?;
@@ -143,6 +156,10 @@ impl SettingManager {
         items.push((
             AppConfigKey::SettingKernelDnsProxy,
             serde_json::to_string(&setting.kernel.dns_proxy)?,
+        ));
+        items.push((
+            AppConfigKey::SettingKernelLogLevel,
+            setting.kernel.log_level.as_str().to_string(),
         ));
         self.app_config.set_all(&items).await
     }
@@ -187,6 +204,11 @@ fn number<T>(map: &std::collections::HashMap<String, String>, key: &AppConfigKey
 where
     T: std::str::FromStr,
 {
+    map.get(&key.to_string())?.parse().ok()
+}
+
+/// 取日志等级配置，缺失或非法时返回 `None`，由调用方退回默认等级。
+fn level(map: &std::collections::HashMap<String, String>, key: &AppConfigKey) -> Option<LogLevel> {
     map.get(&key.to_string())?.parse().ok()
 }
 

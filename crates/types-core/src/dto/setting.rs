@@ -1,4 +1,5 @@
 use framework_proc_auto::auto_type;
+use lib_core::LogLevel;
 use lib_core::constants;
 
 /// 内核设置。
@@ -18,6 +19,8 @@ pub struct SettingKernel {
     pub dns_cn: Vec<String>,
     /// 代理 dns
     pub dns_proxy: Vec<String>,
+    /// 内核日志等级，写入内核配置的 `log.level`，改动后需刷新配置并重启内核才生效
+    pub log_level: LogLevel,
 }
 
 impl Default for SettingKernel {
@@ -30,6 +33,7 @@ impl Default for SettingKernel {
             mixed_port: constants::KERNEL_MIXED_PORT,
             dns_cn: to_vec(constants::KERNEL_DNS_CN),
             dns_proxy: to_vec(constants::KERNEL_DNS_PROXY),
+            log_level: LogLevel::default(),
         }
     }
 }

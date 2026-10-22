@@ -27,7 +27,7 @@ pub(crate) fn build(kernel: &Kernel, source: Source) -> Result<String> {
 
     let config = SingBoxConfig {
         log: LogConfig {
-            level: if kernel.config.debug { "debug" } else { "info" }.to_string(),
+            level: kernel.config.log_level.as_str().to_string(),
             timestamp: true,
             // 内核日志固定写入工作目录下的日志文件, 不跟随进程标准输出
             output: kernel

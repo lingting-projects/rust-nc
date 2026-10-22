@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use lib_converter::NodeContains;
+use lib_core::LogLevel;
 use lib_pick::is_true;
 
 /// 转换请求参数。
@@ -11,7 +12,8 @@ pub struct ConvertParams {
     pub ipv6: bool,
     pub fake_ip: bool,
     pub geo_cn: bool,
-    pub debug: bool,
+    /// 内核或 clash 面板输出的日志等级
+    pub log_level: LogLevel,
     /// 节点包含条件
     pub include: NodeContains,
     /// 节点排除条件
@@ -44,10 +46,18 @@ impl ConvertParams {
             ipv6: Self::convert_bool(source.get("ipv6")).unwrap_or(true),
             fake_ip: Self::convert_bool(source.get("fake_ip")).unwrap_or(true),
             geo_cn: Self::convert_bool(source.get("geo_cn")).unwrap_or(true),
-            debug: Self::convert_bool(source.get("debug")).unwrap_or(false),
+            log_level: Self::convert_log_level(source.get("debug")),
             include,
             exclude,
         })
+    }
+
+    /// 解析日志等级: `debug=1` 取 debug, 其余保持默认等级。
+    fn convert_log_level(source: Option<&Vec<String>>) -> LogLevel {
+        match Self::convert_bool(source).unwrap_or(false) {
+            true => LogLevel::Debug,
+            false => LogLevel::default(),
+        }
     }
 
     /// 解析远程地址, `s:key?p` 表示分享源。

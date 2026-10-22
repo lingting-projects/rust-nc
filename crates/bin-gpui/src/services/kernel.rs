@@ -3,7 +3,7 @@ use std::sync::Arc;
 use anyhow::{Context as _, Result};
 use lib_biz::inner_rule_sync::InnerRuleSync;
 use lib_biz::kernel::{SingBoxInstance, Status};
-use lib_singbox::ConnectionSnapshot;
+use lib_singbox::{ConnectionSnapshot, LogBlock, LogSnapshot};
 
 use super::Services;
 
@@ -168,5 +168,29 @@ impl Services {
     /// 关闭指定连接。
     pub async fn kernel_close_connection(&self, id: &str) -> Result<()> {
         SingBoxInstance::instance().close_connection(id).await
+    }
+}
+
+impl Services {
+    /// 当前内核日志快照。
+    ///
+    /// 日志文件由 `lib-singbox` 的常驻线程增量读取并解析成块，
+    /// 这里只把共享引用交给界面，不重新读文件，也不复制日志内容。
+    pub fn kernel_logs(&self) -> Result<Arc<LogSnapshot>> {
+        let store = SingBoxInstance::instance().logs()?;
+        Ok(store.snapshot().unwrap_or_default())
+    }
+}
+
+impl Services {
+    /// 读取一个日志块的完整内容，日志文件已被重写时返回 `None`。
+    ///
+    /// `progress` 每读完一块调用一次并汇报已读字节，返回 `false` 时立即停止读取。
+    pub fn kernel_log_detail(
+        &self,
+        block: &LogBlock,
+        progress: impl FnMut(u64) -> bool,
+    ) -> Result<Option<String>> {
+        SingBoxInstance::instance().log_detail(block, progress)
     }
 }

@@ -2,6 +2,7 @@ use anyhow::Result;
 use lib_biz::config::ConfigBiz;
 use lib_biz::config_sync::ConfigSync;
 use lib_biz::timer;
+use lib_core::LogLevel;
 use service_core::manager::setting_manager::SettingManager;
 use service_core::service::config_service::ConfigService;
 use service_core::service::rule_service::RuleService;
@@ -91,6 +92,15 @@ impl Services {
     pub async fn kernel_setting(&self) -> Result<SettingKernel> {
         SettingManager::new(self.context(), self.cache_dir.clone())
             .kernel()
+            .await
+    }
+
+    /// 只写入内核日志等级。
+    ///
+    /// 等级只影响后续生成的配置，用户需要自行刷新配置并重启内核后才生效。
+    pub async fn save_kernel_log_level(&self, log_level: LogLevel) -> Result<()> {
+        SettingManager::new(self.context(), self.cache_dir.clone())
+            .upsert_kernel_log_level(log_level)
             .await
     }
 

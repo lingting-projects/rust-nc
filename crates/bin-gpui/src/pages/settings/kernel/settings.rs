@@ -1,20 +1,27 @@
 //! 内核设置分区：可编辑的监听设置。
 
 use gpui_kit::base::{StyledExt as _, h_flex, v_flex};
+use gpui_kit::component::IndexPath;
 use gpui_kit::component::button::Button;
 use gpui_kit::component::button::ButtonVariants as _;
 use gpui_kit::component::input::{InputEvent, InputState};
 use gpui_kit::component::notification::Notification;
+use gpui_kit::component::searchable_list::SearchableListItem;
+use gpui_kit::component::select::{SearchableVec, Select, SelectEvent, SelectState};
 use gpui_kit::component::{Disableable as _, WindowExt as _};
 use gpui_kit::*;
 
+use lib_core::LogLevel;
 use types_core::dto::setting::SettingKernel;
 
-use super::shared::{ROW_GAP, card, input_row};
+use super::shared::{ROW_GAP, card, input_row, select_row};
 use crate::services::{self, AppServices};
 
 /// 分区标题。
 pub const TITLE: &str = "内核设置";
+
+/// 日志等级改动的生效说明。
+const LOG_LEVEL_HINT: &str = "改动需刷新配置并重启内核后生效";
 
 /// 内核设置分区。
 ///
@@ -27,6 +34,10 @@ pub struct Settings {
     ui_port: Entity<InputState>,
     mixed_listen: Entity<InputState>,
     mixed_port: Entity<InputState>,
+    /// 日志等级下拉框。
+    log_level: Entity<SelectState<SearchableVec<LogLevelOption>>>,
+    /// 已保存的日志等级，用于判断是否有未保存的改动。
+    saved_log_level: LogLevel,
     /// 是否正在保存。
     saving: bool,
     /// 输入变化订阅，页面存活期间一直保留。
@@ -64,18 +75,30 @@ impl Settings {
         let ui_port = input(window, cx, "1 - 65535");
         let mixed_listen = input(window, cx, "监听地址，例如 127.0.0.1");
         let mixed_port = input(window, cx, "1 - 65535");
+        let log_level = cx.new(|cx| {
+            SelectState::new(
+                SearchableVec::new(LogLevelOption::all()),
+                Some(IndexPath::new(0)),
+                window,
+                cx,
+            )
+        });
+        // 等级选择同样要重绘，保存按钮的可用状态依赖它
+        let subscription = cx.subscribe(&log_level, |_, _, _: &SelectEvent<_>, cx| cx.notify());
 
         // 输入即改值，保存按钮的可用状态与提示都依赖输入内容，因此变化时要重绘分区。
-        let subscriptions = [&ui_listen, &ui_port, &mixed_listen, &mixed_port]
-            .into_iter()
-            .map(|state| {
-                cx.subscribe(state, |_, _, event: &InputEvent, cx| {
-                    if matches!(event, InputEvent::Change) {
-                        cx.notify();
-                    }
+        let mut subscriptions: Vec<Subscription> =
+            [&ui_listen, &ui_port, &mixed_listen, &mixed_port]
+                .into_iter()
+                .map(|state| {
+                    cx.subscribe(state, |_, _, event: &InputEvent, cx| {
+                        if matches!(event, InputEvent::Change) {
+                            cx.notify();
+                        }
+                    })
                 })
-            })
-            .collect();
+                .collect();
+        subscriptions.push(subscription);
 
         Self {
             saved: Listen {
@@ -88,6 +111,8 @@ impl Settings {
             ui_port,
             mixed_listen,
             mixed_port,
+            log_level,
+            saved_log_level: LogLevel::default(),
             saving: false,
             _subscriptions: subscriptions,
         }
@@ -109,6 +134,15 @@ impl Settings {
             state.set_value(saved.mixed_port.clone(), window, cx)
         });
         self.saved = saved;
+
+        // 日志等级不在这个表单里校验，直接按保存值选中对应选项
+        let index = LogLevelOption::all()
+            .iter()
+            .position(|option| option.level == setting.log_level)
+            .map(IndexPath::new);
+        self.saved_log_level = setting.log_level;
+        self.log_level
+            .update(cx, |state, cx| state.set_selected_index(index, window, cx));
     }
 
     /// 保存监听设置。
@@ -118,6 +152,7 @@ impl Settings {
         }
 
         let listen = self.raw(cx);
+        let log_level = self.log_level(cx);
         if self.errors(cx).iter().any(Option::is_some) {
             return;
         }
@@ -145,7 +180,8 @@ impl Settings {
                 .spawn(async move {
                     runner
                         .save_kernel_listen(&ui_listen, ui_port, &mixed_listen, mixed_port)
-                        .await
+                        .await?;
+                    runner.save_kernel_log_level(log_level).await
                 })
                 .await;
 
@@ -154,7 +190,8 @@ impl Settings {
                 match result {
                     Ok(Ok(())) => {
                         settings.saved = listen;
-                        window.push_notification(Notification::success("内核监听设置已保存"), cx);
+                        settings.saved_log_level = log_level;
+                        window.push_notification(Notification::success("内核设置已保存"), cx);
                     }
                     Ok(Err(error)) => window.push_notification(
                         Notification::error(format!("保存内核监听设置失败: {error:#}")),
@@ -170,6 +207,15 @@ impl Settings {
             .ok();
         })
         .detach();
+    }
+
+    /// 下拉框中选中的日志等级。
+    fn log_level(&self, cx: &App) -> LogLevel {
+        self.log_level
+            .read(cx)
+            .selected_value()
+            .copied()
+            .unwrap_or_default()
     }
 
     /// 输入框中的监听设置。
@@ -198,7 +244,7 @@ impl Settings {
 impl Render for Settings {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let errors = self.errors(cx);
-        let dirty = self.raw(cx) != self.saved;
+        let dirty = self.raw(cx) != self.saved || self.log_level(cx) != self.saved_log_level;
         let invalid = errors.iter().any(Option::is_some);
 
         let content = v_flex()
@@ -208,6 +254,15 @@ impl Render for Settings {
             .child(input_row("面板端口", &self.ui_port, errors[1], cx))
             .child(input_row("混合监听", &self.mixed_listen, errors[2], cx))
             .child(input_row("混合端口", &self.mixed_port, errors[3], cx))
+            .child(select_row(
+                "日志等级",
+                Select::new(&self.log_level)
+                    .id("kernel-log-level")
+                    .accessibility_label("内核日志等级")
+                    .into_any_element(),
+                Some(LOG_LEVEL_HINT),
+                cx,
+            ))
             .child(
                 h_flex().w_full().gap_3().child(
                     Button::new("kernel-settings-save")
@@ -242,6 +297,38 @@ fn port_error(value: &str) -> Option<&'static str> {
     match value.parse::<u16>() {
         Ok(port) if port > 0 => None,
         _ => Some("请填写 1 - 65535 之间的端口"),
+    }
+}
+
+/// 日志等级下拉框的一个选项。
+#[derive(Clone)]
+struct LogLevelOption {
+    title: SharedString,
+    level: LogLevel,
+}
+
+impl LogLevelOption {
+    /// 全部等级，从严重到详细。
+    fn all() -> Vec<Self> {
+        LogLevel::ALL
+            .into_iter()
+            .map(|level| Self {
+                title: level.label().into(),
+                level,
+            })
+            .collect()
+    }
+}
+
+impl SearchableListItem for LogLevelOption {
+    type Value = LogLevel;
+
+    fn title(&self) -> SharedString {
+        self.title.clone()
+    }
+
+    fn value(&self) -> &Self::Value {
+        &self.level
     }
 }
 

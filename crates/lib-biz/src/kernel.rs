@@ -156,6 +156,25 @@ impl SingBoxInstance {
         Ok(self.singbox()?.connections())
     }
 
+    /// 内核日志。
+    ///
+    /// 日志由 `lib-singbox` 的常驻线程增量读取日志文件，这里只把存储交给调用方；
+    /// 内核未运行时没有可读内容，直接返回空快照。
+    pub fn logs(&self) -> Result<Arc<lib_singbox::LogStore>> {
+        Ok(self.singbox()?.logs())
+    }
+
+    /// 读取一个日志块的完整内容，日志文件已被重写时返回 `None`。
+    ///
+    /// `progress` 每读完一块调用一次并汇报已读字节，返回 `false` 时立即停止读取。
+    pub fn log_detail(
+        &self,
+        block: &lib_singbox::LogBlock,
+        progress: impl FnMut(u64) -> bool,
+    ) -> Result<Option<String>> {
+        Ok(self.singbox()?.logs().read(block, progress))
+    }
+
     /// 清空内存中缓存的全部连接，之后只保留新推送的数据。
     ///
     /// 只清缓存，不关闭内核里的连接；内核未运行时没有缓存可清，直接返回。

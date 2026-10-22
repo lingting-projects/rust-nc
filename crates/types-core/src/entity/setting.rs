@@ -47,6 +47,10 @@ pub enum AppConfigKey {
     #[strum(serialize = "setting:kernel:dns_proxy")]
     #[serde(rename = "setting:kernel:dns_proxy")]
     SettingKernelDnsProxy,
+    /// 内核: 日志等级
+    #[strum(serialize = "setting:kernel:log_level")]
+    #[serde(rename = "setting:kernel:log_level")]
+    SettingKernelLogLevel,
 }
 
 /// 应用配置, 对应 app_config 表。

@@ -12,10 +12,12 @@ use std::time::{Duration, Instant};
 
 mod connection;
 mod grpc;
+mod logs;
 mod url_test;
 
 pub use connection::{ConnectionInfo, ConnectionRecord, ConnectionSnapshot, ConnectionStore};
 pub use grpc::{Group, GroupItem, ProcessInfo, SingBoxGrpc};
+pub use logs::{Level as LogLevel, LogBlock, LogSnapshot, LogStore};
 pub use url_test::UrlTestQueue;
 
 /// 随包分发的 sing-box 版本。
@@ -52,6 +54,8 @@ pub struct SingBox {
     url_test: Arc<UrlTestQueue>,
     /// 连接数据，内核运行期间由常驻订阅把推送累积成快照。
     connections: Arc<ConnectionStore>,
+    /// 内核日志，内核运行期间由常驻读取线程把日志文件解析成块。
+    logs: Arc<LogStore>,
 }
 
 /// 内核实例的内部状态。
@@ -86,6 +90,7 @@ impl SingBox {
             grpc: ArcSwapOption::empty(),
             url_test: Arc::new(UrlTestQueue::new()),
             connections: Arc::new(ConnectionStore::new()),
+            logs: Arc::new(LogStore::new()),
         })
     }
 
@@ -154,6 +159,9 @@ impl SingBox {
         // 上一轮连接数据同样属于旧进程
         self.connections.subscribe(None);
         self.connections.reset();
+        // 内核日志同样按启动重写, 读取线程改为跟随本次启动的日志文件
+        self.logs
+            .subscribe(Some(work_dir.join(lib_core::constants::KERNEL_LOG_FILE)));
         Ok(())
     }
 
@@ -167,6 +175,8 @@ impl SingBox {
         // 连接数据随内核一起作废, 订阅线程保留并等待下一次启动
         self.connections.subscribe(None);
         self.connections.reset();
+        // 日志同样随内核一起作废, 读取线程保留并等待下一次启动
+        self.logs.subscribe(None);
         let Some(mut process) = self.lock().process.take() else {
             return Ok(());
         };
@@ -296,6 +306,14 @@ impl SingBox {
     /// 内核未运行时快照为空。
     pub fn connections(&self) -> Arc<ConnectionStore> {
         self.connections.clone()
+    }
+
+    /// 内核日志。
+    ///
+    /// 内核运行期间由常驻读取线程增量读取日志文件，调用方读取快照即可；
+    /// 内核未运行时快照为空。
+    pub fn logs(&self) -> Arc<LogStore> {
+        self.logs.clone()
     }
     /// 取内部状态，锁被污染时继续使用其内容。
     fn lock(&self) -> MutexGuard<'_, Inner> {
