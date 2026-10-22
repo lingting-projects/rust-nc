@@ -1,10 +1,12 @@
 mod charts;
+mod failure;
 mod monitor;
 mod preview;
 mod toolbar;
 
 use gpui_kit::base::{StyledExt as _, h_flex, v_flex};
 use gpui_kit::component::ActiveTheme as _;
+use gpui_kit::component::scroll::ScrollableElement as _;
 use gpui_kit::component::select::{SearchableVec, SelectState};
 use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
@@ -20,6 +22,12 @@ use toolbar::ConfigOption;
 ///
 /// 控制栏、预览栏、监控控制栏、监控区的数值卡与图表卡共用，保证同一层的留白一致。
 pub(crate) const PADDING: Rems = rems(1.);
+
+/// 图表区最小高度。
+///
+/// 页面整体可滚动后，图表区拿到的剩余高度可能为零，折线会被压成一条线；
+/// 给一个下限，窗口变矮时改为整页滚动，图表本身仍然可读。
+const CHART_MIN_HEIGHT: Rems = rems(12.);
 
 /// 实时监控卡片的分区，可独立开关。
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -380,18 +388,28 @@ impl Console {
 
 impl Render for Console {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        // 失败日志按内容展开，窗口放不下时整页纵向滚动，日志因此可以完整查看。
         v_flex()
             .size_full()
             .min_h_0()
             .gap_4()
+            .overflow_y_scrollbar()
             .child(toolbar::render(self, cx))
             .child(preview::render(self, cx))
+            .children(failure::render(self, cx))
             .child(self.render_monitor_bar(cx))
-            .child(div().w_full().min_h_0().flex_1().child(charts::render(
-                &self.monitor,
-                &self.sections,
-                self.kernel.running(),
-                cx.theme(),
-            )))
+            .child(
+                div()
+                    .w_full()
+                    .flex_1()
+                    // 页面可滚动后剩余高度可能为零，给图表区一个下限，滚动时曲线仍然可读。
+                    .min_h(CHART_MIN_HEIGHT)
+                    .child(charts::render(
+                        &self.monitor,
+                        &self.sections,
+                        self.kernel.running(),
+                        cx.theme(),
+                    )),
+            )
     }
 }
