@@ -8,6 +8,7 @@ use log::{debug, error, info, warn};
 use service_core::service::rule_service::RuleService;
 use types_core::dto::rule::RuleRefreshDTO;
 
+use crate::config_sync::ConfigSync;
 use crate::rule_file;
 use crate::scheduler::{Scheduler, SyncTask};
 
@@ -114,6 +115,17 @@ async fn sync(context: &Arc<DbContext>, id: &str) -> Result<()> {
         )
         .await?;
     info!("[规则] [{}] 同步完成", rule.name);
+    push_configs(context, id, &rule.name).await?;
+    Ok(())
+}
+
+/// 推送引用了该规则的配置刷新。
+///
+/// 规则内容变更后, 依赖它的配置需要重新生成配置文件;
+/// 配置若是内核正在运行的那一份, 由配置同步完成后通知内核重载。
+async fn push_configs(context: &Arc<DbContext>, id: &str, name: &str) -> Result<()> {
+    let count = ConfigSync::instance().push_by_rule(context, id).await?;
+    debug!("[规则] [{name}] 推送依赖配置数量: {count}");
     Ok(())
 }
 

@@ -59,6 +59,12 @@ pub const KERNEL_STDOUT_FILE: &str = "stdout.log";
 /// 内核异常输出日志文件名, 位于内核工作目录, 每次启动重写
 pub const KERNEL_STDERR_FILE: &str = "stderr.log";
 
+/// 内核重载标记文件名, 位于内核工作目录
+///
+/// 内核按秒检查该文件, 发现即重新读取配置并重建实例, 用完自行删除。
+/// Windows 无法向子进程发送 SIGHUP, 因此统一用标记文件触发重载。
+pub const KERNEL_RELOAD_FILE: &str = "reload.flag";
+
 // endregion
 
 // region 节点筛选

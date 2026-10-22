@@ -28,6 +28,32 @@ pub(crate) async fn all_id(pool: &DbPool) -> Result<Vec<String>> {
     rows.iter().map(|row| mapping::string(row, "id")).collect()
 }
 
+/// 查询引用了订阅 `id` 的配置 id。
+pub(crate) async fn all_id_by_subscribe(pool: &DbPool, id: &str) -> Result<Vec<String>> {
+    let sql = format!("select `id` from {TABLE} where `subscribe_id` = ?");
+    let rows = sqlx::query(&sql).bind(id).fetch_all(pool).await?;
+    rows.iter().map(|row| mapping::string(row, "id")).collect()
+}
+
+/// 查询引用了规则 `id` 的配置 id。
+///
+/// 三类规则以 json 数组落库, 用 `json_each` 展开后逐个比较, 避免字符串匹配的误判。
+pub(crate) async fn all_id_by_rule(pool: &DbPool, id: &str) -> Result<Vec<String>> {
+    let sql = format!(
+        "select `id` from {TABLE} where \
+         exists (select 1 from json_each(`rule_direct_ids`) where `value` = ?) \
+         or exists (select 1 from json_each(`rule_proxy_ids`) where `value` = ?) \
+         or exists (select 1 from json_each(`rule_reject_ids`) where `value` = ?)"
+    );
+    let rows = sqlx::query(&sql)
+        .bind(id)
+        .bind(id)
+        .bind(id)
+        .fetch_all(pool)
+        .await?;
+    rows.iter().map(|row| mapping::string(row, "id")).collect()
+}
+
 /// 按 id 查询配置。
 pub(crate) async fn find(pool: &DbPool, id: &str) -> Result<Option<Config>> {
     let sql = format!("select {FIELDS} from {TABLE} where `id` = ? limit 1");

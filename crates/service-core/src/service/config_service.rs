@@ -39,6 +39,16 @@ impl ConfigService {
         repository::find_need_refresh(self.pool(), millis).await
     }
 
+    /// 查询引用了订阅 `id` 的配置 id。
+    pub async fn list_ids_by_subscribe(&self, id: &str) -> Result<Vec<String>> {
+        repository::all_id_by_subscribe(self.pool(), id).await
+    }
+
+    /// 查询引用了规则 `id` 的配置 id, 直连、代理、拒绝三类规则都算引用。
+    pub async fn list_ids_by_rule(&self, id: &str) -> Result<Vec<String>> {
+        repository::all_id_by_rule(self.pool(), id).await
+    }
+
     /// 新增或修改配置，返回配置 id。
     ///
     /// 新增时补全 id 与时间字段；修改时保留创建时间与刷新时间。

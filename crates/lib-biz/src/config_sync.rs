@@ -12,6 +12,7 @@ use types_core::entity::config::Config;
 
 use crate::config_file;
 use crate::inner_rule_sync::InnerRuleSync;
+use crate::kernel::SingBoxInstance;
 use crate::scheduler::{Scheduler, SyncTask};
 
 /// 全局唯一的配置同步调度器。
@@ -49,6 +50,26 @@ impl ConfigSync {
     pub fn push_all(&self, ids: impl IntoIterator<Item = String>) -> usize {
         self.scheduler.push_all(ids)
     }
+
+    /// 刷新引用了订阅 `id` 的配置, 返回成功入队的数量。
+    ///
+    /// 订阅同步出新节点后调用, 让依赖它的配置重新生成内核配置。
+    pub async fn push_by_subscribe(&self, context: &Arc<DbContext>, id: &str) -> Result<usize> {
+        let ids = ConfigService::new(context.clone())
+            .list_ids_by_subscribe(id)
+            .await?;
+        Ok(self.push_all(ids))
+    }
+
+    /// 刷新引用了规则 `id` 的配置, 返回成功入队的数量。
+    ///
+    /// 规则同步出新内容后调用, 让依赖它的配置重新生成内核配置。
+    pub async fn push_by_rule(&self, context: &Arc<DbContext>, id: &str) -> Result<usize> {
+        let ids = ConfigService::new(context.clone())
+            .list_ids_by_rule(id)
+            .await?;
+        Ok(self.push_all(ids))
+    }
 }
 
 /// 配置同步任务的定义。
@@ -65,6 +86,8 @@ impl SyncTask for ConfigTask {
 }
 
 /// 同步单个配置: 校验订阅节点与引用的规则, 通过后生成配置文件并刷新刷新时间。
+///
+/// 配置若是内核正在运行的那一份且文件内容发生变化, 同步完成后通知内核重载, 让新配置立即生效。
 pub(crate) async fn sync(context: &Arc<DbContext>, id: &str) -> Result<()> {
     let service = ConfigService::new(context.clone());
     let Some(config) = service.find(id).await? else {
@@ -74,7 +97,7 @@ pub(crate) async fn sync(context: &Arc<DbContext>, id: &str) -> Result<()> {
 
     info!("[配置] [{}] 开始同步", config.name);
     let count = validate(context, &config).await?;
-    let path = config_file::write(context, &config).await?;
+    let (path, changed) = config_file::write_changed(context, &config).await?;
     // 配置已引用内置规则集, 立刻推动一次下载, 避免等到内核启动才开始
     push_inner_rules(context).await?;
     service.touch_refresh(id, current_millis()?).await?;
@@ -83,6 +106,19 @@ pub(crate) async fn sync(context: &Arc<DbContext>, id: &str) -> Result<()> {
         config.name,
         path.display()
     );
+
+    // 内容没变时内核不必重建实例, 定时刷新因此不会反复打断内核
+    if !changed {
+        debug!("[配置] [{}] 配置内容未变化, 无需重载内核", config.name);
+        return Ok(());
+    }
+
+    // 内核正在运行该配置时, 新配置要立刻生效, 否则改动要等到下次重启内核
+    match SingBoxInstance::instance().reload(id) {
+        Ok(true) => info!("[配置] [{}] 已通知内核重载", config.name),
+        Ok(false) => debug!("[配置] [{}] 不是内核运行中的配置, 无需重载", config.name),
+        Err(error) => error!("[配置] [{}] 通知内核重载失败! {error:#}", config.name),
+    }
     Ok(())
 }
 

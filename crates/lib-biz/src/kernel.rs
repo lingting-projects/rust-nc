@@ -249,6 +249,23 @@ impl SingBoxInstance {
         Ok(())
     }
 
+    /// 让内核重载正在运行的配置, 不重启内核进程。
+    ///
+    /// 只对内核正在运行的配置生效: `id` 不是运行中的配置或内核未运行时返回 `false`;
+    /// 配置文件由调用方负责生成, 这里只通知内核按新配置重建实例。
+    pub fn reload(&self, id: &str) -> Result<bool> {
+        if self.config_id().as_deref() != Some(id) {
+            return Ok(false);
+        }
+        if self.status() != Status::Running {
+            return Ok(false);
+        }
+
+        self.singbox()?.reload(&file::sing_box_workspace()?)?;
+        log::info!("[内核] 配置已刷新, 配置: {id}");
+        Ok(true)
+    }
+
     /// 停止内核。
     pub async fn stop(&self) -> Result<()> {
         let _action = self.action.lock().await;

@@ -95,25 +95,23 @@ impl Services {
             .await
     }
 
-    /// 只写入内核日志等级。
+    /// 保存内核监听设置与日志等级，随后立即推送全部配置刷新。
     ///
-    /// 等级只影响后续生成的配置，用户需要自行刷新配置并重启内核后才生效。
-    pub async fn save_kernel_log_level(&self, log_level: LogLevel) -> Result<()> {
-        SettingManager::new(self.context(), self.cache_dir.clone())
-            .upsert_kernel_log_level(log_level)
-            .await
-    }
-
-    /// 只写入内核监听设置。
-    pub async fn save_kernel_listen(
+    /// 两项设置先一次写完再推送，避免配置同步读到只写了一半的设置；
+    /// 内核不重启，各配置同步完成后由运行中的那份配置通知内核重载。
+    pub async fn save_kernel_setting(
         &self,
         ui_listen: &str,
         ui_port: u16,
         mixed_listen: &str,
         mixed_port: u16,
-    ) -> Result<()> {
-        SettingManager::new(self.context(), self.cache_dir.clone())
+        log_level: LogLevel,
+    ) -> Result<usize> {
+        let manager = SettingManager::new(self.context(), self.cache_dir.clone());
+        manager
             .upsert_kernel_listen(ui_listen, ui_port, mixed_listen, mixed_port)
-            .await
+            .await?;
+        manager.upsert_kernel_log_level(log_level).await?;
+        ConfigBiz::new(self.context()).sync(None).await
     }
 }

@@ -23,6 +23,17 @@ use crate::inner_rule_file;
 ///
 /// 引用的规则会复制到同一目录, 配置目录因此自包含。
 pub async fn write(context: &Arc<DbContext>, config: &Config) -> Result<PathBuf> {
+    let (path, _) = write_changed(context, config).await?;
+    Ok(path)
+}
+
+/// 生成配置的 sing-box 配置文件, 并说明文件内容是否变化。
+///
+/// 内容未变化时内核无需重载, 调用方据此避免无谓地重建内核实例。
+/// 配置目录每次都会整体重建, 文件修改时间必然变化, 因此按内容比较。
+pub async fn write_changed(context: &Arc<DbContext>, config: &Config) -> Result<(PathBuf, bool)> {
+    let path = file::sing_box_json(&config.id)?;
+    let before = std::fs::read_to_string(&path).ok();
     let nodes = nodes(context, &config.subscribe_id).await?;
     let kernel = kernel(context).await?;
     // 内置规则在生成配置前登记, 保证内核启动前的就绪检查能覆盖到本次引用的规则集
@@ -52,7 +63,6 @@ pub async fn write(context: &Arc<DbContext>, config: &Config) -> Result<PathBuf>
         exclude: exclude(config),
     };
 
-    let id = config.id.clone();
     // 转换与写盘为同步计算, 放到阻塞线程池, 避免占住异步线程
     tokio::task::spawn_blocking(move || {
         let converted = if is_clash(&nodes) {
@@ -61,9 +71,9 @@ pub async fn write(context: &Arc<DbContext>, config: &Config) -> Result<PathBuf>
             pure_to(Platform::SingBox, nodes, platform)
         }?;
 
-        let path = file::sing_box_json(&id)?;
+        let changed = before.as_deref() != Some(converted.as_str());
         file::write(&path, converted)?;
-        Ok(path)
+        Ok((path, changed))
     })
     .await?
 }

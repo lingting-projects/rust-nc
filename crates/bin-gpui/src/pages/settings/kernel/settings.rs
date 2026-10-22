@@ -21,7 +21,7 @@ use crate::services::{self, AppServices};
 pub const TITLE: &str = "内核设置";
 
 /// 日志等级改动的生效说明。
-const LOG_LEVEL_HINT: &str = "改动需刷新配置并重启内核后生效";
+const LOG_LEVEL_HINT: &str = "保存后立即刷新全部配置，内核自动重载后生效";
 
 /// 内核设置分区。
 ///
@@ -179,19 +179,29 @@ impl Settings {
             let result = loader
                 .spawn(async move {
                     runner
-                        .save_kernel_listen(&ui_listen, ui_port, &mixed_listen, mixed_port)
-                        .await?;
-                    runner.save_kernel_log_level(log_level).await
+                        .save_kernel_setting(
+                            &ui_listen,
+                            ui_port,
+                            &mixed_listen,
+                            mixed_port,
+                            log_level,
+                        )
+                        .await
                 })
                 .await;
 
             this.update_in(cx, |settings, window, cx| {
                 settings.saving = false;
                 match result {
-                    Ok(Ok(())) => {
+                    Ok(Ok(count)) => {
                         settings.saved = listen;
                         settings.saved_log_level = log_level;
-                        window.push_notification(Notification::success("内核设置已保存"), cx);
+                        window.push_notification(
+                            Notification::success(format!(
+                                "内核设置已保存，已推送 {count} 个配置刷新"
+                            )),
+                            cx,
+                        );
                     }
                     Ok(Err(error)) => window.push_notification(
                         Notification::error(format!("保存内核监听设置失败: {error:#}")),

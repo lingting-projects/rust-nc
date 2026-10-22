@@ -11,6 +11,7 @@ use service_core::service::subscribe_service::SubscribeService;
 use types_core::dto::subscribe::SubscribeRefreshDTO;
 use types_core::entity::subscribe::SubscribeSource;
 
+use crate::config_sync::ConfigSync;
 use crate::scheduler::{Scheduler, SyncTask};
 
 /// 全局唯一的订阅同步调度器。
@@ -123,6 +124,19 @@ async fn sync(context: &Arc<DbContext>, id: &str) -> Result<()> {
         )
         .await?;
     info!("[订阅] [{}] 同步完成", subscribe.name);
+    push_configs(context, id, &subscribe.name).await?;
+    Ok(())
+}
+
+/// 推送引用了该订阅的配置刷新。
+///
+/// 订阅同步出新节点后, 依赖它的配置需要重新生成配置文件;
+/// 配置若是内核正在运行的那一份, 由配置同步完成后通知内核重载。
+async fn push_configs(context: &Arc<DbContext>, id: &str, name: &str) -> Result<()> {
+    let count = ConfigSync::instance()
+        .push_by_subscribe(context, id)
+        .await?;
+    debug!("[订阅] [{name}] 推送依赖配置数量: {count}");
     Ok(())
 }
 
