@@ -99,7 +99,7 @@ impl Services {
         mixed_port: u16,
         log_level: LogLevel,
     ) -> Result<usize> {
-        let manager = SettingManager::new(self.context(), self.cache_dir.clone());
+        let manager = SettingManager::new(self.context());
         manager
             .upsert_kernel_listen(ui_listen, ui_port, mixed_listen, mixed_port)
             .await?;

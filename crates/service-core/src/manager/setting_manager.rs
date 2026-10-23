@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use anyhow::{Result, bail};
+use anyhow::Result;
 use lib_core::LogLevel;
 use lib_db::DbContext;
 use lib_system::startup;
@@ -16,16 +16,13 @@ use crate::service::app_config_service::AppConfigService;
 /// 保证后续从内存读到的就是刚写入的设置。
 pub struct SettingManager {
     app_config: AppConfigService,
-    /// 开机自启所需的中间文件目录
-    cache_dir: std::path::PathBuf,
 }
 
 impl SettingManager {
-    /// 绑定请求级数据库上下文与缓存目录。
-    pub fn new(context: Arc<DbContext>, cache_dir: impl Into<std::path::PathBuf>) -> Self {
+    /// 绑定请求级数据库上下文。
+    pub fn new(context: Arc<DbContext>) -> Self {
         Self {
             app_config: AppConfigService::new(context),
-            cache_dir: cache_dir.into(),
         }
     }
 
@@ -140,18 +137,17 @@ impl SettingManager {
     /// 同步开机自启状态，操作失败时保持数据库不变。
     async fn sync_startup(&self, enabled: bool) -> Result<()> {
         if enabled {
-            if startup::is_startup()? {
-                return Ok(());
-            }
-            if !startup::enable(&self.cache_dir)? {
-                bail!("设置开机自启失败");
-            }
+            startup::enable().map_err(|error| {
+                log::error!("设置开机自启失败: {error:#}");
+                error
+            })?;
             return Ok(());
         }
 
-        if !startup::disable()? {
-            bail!("关闭开机自启失败");
-        }
+        startup::disable().map_err(|error| {
+            log::error!("关闭开机自启失败: {error:#}");
+            error
+        })?;
         Ok(())
     }
 }

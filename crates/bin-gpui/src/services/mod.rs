@@ -5,7 +5,6 @@ mod subscribe;
 
 pub use kernel::{GroupInfo, GroupNode, KernelData, kernel_data};
 
-use std::path::PathBuf;
 use std::sync::Arc;
 
 use anyhow::{Context as _, Result};
@@ -33,8 +32,6 @@ pub struct ConsoleData {
 pub struct Services {
     runtime: tokio::runtime::Runtime,
     context: Arc<DbContext>,
-    /// 应用缓存目录，供写入设置的 `SettingManager` 使用。
-    cache_dir: PathBuf,
 }
 
 impl Services {
@@ -136,6 +133,5 @@ fn open() -> Result<Services> {
     Ok(Services {
         runtime,
         context: Arc::new(DbContext::new(database.pool().clone())),
-        cache_dir: directory.cache.clone(),
     })
 }

@@ -10,20 +10,19 @@ license.workspace = true
 [dependencies]
 lib-core = { workspace = true }
 
+framework-startup = { workspace = true }
+framework-system = { workspace = true }
+
 anyhow = { workspace = true }
 encoding = { workspace = true }
 log = { workspace = true }
-regex = { workspace = true }
 
 [target.'cfg(target_os="windows")'.dependencies]
 winapi = { workspace = true, features = ["winnls"] }
 windows = { workspace = true, features = [
     "Win32_Foundation",
-    "Win32_Security",
-    "Win32_Security_Authorization",
     "Win32_System_Com",
     "Win32_System_Ole",
-    "Win32_System_Threading",
     "Win32_System_Variant",
     "Win32_UI_Shell",
     "Win32_UI_Shell_Common",

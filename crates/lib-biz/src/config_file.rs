@@ -183,12 +183,17 @@ fn exclude(config: &Config) -> NodeContains {
 
 /// 是否启用 tun。
 ///
-/// 开发构建不会以管理员权限运行，因此 debug 下无条件关闭 tun，忽略配置中的取值。
+/// tun 需要创建虚拟网卡，只有进程具备管理员权限时才能启用；
+/// 未提权时关闭 tun，避免内核启动即失败。判断失败按未提权处理。
 fn tun(config: &Config) -> bool {
-    if cfg!(debug_assertions) {
+    if !config.tun {
         return false;
     }
-    config.tun
+
+    lib_system::is_elevated().unwrap_or_else(|error| {
+        log::warn!("判断管理员权限失败, 按未提权处理: {error:#}");
+        false
+    })
 }
 
 /// 由节点识别订阅来源, 依据协议所在的字段名。

@@ -20,6 +20,7 @@ lib-db = { workspace = true }
 lib-fetch = { workspace = true }
 lib-pick = { workspace = true }
 lib-singbox = { workspace = true }
+lib-system = { workspace = true }
 service-core = { workspace = true }
 types-core = { workspace = true }
 

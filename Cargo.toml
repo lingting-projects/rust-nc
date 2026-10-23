@@ -43,6 +43,8 @@ types-core = { path = "crates/types-core" }
 
 framework-core = { path = "../../lingting-rust-framework/framework-core" }
 framework-datetime = { path = "../../lingting-rust-framework/framework-datetime" }
+framework-startup = { path = "../../lingting-rust-framework/framework-startup" }
+framework-system = { path = "../../lingting-rust-framework/framework-system" }
 framework-region = { path = "../../lingting-rust-framework/framework-region" }
 framework-proc-auto = { path = "../../lingting-rust-framework/framework-proc-auto" }
 framework-proc-core = { path = "../../lingting-rust-framework/framework-proc-core" }
