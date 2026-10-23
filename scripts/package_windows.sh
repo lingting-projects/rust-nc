@@ -37,6 +37,21 @@ echo "  版本: $VERSION"
 echo "  描述: $DESC"
 echo "  目标: $TARGET"
 
+# 查找 mt.exe: 优先 PATH, 否则从 Windows Kits 的安装目录里取最新版本。
+# 只用于给发布产物写入管理员清单, 属于 Windows SDK 自带工具。
+find_mt() {
+  if command -v mt.exe >/dev/null 2>&1; then
+    command -v mt.exe
+    return 0
+  fi
+  local kits="/c/Program Files (x86)/Windows Kits/10/bin"
+  [ -d "$kits" ] || return 1
+  local path
+  path=$(ls -d "$kits"/*/x64/mt.exe 2>/dev/null | sort -V | tail -1)
+  [ -n "$path" ] || return 1
+  echo "$path"
+}
+
 echo "编译主程序"
 cd "$DIR_ROOT"
 cargo build -p bin-gpui --release --target "$TARGET"
@@ -46,6 +61,17 @@ if [ ! -f "$DIR_RELEASE/$SINGBOX_NAME" ]; then
   echo "未找到内核二进制: $DIR_RELEASE/$SINGBOX_NAME"
   exit 1
 fi
+
+# 编译产物里的清单来自 gpui 依赖(asInvoker), 发布版需要管理员权限,
+# 用 mt.exe 把 app.manifest 整体写进 exe 的资源区。
+# 不放在 build.rs 里做: gpui 的清单是经静态库带入的, 再嵌一份会报 CVT1100 资源重复。
+echo "写入管理员清单"
+MT=$(find_mt) || {
+  echo "未找到 mt.exe, 请安装 Windows SDK 或把 mt.exe 加入 PATH"
+  exit 1
+}
+"$MT" -nologo -manifest "$DIR_ROOT/crates/bin-gpui/app.manifest" \
+  "-outputresource:$(cd "$DIR_RELEASE" && pwd -W)/$NAME.exe;1"
 
 echo "准备打包目录"
 rm -rf "$DIR_STAGE"
@@ -79,9 +105,14 @@ sed -i "s/_name/$NAME/g" product.wxs
 sed -i "s/_version/$VERSION/g" product.wxs
 sed -i "s/_desc/$DESC/g" product.wxs
 
+# 模板用到 util:CloseApplication, 需要 WixToolset.Util.wixext 扩展;
+# 缓存里没有时先添加, 已缓存时 wix 会直接复用, 重复执行不会报错。
+wix extension add -g WixToolset.Util.wixext/6.0.1
+
 wix build product.wxs \
   -d IconDesktop=0 \
   -d BIN=1 \
+  -ext WixToolset.Util.wixext \
   -o "$DIR_ROOT/target/$NAME.msi"
 
 echo "产物: target/$NAME.zip target/$NAME.msi"

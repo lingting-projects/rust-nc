@@ -1,4 +1,12 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!--
+    发布产物的完整清单, 由 scripts/package_windows.sh 在编译后用 mt.exe 写入 exe。
+
+    必须写全: mt.exe 是整体替换 RT_MANIFEST=1, 只写提权会把 gpui 自带清单里的
+    高 DPI 与通用控件依赖一起覆盖掉。因此这里合并了两部分内容 ——
+    提权(requireAdministrator) + gpui 的 dpiAware/PerMonitorV2、supportedOS、
+    Common-Controls v6。改动这里之后要重新打包才生效。
+-->
 <assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
     <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
         <security>
@@ -7,4 +15,28 @@
             </requestedPrivileges>
         </security>
     </trustInfo>
+    <compatibility xmlns="urn:schemas-microsoft-com:compatibility.v1">
+        <application>
+            <!-- Windows 10 -->
+            <supportedOS Id="{8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a}" />
+        </application>
+    </compatibility>
+    <application xmlns="urn:schemas-microsoft-com:asm.v3">
+        <windowsSettings>
+            <dpiAware xmlns="http://schemas.microsoft.com/SMI/2005/WindowsSettings">true/pm</dpiAware>
+            <dpiAwareness xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">PerMonitorV2</dpiAwareness>
+            <heapType xmlns="http://schemas.microsoft.com/SMI/2020/WindowsSettings">SegmentHeap</heapType>
+        </windowsSettings>
+    </application>
+    <dependency>
+        <dependentAssembly>
+            <assemblyIdentity
+                type="win32"
+                name="Microsoft.Windows.Common-Controls"
+                version="6.0.0.0"
+                processorArchitecture="*"
+                publicKeyToken="6595b64144ccf1df"
+            />
+        </dependentAssembly>
+    </dependency>
 </assembly>

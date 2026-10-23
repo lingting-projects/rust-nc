@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
     <?ifndef BIN ?>
       <?define BIN = 0 ?>
     <?endif ?>
@@ -26,6 +27,48 @@
         <!-- 定义图标 -->
         <Icon Id="MainIcon" SourceFile="icons/256x256.ico" />
         <Property Id="ARPPRODUCTICON" Value="MainIcon" />
+
+        <!--
+            安装前关闭正在运行的程序, 否则旧版文件被占用会让整个安装事务回滚。
+            程序带管理员清单, 以普通权限发出的关闭消息到不了界面, 因此直接终止进程;
+            配置与规则都写在应用数据目录, 终止不会丢数据。
+        -->
+        <util:CloseApplication
+            Id="CloseMain"
+            Target="_name.exe"
+            Description="正在关闭 _name..."
+            PromptToContinue="no"
+            RebootPrompt="no"
+            TerminateProcess="1"
+        />
+        <!-- 内核被主程序托管, 主程序终止后它会自行退出; 这里兜底处理残留的内核进程 -->
+        <util:CloseApplication
+            Id="CloseKernel"
+            Target="_name-singbox.exe"
+            Description="正在关闭 _name 内核..."
+            PromptToContinue="no"
+            RebootPrompt="no"
+            TerminateProcess="1"
+        />
+
+        <!--
+            util 默认把关闭动作排在 InstallFiles 之前(序号 3999), 但卸载流程的 RemoveFiles(3500)
+            更早, 卸载时文件已被删除, 关闭动作再执行就来不及了。因此改排到 InstallInitialize 之后,
+            让安装、升级、卸载三条路径都先关闭程序。
+
+            不能排到 InstallValidate 之前: 那一步在 InstallInitialize 之前, 安装事务还没建立,
+            即时动作里调度 deferred 动作会失败, 安装直接报 2762(事务未启动)。
+            排到这里既在事务内, 又早于 RemoveFiles 与 InstallFiles。
+
+            动作名由扩展按编译架构加后缀, 这里用 $(sys.BUILDARCHSHORT) 跟着变。
+
+            备选方案(未采用): 直接用扩展默认值, 删掉本段 InstallExecuteSequence 即可,
+            关闭动作会落在 InstallFiles 之前(3999)。这条路径安装与升级都正常,
+            但卸载时 RemoveFiles(3500) 早于它, 文件已被删除, 卸载仍可能因占用失败。
+        -->
+        <InstallExecuteSequence>
+            <Custom Action="override Wix4CloseApplications_$(sys.BUILDARCHSHORT)" After="InstallInitialize" />
+        </InstallExecuteSequence>
 
         <!-- 禁止降级, 升级的前先卸载低版本 -->
         <MajorUpgrade AllowSameVersionUpgrades="yes" DowngradeErrorMessage="当前应用已存在更高版本, 无法安装当前版本!" />
