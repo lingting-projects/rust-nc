@@ -27,6 +27,7 @@ log = { workspace = true }
 lib-db = { workspace = true }
 lib-system = { workspace = true }
 service-core = { workspace = true }
+rust-single = { workspace = true, features = ["ipc"] }
 tokio = { workspace = true }
 types-core = { workspace = true }
 

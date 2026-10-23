@@ -4,6 +4,7 @@ mod components;
 mod logging;
 mod pages;
 mod services;
+mod single;
 mod theme;
 mod utils;
 
@@ -47,6 +48,15 @@ fn main() {
         }
     };
 
+    // 单进程锁必须在数据层与内核启动之前拿到：两个实例同时操作数据库与内核会互相破坏状态。
+    let guard = match single::Guard::create() {
+        Ok(guard) => guard,
+        Err(error) => {
+            log::error!("{error:#}");
+            return;
+        }
+    };
+
     application().with_assets(AppAssets::new()).run(|cx| {
         init(cx);
         services::init(cx);
@@ -54,7 +64,10 @@ fn main() {
 
         let routes = routes();
         init_router(cx, DEFAULT_PATH, &routes);
-        open(cx, routes).expect("failed to open window");
+        let (window, _) = open(cx, routes).expect("failed to open window");
+
+        // 锁与窗口绑定：后续实例的唤醒信号由界面线程转成窗口前置。
+        single::listen(cx, guard, window);
     });
 
     // 守卫必须存活到进程退出，否则日志写入线程会被提前释放、尾部日志丢失。
