@@ -5,10 +5,9 @@ use std::sync::Arc;
 use anyhow::{Result, anyhow, bail};
 use lib_converter::constants::{GEO_IP_CN, INNER_RULE_GEO_IP_CN};
 use lib_converter::{NodeContains, Platform, PlatformConfig, Rule, RuleType, clash_to, pure_to};
-use lib_core::directorys;
 use lib_db::DbContext;
 use lib_pick::{KEY_SCHEME, KEY_TYPE, PickNodes};
-use service_core::manager::setting_manager::SettingManager;
+use service_core::holder::settings::SettingsHolder;
 use service_core::service::inner_rule_service::InnerRuleService;
 use service_core::service::rule_service::RuleService;
 use service_core::service::subscribe_service::SubscribeService;
@@ -35,7 +34,7 @@ pub async fn write_changed(context: &Arc<DbContext>, config: &Config) -> Result<
     let path = file::sing_box_json(&config.id)?;
     let before = std::fs::read_to_string(&path).ok();
     let nodes = nodes(context, &config.subscribe_id).await?;
-    let kernel = kernel(context).await?;
+    let kernel = kernel();
     // 内置规则在生成配置前登记, 保证内核启动前的就绪检查能覆盖到本次引用的规则集
     register_inner_rules(context, config).await?;
     let rules = rules(context, config).await?;
@@ -97,9 +96,8 @@ async fn nodes(context: &Arc<DbContext>, id: &str) -> Result<PickNodes> {
 }
 
 /// 读取内核设置。
-async fn kernel(context: &Arc<DbContext>) -> Result<SettingKernel> {
-    let cache = directorys()?.cache.clone();
-    SettingManager::new(context.clone(), cache).kernel().await
+fn kernel() -> SettingKernel {
+    SettingsHolder::kernel()
 }
 
 /// 登记配置引用的内置规则。

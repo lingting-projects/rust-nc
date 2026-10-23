@@ -13,7 +13,7 @@ use gpui_kit::*;
 use lib_biz::timer;
 use lib_core::directorys;
 use lib_db::{Database, DatabaseOptions, DbContext};
-use service_core::manager::setting_manager::SettingManager;
+use service_core::holder::settings::SettingsHolder;
 use service_core::service::config_service::ConfigService;
 use service_core::service::subscribe_service::SubscribeService;
 use types_core::entity::config::Config;
@@ -33,7 +33,7 @@ pub struct ConsoleData {
 pub struct Services {
     runtime: tokio::runtime::Runtime,
     context: Arc<DbContext>,
-    /// 应用缓存目录，供读取设置的 `SettingManager` 使用。
+    /// 应用缓存目录，供写入设置的 `SettingManager` 使用。
     cache_dir: PathBuf,
 }
 
@@ -69,10 +69,7 @@ impl Services {
     pub async fn console_data(self: Arc<Self>) -> Result<ConsoleData> {
         let configs = ConfigService::new(self.context.clone()).list().await?;
         let subscribes = SubscribeService::new(self.context.clone()).list().await?;
-        let last_used = SettingManager::new(self.context.clone(), self.cache_dir.clone())
-            .run()
-            .await?
-            .selected;
+        let last_used = SettingsHolder::run().selected;
 
         Ok(ConsoleData {
             configs,
@@ -94,6 +91,8 @@ impl Global for AppServices {}
 pub fn init(cx: &mut App) {
     match open() {
         Ok(services) => {
+            // 设置最先就绪: 其余初始化与页面都直接读内存中的设置
+            SettingsHolder::init(services.context(), services.runtime_handle());
             services.init_subscribe_sync();
             services.init_rule_sync();
             services.init_config_sync();

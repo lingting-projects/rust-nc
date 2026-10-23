@@ -17,7 +17,9 @@ lib-system = { workspace = true }
 types-core = { workspace = true }
 
 anyhow = { workspace = true }
+arc-swap = { workspace = true }
 log = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 sqlx = { workspace = true }
+tokio = { workspace = true }

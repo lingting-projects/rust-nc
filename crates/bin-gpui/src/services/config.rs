@@ -8,7 +8,6 @@ use service_core::service::config_service::ConfigService;
 use service_core::service::rule_service::RuleService;
 use service_core::service::subscribe_service::SubscribeService;
 use types_core::dto::config::ConfigUpsertDTO;
-use types_core::dto::setting::SettingKernel;
 use types_core::entity::config::Config;
 use types_core::entity::rule::Rule;
 use types_core::entity::subscribe::Subscribe;
@@ -88,13 +87,6 @@ impl Services {
 }
 
 impl Services {
-    /// 读取内核设置，供设置页面的内核分区展示。
-    pub async fn kernel_setting(&self) -> Result<SettingKernel> {
-        SettingManager::new(self.context(), self.cache_dir.clone())
-            .kernel()
-            .await
-    }
-
     /// 保存内核监听设置与日志等级，随后立即推送全部配置刷新。
     ///
     /// 两项设置先一次写完再推送，避免配置同步读到只写了一半的设置；

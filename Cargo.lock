@@ -7524,6 +7524,7 @@ name = "service-core"
 version = "26.6.251-rc"
 dependencies = [
  "anyhow",
+ "arc-swap",
  "lib-core",
  "lib-db",
  "lib-system",
@@ -7531,6 +7532,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sqlx",
+ "tokio",
  "types-core",
 ]
 

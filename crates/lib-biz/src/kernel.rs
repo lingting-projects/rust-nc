@@ -4,12 +4,10 @@ use std::time::Duration;
 
 use anyhow::{Result, anyhow, bail};
 use arc_swap::ArcSwapOption;
-use lib_core::directorys;
 use lib_db::DbContext;
 use lib_singbox::{Phase, SingBox};
-use service_core::manager::setting_manager::SettingManager;
+use service_core::holder::settings::SettingsHolder;
 use service_core::service::config_service::ConfigService;
-use types_core::dto::setting::SettingKernel;
 
 use crate::config_file;
 use crate::file;
@@ -269,7 +267,7 @@ impl SingBoxInstance {
             return Err(error);
         }
 
-        let kernel = self.setting(&context).await?;
+        let kernel = SettingsHolder::kernel();
         let api = format!("{}:{}", kernel.ui_listen, kernel.ui_port);
         // 内核统一在 singbox_workspace 下启动, 日志与运行时文件都落在这里
         let work = file::sing_box_workspace()?;
@@ -353,13 +351,6 @@ impl SingBoxInstance {
             .context
             .clone()
             .ok_or_else(|| anyhow!("内核实例未初始化"))
-    }
-
-    /// 读取内核设置。
-    async fn setting(&self, context: &Arc<DbContext>) -> Result<SettingKernel> {
-        SettingManager::new(context.clone(), directorys()?.cache.clone())
-            .kernel()
-            .await
     }
 
     /// 取内部状态，锁被污染时继续使用其内容。

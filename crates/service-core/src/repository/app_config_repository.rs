@@ -32,6 +32,13 @@ pub(crate) async fn find_by_keys(pool: &DbPool, keys: &[String]) -> Result<Vec<A
     rows.iter().map(from_row).collect()
 }
 
+/// 查询全部配置。
+pub(crate) async fn find_all(pool: &DbPool) -> Result<Vec<AppConfig>> {
+    let sql = format!("select `key`, `value` from {TABLE}");
+    let rows = sqlx::query(&sql).fetch_all(pool).await?;
+    rows.iter().map(from_row).collect()
+}
+
 /// 写入配置，已存在则覆盖。
 pub(crate) async fn upsert(pool: &DbPool, key: &str, value: &str) -> Result<()> {
     let sql = format!("replace into {TABLE} (`key`, `value`) values (?, ?)");

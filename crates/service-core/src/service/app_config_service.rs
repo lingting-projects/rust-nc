@@ -39,6 +39,15 @@ impl AppConfigService {
             .collect())
     }
 
+    /// 读取全部配置，按 key 组成映射。
+    pub async fn all(&self) -> Result<HashMap<String, String>> {
+        let entities = repository::find_all(self.context.pool()).await?;
+        Ok(entities
+            .into_iter()
+            .map(|entity| (entity.key, entity.value))
+            .collect())
+    }
+
     /// 写入单条配置，已存在则覆盖。
     pub async fn set(&self, key: &AppConfigKey, value: &str) -> Result<()> {
         repository::upsert(self.context.pool(), &key.to_string(), value).await
