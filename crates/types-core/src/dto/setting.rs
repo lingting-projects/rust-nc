@@ -21,6 +21,8 @@ pub struct SettingKernel {
     pub dns_proxy: Vec<String>,
     /// 内核日志等级，写入内核配置的 `log.level`，改动后需刷新配置并重启内核才生效
     pub log_level: LogLevel,
+    /// 启动后是否自动运行上次选中的配置
+    pub auto_run: bool,
 }
 
 impl Default for SettingKernel {
@@ -34,6 +36,7 @@ impl Default for SettingKernel {
             dns_cn: to_vec(constants::KERNEL_DNS_CN),
             dns_proxy: to_vec(constants::KERNEL_DNS_PROXY),
             log_level: LogLevel::default(),
+            auto_run: true,
         }
     }
 }

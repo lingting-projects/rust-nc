@@ -5,11 +5,12 @@ use framework_proc_auto::{auto_enum, auto_type};
 /// `unknown` 为默认值, 表示尚未识别出类型, 此时由节点自身内容判定。
 /// strum 只取 `Display`, 文本还原由 [`SubscribeSource::parse`] 统一处理, 避免出现两套解析口径。
 #[auto_enum(strum = false)]
-#[derive(strum_macros::Display)]
+#[derive(strum_macros::Display, Default)]
 pub enum SubscribeSource {
     /// 未知
     #[strum(serialize = "unknown")]
     #[serde(rename = "unknown")]
+    #[default]
     Unknown,
     /// clash 配置, 节点键为 clash 原生字段
     #[strum(serialize = "clash")]
@@ -19,12 +20,6 @@ pub enum SubscribeSource {
     #[strum(serialize = "pure")]
     #[serde(rename = "pure")]
     Pure,
-}
-
-impl Default for SubscribeSource {
-    fn default() -> Self {
-        Self::Unknown
-    }
 }
 
 impl SubscribeSource {

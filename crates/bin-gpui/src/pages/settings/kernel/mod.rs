@@ -1,10 +1,11 @@
 //! 设置页的内核分区。
 //!
-//! 由两个卡片组成：内核设置承载可编辑的监听项，内核配置只读展示生成配置时的取值。
-//! 两者共用一次读取，由本模块统一发起并把数据分发给两个卡片。
+//! 由三个卡片组成：内核设置承载可编辑的监听项与自动运行开关，窗口行为承载立即生效的窗口开关，
+//! 内核配置只读展示生成配置时的取值。内核设置与内核配置共用一次读取，由本模块统一发起并分发。
 
 mod config;
 mod settings;
+mod window;
 
 use gpui_kit::base::{StyledExt as _, v_flex};
 use gpui_kit::*;
@@ -13,16 +14,19 @@ use crate::pages::settings::shared::{ROW_GAP, card, message, value_row};
 use config::Info;
 use service_core::holder::settings::SettingsHolder;
 use settings::Settings;
+use window::WindowBehavior;
 
 use crate::services::{self, AppServices};
 
-/// 两个卡片之间的间隔，与设置页各分区之间的间隔一致。
+/// 各卡片之间的间隔，与设置页各分区之间的间隔一致。
 const CARD_GAP: Rems = rems(1.);
 
 /// 内核分区。
 pub struct Kernel {
     /// 内核设置卡片，监听项由它自己修改与保存。
     settings: Entity<Settings>,
+    /// 窗口行为卡片，开关改完立即保存。
+    behavior: Entity<WindowBehavior>,
     /// 只读的内核配置，读取失败时保留失败原因。
     load: Result<Info, SharedString>,
 }
@@ -32,6 +36,7 @@ impl Kernel {
     pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
         let mut kernel = Self {
             settings: cx.new(|cx| Settings::new(window, cx)),
+            behavior: cx.new(|_| WindowBehavior::new()),
             load: Err("数据层未初始化".into()),
         };
         kernel.reload(window, cx);
@@ -67,6 +72,7 @@ impl Render for Kernel {
             .w_full()
             .gap(CARD_GAP)
             .child(self.settings.clone())
+            .child(self.behavior.clone())
             .child(self.config(cx))
     }
 }

@@ -53,6 +53,7 @@ impl Snapshot {
             AppConfigKey::SettingKernelDnsCn,
             AppConfigKey::SettingKernelDnsProxy,
             AppConfigKey::SettingKernelLogLevel,
+            AppConfigKey::SettingKernelAutoRun,
         ];
         let default = SettingKernel::default();
 
@@ -65,6 +66,7 @@ impl Snapshot {
             dns_cn: self.list(&keys[5]).unwrap_or(default.dns_cn),
             dns_proxy: self.list(&keys[6]).unwrap_or(default.dns_proxy),
             log_level: self.level(&keys[7]).unwrap_or(default.log_level),
+            auto_run: self.boolean(&keys[8]).unwrap_or(default.auto_run),
         }
     }
 

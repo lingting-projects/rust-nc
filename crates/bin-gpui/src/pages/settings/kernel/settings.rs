@@ -1,4 +1,4 @@
-//! 内核设置分区：可编辑的监听设置。
+//! 内核设置分区：可编辑的监听设置、日志等级与自动运行。
 
 use gpui_kit::base::{StyledExt as _, h_flex, v_flex};
 use gpui_kit::component::IndexPath;
@@ -8,13 +8,14 @@ use gpui_kit::component::input::{InputEvent, InputState};
 use gpui_kit::component::notification::Notification;
 use gpui_kit::component::searchable_list::SearchableListItem;
 use gpui_kit::component::select::{SearchableVec, Select, SelectEvent, SelectState};
-use gpui_kit::component::{Disableable as _, WindowExt as _};
+use gpui_kit::component::switch::Switch;
+use gpui_kit::component::{ActiveTheme as _, Disableable as _, WindowExt as _};
 use gpui_kit::*;
 
 use lib_core::LogLevel;
 use types_core::dto::setting::SettingKernel;
 
-use crate::pages::settings::shared::{ROW_GAP, card, input_row, select_row};
+use crate::pages::settings::shared::{ROW_GAP, card, input_row, select_row, switch_row};
 use crate::services::{self, AppServices};
 
 /// 分区标题。
@@ -22,6 +23,9 @@ pub const TITLE: &str = "内核设置";
 
 /// 日志等级改动的生效说明。
 const LOG_LEVEL_HINT: &str = "保存后立即刷新全部配置，内核自动重载后生效";
+
+/// 自动运行的生效说明。
+const AUTO_RUN_HINT: &str = "关闭后启动应用时不启动内核，仍可从控制台或托盘手动启动";
 
 /// 内核设置分区。
 ///
@@ -38,6 +42,10 @@ pub struct Settings {
     log_level: Entity<SelectState<SearchableVec<LogLevelOption>>>,
     /// 已保存的日志等级，用于判断是否有未保存的改动。
     saved_log_level: LogLevel,
+    /// 启动后是否自动运行上次选中的配置。
+    auto_run: bool,
+    /// 已保存的自动运行开关，用于判断是否有未保存的改动。
+    saved_auto_run: bool,
     /// 是否正在保存。
     saving: bool,
     /// 输入变化订阅，页面存活期间一直保留。
@@ -113,6 +121,8 @@ impl Settings {
             mixed_port,
             log_level,
             saved_log_level: LogLevel::default(),
+            auto_run: true,
+            saved_auto_run: true,
             saving: false,
             _subscriptions: subscriptions,
         }
@@ -141,6 +151,8 @@ impl Settings {
             .position(|option| option.level == setting.log_level)
             .map(IndexPath::new);
         self.saved_log_level = setting.log_level;
+        self.auto_run = setting.auto_run;
+        self.saved_auto_run = setting.auto_run;
         self.log_level
             .update(cx, |state, cx| state.set_selected_index(index, window, cx));
     }
@@ -153,6 +165,7 @@ impl Settings {
 
         let listen = self.raw(cx);
         let log_level = self.log_level(cx);
+        let auto_run = self.auto_run;
         if self.errors(cx).iter().any(Option::is_some) {
             return;
         }
@@ -185,6 +198,7 @@ impl Settings {
                             &mixed_listen,
                             mixed_port,
                             log_level,
+                            auto_run,
                         )
                         .await
                 })
@@ -196,6 +210,7 @@ impl Settings {
                     Ok(Ok(count)) => {
                         settings.saved = listen;
                         settings.saved_log_level = log_level;
+                        settings.saved_auto_run = auto_run;
                         window.push_notification(
                             Notification::success(format!(
                                 "内核设置已保存，已推送 {count} 个配置刷新"
@@ -254,7 +269,9 @@ impl Settings {
 impl Render for Settings {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let errors = self.errors(cx);
-        let dirty = self.raw(cx) != self.saved || self.log_level(cx) != self.saved_log_level;
+        let dirty = self.raw(cx) != self.saved
+            || self.log_level(cx) != self.saved_log_level
+            || self.auto_run != self.saved_auto_run;
         let invalid = errors.iter().any(Option::is_some);
 
         let content = v_flex()
@@ -271,6 +288,20 @@ impl Render for Settings {
                     .accessibility_label("内核日志等级")
                     .into_any_element(),
                 Some(LOG_LEVEL_HINT),
+                cx,
+            ))
+            .child(switch_row(
+                "自动运行",
+                Switch::new("kernel-settings-auto-run")
+                    .checked(self.auto_run)
+                    .disabled(self.saving)
+                    .accessibility_label("启动后自动运行上次选中配置")
+                    .on_change(cx.listener(|settings, checked, _, cx| {
+                        settings.auto_run = *checked;
+                        cx.notify();
+                    }))
+                    .into_any_element(),
+                Some(AUTO_RUN_HINT),
                 cx,
             ))
             .child(

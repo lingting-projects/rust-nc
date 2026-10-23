@@ -95,6 +95,17 @@ impl SettingManager {
         Ok(())
     }
 
+    /// 写入启动后是否自动运行上次选中的配置。
+    ///
+    /// 只影响下一次启动的启动流程，写入后不刷新配置、也不重启内核。
+    pub async fn upsert_kernel_auto_run(&self, auto_run: bool) -> Result<()> {
+        self.app_config
+            .set(&AppConfigKey::SettingKernelAutoRun, &auto_run.to_string())
+            .await?;
+        SettingsHolder::wake_and_wait().await;
+        Ok(())
+    }
+
     /// 写入设置，先同步开机自启状态再落库。
     pub async fn upsert(&self, setting: &Setting) -> Result<()> {
         self.sync_startup(setting.software.startup).await?;
@@ -136,6 +147,10 @@ impl SettingManager {
         items.push((
             AppConfigKey::SettingKernelLogLevel,
             setting.kernel.log_level.as_str().to_string(),
+        ));
+        items.push((
+            AppConfigKey::SettingKernelAutoRun,
+            setting.kernel.auto_run.to_string(),
         ));
         self.app_config.set_all(&items).await?;
         SettingsHolder::wake_and_wait().await;

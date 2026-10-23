@@ -87,10 +87,11 @@ impl Services {
 }
 
 impl Services {
-    /// 保存内核监听设置与日志等级，随后立即推送全部配置刷新。
+    /// 保存内核监听设置、日志等级与自动运行，随后立即推送全部配置刷新。
     ///
-    /// 两项设置先一次写完再推送，避免配置同步读到只写了一半的设置；
+    /// 三项设置先一次写完再推送，避免配置同步读到只写了一半的设置；
     /// 内核不重启，各配置同步完成后由运行中的那份配置通知内核重载。
+    #[allow(clippy::too_many_arguments)]
     pub async fn save_kernel_setting(
         &self,
         ui_listen: &str,
@@ -98,12 +99,14 @@ impl Services {
         mixed_listen: &str,
         mixed_port: u16,
         log_level: LogLevel,
+        auto_run: bool,
     ) -> Result<usize> {
         let manager = SettingManager::new(self.context());
         manager
             .upsert_kernel_listen(ui_listen, ui_port, mixed_listen, mixed_port)
             .await?;
         manager.upsert_kernel_log_level(log_level).await?;
+        manager.upsert_kernel_auto_run(auto_run).await?;
         ConfigBiz::new(self.context()).sync(None).await
     }
 

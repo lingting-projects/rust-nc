@@ -1,6 +1,6 @@
-//! 设置页的软件分区：窗口行为。
+//! 内核分区中的窗口行为。
 //!
-//! 两个开关都立即生效，因此用 `Switch` 而不是需要「保存」的表单；
+//! 两个开关改完立即保存，因此用 `Switch` 而不是需要「保存」的表单；
 //! 改动写入设置后由关闭处理与启动流程各自读取，界面不需要再通知它们。
 
 use gpui_kit::base::{StyledExt as _, v_flex};
@@ -13,7 +13,7 @@ use gpui_kit::*;
 
 use service_core::holder::settings::SettingsHolder;
 
-use super::shared::{ROW_GAP, card};
+use crate::pages::settings::shared::{ROW_GAP, card};
 use crate::services::{self, AppServices};
 
 /// 分区标题。
@@ -28,8 +28,8 @@ const TRAY_HINT: &str = "关闭窗口时隐藏到托盘，进程与内核继续�
 /// 最小化启动的说明。
 const MINIMIZE_HINT: &str = "启动时不显示主窗口，直接从托盘唤出";
 
-/// 软件分区。
-pub struct Software {
+/// 窗口行为分区。
+pub struct WindowBehavior {
     /// 关闭窗口时隐藏到托盘。
     tray: bool,
     /// 启动时隐藏主窗口。
@@ -38,7 +38,7 @@ pub struct Software {
     saving: bool,
 }
 
-impl Software {
+impl WindowBehavior {
     /// 创建分区并读取当前设置。
     pub fn new() -> Self {
         let software = SettingsHolder::software();
@@ -87,11 +87,11 @@ impl Software {
                 Err(error) => Err(anyhow::anyhow!("保存任务异常: {error}")),
             };
 
-            this.update_in(cx, |software, window, cx| {
-                software.saving = false;
+            this.update_in(cx, |behavior, window, cx| {
+                behavior.saving = false;
                 if let Err(error) = result {
                     log::error!("[设置] 保存窗口行为失败: {error:#}");
-                    software.reload();
+                    behavior.reload();
                     window.push_notification(
                         Notification::error(format!("保存窗口行为失败: {error:#}")),
                         cx,
@@ -112,7 +112,7 @@ impl Software {
     }
 }
 
-impl Render for Software {
+impl Render for WindowBehavior {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         // 托盘只在 Windows 上存在，其它平台两个开关都没有意义
         let supported = crate::tray::SUPPORTED;
@@ -126,8 +126,8 @@ impl Render for Software {
                     .checked(self.tray)
                     .disabled(disabled)
                     .label("关闭时隐藏到托盘")
-                    .on_change(cx.listener(|software, checked, _, cx| {
-                        software.change(Some(*checked), None, cx)
+                    .on_change(cx.listener(|behavior, checked, _, cx| {
+                        behavior.change(Some(*checked), None, cx)
                     })),
             )
             .child(hint(TRAY_HINT, cx))
@@ -136,8 +136,8 @@ impl Render for Software {
                     .checked(self.minimize)
                     .disabled(disabled)
                     .label("最小化启动")
-                    .on_change(cx.listener(|software, checked, _, cx| {
-                        software.change(None, Some(*checked), cx)
+                    .on_change(cx.listener(|behavior, checked, _, cx| {
+                        behavior.change(None, Some(*checked), cx)
                     })),
             )
             .child(hint(MINIMIZE_HINT, cx))

@@ -9,6 +9,7 @@ use std::sync::Arc;
 
 use anyhow::{Context as _, Result};
 use gpui_kit::*;
+use lib_biz::kernel::Status;
 use lib_core::directorys;
 use lib_db::{Database, DatabaseOptions, DbContext};
 use service_core::holder::settings::SettingsHolder;
@@ -120,6 +121,36 @@ pub fn ready(cx: &App) -> Option<Arc<Services>> {
         AppServices::Ready(services) => Some(services.clone()),
         AppServices::Failed(_) => None,
     }
+}
+
+/// 按设置自动运行上次选中的配置。
+///
+/// 由启动流程调用一次：关闭了自动运行、没有选中配置或内核已在运行时都不做事。
+/// 启动本身异步完成，这里只负责派生任务，失败原因写日志，不打断启动。
+pub fn auto_run(cx: &App) {
+    let Some(services) = ready(cx) else {
+        return;
+    };
+    let setting = SettingsHolder::kernel();
+    if !setting.auto_run {
+        return;
+    }
+
+    let Some(id) = SettingsHolder::run().selected else {
+        return;
+    };
+    if kernel_data().status != Status::Stopped {
+        return;
+    }
+
+    let runner = services.clone();
+    cx.spawn(async move |_| {
+        let task = services.spawn(async move { runner.start_kernel(&id).await });
+        if let Ok(Err(error)) = task.await {
+            log::error!("[启动] 自动运行选中配置失败: {error:#}");
+        }
+    })
+    .detach();
 }
 
 /// 打开数据库并建好运行时。

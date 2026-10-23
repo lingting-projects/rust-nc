@@ -55,6 +55,10 @@ pub enum AppConfigKey {
     #[strum(serialize = "setting:kernel:log_level")]
     #[serde(rename = "setting:kernel:log_level")]
     SettingKernelLogLevel,
+    /// 内核: 启动后是否自动运行上次选中的配置
+    #[strum(serialize = "setting:kernel:auto_run")]
+    #[serde(rename = "setting:kernel:auto_run")]
+    SettingKernelAutoRun,
 }
 
 /// 应用配置, 对应 app_config 表。

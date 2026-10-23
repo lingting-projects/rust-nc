@@ -104,6 +104,26 @@ pub fn select_row(
     hint: Option<&'static str>,
     cx: &App,
 ) -> AnyElement {
+    row(label, select, hint, cx)
+}
+
+/// 一行开关项：左侧标签，右侧开关，说明贴在下方。
+pub fn switch_row(
+    label: &'static str,
+    switch: AnyElement,
+    hint: Option<&'static str>,
+    cx: &App,
+) -> AnyElement {
+    row(label, switch, hint, cx)
+}
+
+/// 「左侧标签 + 右侧内容」的通用行，说明贴在内容下方。
+fn row(
+    label: &'static str,
+    content: AnyElement,
+    hint: Option<&'static str>,
+    cx: &App,
+) -> AnyElement {
     let hint = hint.map(|text| {
         div()
             .text_xs()
@@ -122,7 +142,7 @@ pub fn select_row(
                 .flex_1()
                 .min_w_0()
                 .gap_1()
-                .child(select)
+                .child(content)
                 .children(hint),
         )
         .into_any_element()

@@ -1,7 +1,6 @@
 mod directories;
 mod kernel;
 mod shared;
-mod software;
 
 use gpui_kit::base::{StyledExt as _, v_flex};
 use gpui_kit::component::scroll::ScrollableElement as _;
@@ -9,7 +8,6 @@ use gpui_kit::*;
 
 use directories::Directories;
 use kernel::Kernel;
-use software::Software;
 
 /// 各卡片之间的间隔。
 const GAP: Rems = rems(1.);
@@ -17,14 +15,12 @@ const GAP: Rems = rems(1.);
 /// 设置页面：由若干独立的分区纵向排列组成。
 ///
 /// 页面只负责分区的顺序与间距，每个分区自己负责读取数据与呈现；
-/// 当前有内核（内核设置、内核配置）、窗口行为与数据路径。
+/// 当前有内核（内核设置、窗口行为、内核配置）与数据路径。
 pub struct SettingsPage {
     /// 数据路径分区，目录在页面构造时读取一次。
     directories: Directories,
     /// 内核分区，设置由分区自己读取与保存。
     kernel: Entity<Kernel>,
-    /// 窗口行为分区，开关改完立即保存。
-    software: Entity<Software>,
 }
 
 impl SettingsPage {
@@ -33,7 +29,6 @@ impl SettingsPage {
         Self {
             directories: Directories::new(),
             kernel: cx.new(|cx| Kernel::new(window, cx)),
-            software: cx.new(|_| Software::new()),
         }
     }
 }
@@ -48,7 +43,6 @@ impl Render for SettingsPage {
             .gap(GAP)
             .overflow_y_scrollbar()
             .child(self.kernel.clone())
-            .child(self.software.clone())
             .child(self.directories.clone())
     }
 }
