@@ -651,7 +651,7 @@ checksum = "2af50177e190e07a26ab74f8b1efbfe2ef87da2116221318cb1c2e82baf7de06"
 
 [[package]]
 name = "bin-cloudflare"
-version = "26.6.251-rc"
+version = "26.10.0"
 dependencies = [
  "anyhow",
  "console_error_panic_hook",
@@ -666,7 +666,7 @@ dependencies = [
 
 [[package]]
 name = "bin-gpui"
-version = "26.6.251-rc"
+version = "26.10.0"
 dependencies = [
  "anyhow",
  "embed-resource",
@@ -2245,7 +2245,9 @@ dependencies = [
 
 [[package]]
 name = "framework-core"
-version = "26.8.150"
+version = "26.8.151"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6a41116e1cda7649a4c5b3587cb4c310947d9082a0f18e05015eba426e7a8354"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2270,7 +2272,9 @@ dependencies = [
 
 [[package]]
 name = "framework-datetime"
-version = "26.8.150"
+version = "26.8.151"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "16c183384bded43c88fa12305b0f8e2ffcedd41c44dbfffaa517e6d9938d2d13"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -2281,7 +2285,9 @@ dependencies = [
 
 [[package]]
 name = "framework-proc-auto"
-version = "26.8.150"
+version = "26.8.151"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b38e56542e123a7095d7ebbbd5b1d5cabecec9d4715ca84c82e016b631fc9b58"
 dependencies = [
  "framework-proc-core",
  "proc-macro2",
@@ -2291,7 +2297,9 @@ dependencies = [
 
 [[package]]
 name = "framework-proc-core"
-version = "26.8.150"
+version = "26.8.151"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a62bf4e6d09e072aac9a5d2bb678ed7bf3d8b3edf86b0993aaa69aa2abd3f11c"
 dependencies = [
  "serde",
  "serde_json",
@@ -2302,7 +2310,9 @@ dependencies = [
 
 [[package]]
 name = "framework-proc-timer"
-version = "26.8.150"
+version = "26.8.151"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "734790aa072062d0fba2c0016ec161aff0873570649e25ad70e0734d08d04934"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2311,7 +2321,9 @@ dependencies = [
 
 [[package]]
 name = "framework-proc-ts"
-version = "26.8.150"
+version = "26.8.151"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9fe57f8521cf9233823645306ebee7d1e30c7498832be8dda60391e4fc7bd7c1"
 dependencies = [
  "framework-proc-core",
  "proc-macro2",
@@ -2321,7 +2333,9 @@ dependencies = [
 
 [[package]]
 name = "framework-region"
-version = "26.8.150"
+version = "26.8.151"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5dd03de3b79a3bdafafb2047b132abc76dd7f05a06fda8c2672f56b0c4bfa4a7"
 dependencies = [
  "serde",
  "serde_json",
@@ -2329,7 +2343,9 @@ dependencies = [
 
 [[package]]
 name = "framework-startup"
-version = "26.8.150"
+version = "26.8.151"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ed7555f01d1790b243b8d045450cdcd8567165e5039198db015d608c1eaae7c4"
 dependencies = [
  "anyhow",
  "framework-system",
@@ -2338,7 +2354,9 @@ dependencies = [
 
 [[package]]
 name = "framework-system"
-version = "26.8.150"
+version = "26.8.151"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3d4316c50b2c8831612ffd5a609abf305bdc8927114ac59a84f0e26f3eb9b0c8"
 dependencies = [
  "anyhow",
  "libc",
@@ -2347,7 +2365,9 @@ dependencies = [
 
 [[package]]
 name = "framework-timer"
-version = "26.8.150"
+version = "26.8.151"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2532ee0f822860f865baf882ae98af850b1d3f72bb76a32b6c284b26fe741c6a"
 dependencies = [
  "anyhow",
  "framework-core",
@@ -4528,7 +4548,7 @@ checksum = "7a79a3332a6609480d7d0c9eab957bca6b455b91bb84e66d19f5ff66294b85b8"
 
 [[package]]
 name = "lib-biz"
-version = "26.6.251-rc"
+version = "26.10.0"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -4549,7 +4569,7 @@ dependencies = [
 
 [[package]]
 name = "lib-converter"
-version = "26.6.251-rc"
+version = "26.10.0"
 dependencies = [
  "anyhow",
  "indexmap 2.14.2",
@@ -4563,7 +4583,7 @@ dependencies = [
 
 [[package]]
 name = "lib-core"
-version = "26.6.251-rc"
+version = "26.10.0"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -4583,7 +4603,7 @@ dependencies = [
 
 [[package]]
 name = "lib-db"
-version = "26.6.251-rc"
+version = "26.10.0"
 dependencies = [
  "anyhow",
  "lib-core",
@@ -4596,7 +4616,7 @@ dependencies = [
 
 [[package]]
 name = "lib-fetch"
-version = "26.6.251-rc"
+version = "26.10.0"
 dependencies = [
  "anyhow",
  "bytes",
@@ -4611,7 +4631,7 @@ dependencies = [
 
 [[package]]
 name = "lib-pick"
-version = "26.6.251-rc"
+version = "26.10.0"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
@@ -4629,7 +4649,7 @@ dependencies = [
 
 [[package]]
 name = "lib-singbox"
-version = "26.6.251-rc"
+version = "26.10.0"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -4647,7 +4667,7 @@ dependencies = [
 
 [[package]]
 name = "lib-system"
-version = "26.6.251-rc"
+version = "26.10.0"
 dependencies = [
  "anyhow",
  "encoding",
@@ -4722,7 +4742,9 @@ checksum = "d4a5ff6bcca6c4867b1c4fd4ef63e4db7436ef363e0ad7531d1558856bae64f4"
 
 [[package]]
 name = "lingting-gpui-components"
-version = "26.10.0"
+version = "26.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fe075c67f0b0a424cba5f099f4930dc1c07d51f045e06771d07d995a376e85a9"
 dependencies = [
  "framework-region",
  "gpui-kit",
@@ -4733,14 +4755,18 @@ dependencies = [
 
 [[package]]
 name = "lingting-gpui-core"
-version = "26.10.0"
+version = "26.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b33901cc6f931adc83bade03764258bd27a972315288f05be0a83eee70f7a4c0"
 dependencies = [
  "gpui-kit",
 ]
 
 [[package]]
 name = "lingting-gpui-kit"
-version = "26.10.0"
+version = "26.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "035191faf1166fe19a32e9b1d9c4d40254571a08b268231f22ac23b9be3684f0"
 dependencies = [
  "embed-resource",
  "gpui-kit",
@@ -4753,7 +4779,9 @@ dependencies = [
 
 [[package]]
 name = "lingting-gpui-layout"
-version = "26.10.0"
+version = "26.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e649c8c8b3fce961c5a5e3057d07b6353bc5fea6f8550c1e05de6897c6aef4d9"
 dependencies = [
  "gpui-kit",
  "lingting-gpui-components",
@@ -4763,7 +4791,9 @@ dependencies = [
 
 [[package]]
 name = "lingting-gpui-nav"
-version = "26.10.0"
+version = "26.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9342154e80164aca7950844179a81d313f6b7d39c684210cdc30bfb8246e0548"
 dependencies = [
  "gpui-kit",
  "lingting-gpui-core",
@@ -7599,7 +7629,7 @@ dependencies = [
 
 [[package]]
 name = "service-core"
-version = "26.6.251-rc"
+version = "26.10.0"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -8441,7 +8471,7 @@ dependencies = [
 
 [[package]]
 name = "test-singbox"
-version = "26.6.251-rc"
+version = "26.10.0"
 dependencies = [
  "anyhow",
  "lib-converter",
@@ -9043,7 +9073,7 @@ checksum = "1dccffe3ce07af9386bfd29e80c0ab1a8205a2fc34e4bcd40364df902cfa8f3f"
 
 [[package]]
 name = "types-core"
-version = "26.6.251-rc"
+version = "26.10.0"
 dependencies = [
  "anyhow",
  "framework-proc-auto",
