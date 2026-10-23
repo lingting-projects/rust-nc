@@ -10,19 +10,33 @@ use lingting_gpui_kit::region::RegionAssets;
 pub struct AppAssets {
     assets: Assets,
     all: AllAssets,
-    /// 磁盘上的 `assets/` 目录，仅作为回退源。
+    /// 磁盘上的 `assets/` 目录，作为内嵌资源未命中时的回退源。
     root: PathBuf,
 }
 
 impl AppAssets {
-    /// 资源目录位于仓库根目录的 `assets/`。
+    /// 优先使用可执行文件同级的 `assets/`，发布包即按该结构分发；
+    /// 开发期可执行文件在 `target/{profile}` 下，回退到仓库根目录的 `assets/`。
     pub fn new() -> Self {
         Self {
             assets: Assets,
             all: AllAssets,
-            root: Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets"),
+            root: assets_root(),
         }
     }
+}
+
+/// 解析磁盘资源目录。
+fn assets_root() -> PathBuf {
+    let installed = std::env::current_exe()
+        .ok()
+        .and_then(|path| path.parent().map(|parent| parent.join("assets")));
+    if let Some(installed) = installed
+        && installed.is_dir()
+    {
+        return installed;
+    }
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets")
 }
 
 impl AssetSource for AppAssets {

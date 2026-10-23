@@ -69,7 +69,7 @@ lib-core -> framework-*
 - 数据库为 SQLite，位于应用数据目录下的 `data.sqlite`；迁移脚本在 `migrations/`，应用启动连接时自动执行未应用的迁移。
 - 内核配置只引用本地规则集：远程规则集由 `tbl_inner_rule` 登记，`lib-biz` 的 `inner_rule_sync` 负责下载到 `inner_rule` 目录并把 `ready` 置为 1，内核启动前要求全部就绪，避免内核卡在规则集下载而导致 API 服务不监听。自定义规则同样只被引用、不在配置目录复制副本，规则集文件更新后由内核的文件监听自行热更新。
 - 所有业务表 ID 由项目统一 ID 生成器产生，时间字段统一为毫秒级时间戳。
-- 共享第三方依赖统一声明在根 `Cargo.toml` 的 `workspace.dependencies`，成员 Crate 通过 `.workspace = true` 引用；内部 Crate 使用相对 `path` 依赖。
+- 共享第三方依赖统一声明在根 `Cargo.toml` 的 `workspace.dependencies`，成员 Crate 通过 `.workspace = true` 引用；内部 Crate 使用相对 `path` 依赖，`framework-*` 与 `lingting-gpui-kit` 使用 crates.io 版本号。
 - sing-box 内核版本由 `lib-singbox` 的 `go.mod` 与 `src/lib.rs` 的 `VERSION` 共同确定，两者必须一致；升级版本时还需用同版本官方 `daemon/started_service.proto` 替换 `lib-singbox/proto/`，供 gRPC 客户端代码生成。
 - 内核连接数据只保存在 `lib-singbox` 内存中：内核运行期间由常驻订阅线程接收 `SubscribeConnections` 推送，累积为不可变快照并整体替换，读取方只拿共享引用；已关闭连接最多保留 300 条，速率由两次快照的累计流量差算出。界面按固定间隔取快照做全量替换，「清空」清的是该内存缓存，不关闭内核连接。
-- 桌面端界面位于仓库根的 `ui` 软链接指向的独立仓库，本工作区不包含前端源码。
+- 桌面端界面由 `bin-gpui` 自绘，不依赖外部前端工程；运行期图标从可执行文件同级的 `assets/icons` 读取，发布包按该结构分发。

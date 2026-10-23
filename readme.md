@@ -1,11 +1,17 @@
-#### windows
+#### linux
 
-> windows msi 编译目前依赖 wix 6
+> 目前只发布 Linux 桌面端；编译目标固定为 `x86_64-unknown-linux-gnu`，不接受外部传入。
 
 ```shell
-# 软链接 ui代码到指定位置
-cmd /c mklink /J ui $UI 
+# 首次编译前安装系统依赖（fontconfig / freetype / wayland / vulkan 等）
+bash scripts/install-dependencies.sh
+# 构建桌面端并生成 tar.gz 压缩包
+bash scripts/package_linux.sh
 ```
+
+产物位于 `target/`：
+
+- `lingting-nc-linux-x86_64.tar.gz`：内含 `lingting-nc`、`lingting-nc-singbox` 与 `assets/`
 
 
 #### cloudflare works

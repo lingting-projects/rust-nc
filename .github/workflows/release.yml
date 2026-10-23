@@ -1,4 +1,4 @@
-name: Release Ci
+name: Release
 
 on:
   workflow_dispatch:
@@ -6,114 +6,74 @@ on:
 permissions:
   contents: write
 
+# 同一时间只保留一次发布流程, 手动重复触发时取消上一次
+concurrency:
+  group: release
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  # 调试信息占编译产物的绝大部分体积和链接时间, CI 不需要, 关掉可让依赖缓存
+  # 稳定留在仓库的 10 GB 上限内, 避免被淘汰后每次冷编译。
+  CARGO_PROFILE_DEV_DEBUG: 0
+
 jobs:
   build:
     name: Build
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ windows-2025 ]
-        rust: [ stable ]
+    # 只发布 Linux 桌面端。系统依赖见 scripts/install-dependencies.sh。
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
 
     steps:
       - name: 拉取代码
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
-      - name: 设置 Wix 环境
-        if: ${{ runner.os == 'Windows' }}
-        shell: pwsh
-        run: |
-          $url = "https://github.com/lingting/wix/releases/download/6.0.1/Wix.tar.gz"
-          $path = "${{ runner.temp }}\wix.tar.gz"
-          Invoke-WebRequest -Uri $url -OutFile $path -UseBasicParsing
-          
-          tar zxf $path
-          $wixBinPath = "$(pwd)\Wix\bin"
-          $env:Path += ";$wixBinPath"
-          echo "添加WiX路径到环境变量: $wixBinPath"
-          wix -version
+      # GPUI 依赖 fontconfig / freetype / wayland / vulkan 等系统库
+      - name: 安装系统依赖
+        run: bash scripts/install-dependencies.sh
+
+      # 与 Cargo.toml 的 rust-version 保持一致, 避免 stable 漂移导致构建结果变化
+      - name: 安装 Rust
+        uses: dtolnay/rust-toolchain@1.98.0
 
       - name: 缓存 Rust
-        uses: actions/cache@v4
-        id: cache-rust
-        with:
-          path: |
-            ~/.cargo
-            target
-          key: rust-${{ runner.os }}-1.88.0
-          restore-keys: rust-${{ runner.os }}
-      - name: 安装 Rust
-        uses: dtolnay/rust-toolchain@master
-        if: steps.cache-rust.outputs.cache-hit != 'true'
-        with:
-          toolchain: ${{ matrix.rust }}
+        uses: Swatinem/rust-cache@v2
 
+      # 内核版本以 lib-singbox/go.mod 为唯一来源
       - name: 安装 Go
         uses: actions/setup-go@v5
         with:
-          go-version: ~1.25
-          cache-dependency-path: |
-            crates/library-sing-box/go.sum
+          go-version-file: crates/lib-singbox/go.mod
+          cache-dependency-path: crates/lib-singbox/go.sum
 
-      - name: 拉取UI代码
-        uses: actions/checkout@v4
-        with:
-          repository: lingting-projects/rust-nc-ui
-          path: ui
-      - name: 安装 Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 18.20.3
-          cache: 'npm'
-          cache-dependency-path: |
-            ui/yarn.lock
-      - name: 缓存 Node
-        uses: actions/cache@v4
-        with:
-          path: |
-            ui/node_modules
-          key: node-${{ runner.os }}-18.20.3
-          restore-keys: node-${{ runner.os }}
+      - name: 构建与打包
+        run: bash scripts/package_linux.sh
 
-      - name: 构建项目
-        shell: bash
+      # 产物缺失或结构不对时提前失败, 避免把坏包发到 release
+      - name: 校验产物
         run: |
-          if [ "${{ runner.os }}" = "Windows" ]; then
-            wixBinPath="$(pwd)/Wix/bin"
-            echo "添加WiX路径到环境变量: $wixBinPath"
-            export PATH="$PATH:$wixBinPath"
-            wix -version
-          fi
-          npm install -g tyarn
-          if [ -d ui ]; then
-            cd ui
-            tyarn install
-            cd ..
-          fi
-          sh scripts/package.sh -b -t -i -s
-          mkdir -p artifacts
-          cp -f target/lingting-nc.tar.gz artifacts/${{ runner.os }}-lingting-nc.tar.gz
-          if [ -f target/lingting-nc.msi ]; then
-            cp -f target/lingting-nc.msi artifacts/${{ runner.os }}-lingting-nc.msi
-          fi
+          tar tzf target/lingting-nc-linux-x86_64.tar.gz
 
       - name: 上传
         uses: actions/upload-artifact@v4
         with:
           name: BUILD
-          path: artifacts/*
+          path: target/lingting-nc-linux-x86_64.tar.gz
+          if-no-files-found: error
 
   release:
     name: Release
     runs-on: ubuntu-latest
     needs: build
+
     steps:
       - name: 拉取代码
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
+      # 版本号以 Cargo.toml 为唯一来源, 同时用于 tag 与 release 名称
       - name: 设置参数
         run: |
-          VERSION=$(grep "version =" Cargo.toml | head -n 1 | cut -d '"' -f 2)
+          VERSION=$(grep -m1 '^version = ' Cargo.toml | cut -d '"' -f 2)
           echo "TAG_NAME=$VERSION" >> $GITHUB_ENV
           echo "RELEASE_NAME=$VERSION" >> $GITHUB_ENV
 
@@ -133,5 +93,4 @@ jobs:
           body: ""
           draft: false
           prerelease: false
-          files: |
-            artifacts/*
+          files: artifacts/*
