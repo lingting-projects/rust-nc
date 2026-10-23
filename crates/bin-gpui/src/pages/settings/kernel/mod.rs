@@ -5,15 +5,14 @@
 
 mod config;
 mod settings;
-mod shared;
 
 use gpui_kit::base::{StyledExt as _, v_flex};
 use gpui_kit::*;
 
+use crate::pages::settings::shared::{ROW_GAP, card, message, value_row};
 use config::Info;
 use service_core::holder::settings::SettingsHolder;
 use settings::Settings;
-use shared::{ROW_GAP, card, message, value_row};
 
 use crate::services::{self, AppServices};
 

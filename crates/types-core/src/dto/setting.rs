@@ -45,6 +45,8 @@ pub struct SettingSoftware {
     pub startup: bool,
     /// 是否最小化启动
     pub minimize: bool,
+    /// 关闭窗口时是否隐藏到托盘
+    pub tray: bool,
     /// 当前软件版本, 取自本 crate 的 CARGO_PKG_VERSION
     pub version: String,
     /// github 加速前缀
@@ -58,6 +60,7 @@ impl Default for SettingSoftware {
         Self {
             startup: false,
             minimize: false,
+            tray: true,
             version: env!("CARGO_PKG_VERSION").to_string(),
             fast_github: constants::FAST_GITHUB_PREFIX.to_string(),
             test_url: constants::TEST_URL.to_string(),

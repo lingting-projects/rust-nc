@@ -12,6 +12,7 @@ use gpui_kit::*;
 use lib_core::directorys;
 use lib_db::{Database, DatabaseOptions, DbContext};
 use service_core::holder::settings::SettingsHolder;
+use service_core::manager::setting_manager::SettingManager;
 use service_core::service::config_service::ConfigService;
 use service_core::service::subscribe_service::SubscribeService;
 use types_core::entity::config::Config;
@@ -72,6 +73,11 @@ impl Services {
             subscribes,
             last_used,
         })
+    }
+
+    /// 记录选中（并在用）的配置 id，供下次启动与托盘菜单使用。
+    pub async fn select_config(self: &Arc<Self>, id: &str) -> Result<()> {
+        SettingManager::new(self.context()).select(id).await
     }
 }
 

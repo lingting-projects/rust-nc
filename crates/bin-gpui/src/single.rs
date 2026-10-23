@@ -83,16 +83,11 @@ pub fn listen(cx: &mut App, guard: Guard, window: AnyWindowHandle) {
 }
 
 /// 把主窗口前置到用户面前。
+///
+/// 复用托盘模块的显示逻辑：窗口可能已经被「隐藏到托盘」收起，
+/// 只调 `activate_window` 不会让它重新出现。
 fn focus(cx: &mut AsyncApp, window: AnyWindowHandle) {
-    let result = window.update(cx, |_, window, cx| {
-        // 最小化时由平台实现先还原，再把整个应用提到最前。
-        window.activate_window();
-        cx.activate(true);
-    });
-
-    if let Err(error) = result {
-        log::error!("前置主窗口失败: {error:#}");
-    }
+    cx.update(|cx| crate::tray::show(cx, window));
 }
 
 /// 把唤醒信号转交给界面线程。

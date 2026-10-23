@@ -39,6 +39,14 @@ fn assets_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets")
 }
 
+/// 磁盘资源目录。
+///
+/// 托盘图标要交给系统直接读文件，不走 [`AssetSource`]，因此单独暴露这条解析规则，
+/// 与内嵌资源的回退顺序保持一致。
+pub fn root() -> PathBuf {
+    assets_root()
+}
+
 impl AssetSource for AppAssets {
     fn load(&self, path: &str) -> Result<Option<Cow<'static, [u8]>>> {
         // 区域旗帜是内嵌 SVG，只从 `flags/` 取，避免与磁盘资源目录重名。

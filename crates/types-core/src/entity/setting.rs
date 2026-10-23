@@ -19,6 +19,10 @@ pub enum AppConfigKey {
     #[strum(serialize = "setting:software:minimize")]
     #[serde(rename = "setting:software:minimize")]
     SettingSoftwareMinimize,
+    /// 软件: 关闭窗口时是否隐藏到托盘
+    #[strum(serialize = "setting:software:tray")]
+    #[serde(rename = "setting:software:tray")]
+    SettingSoftwareTray,
     /// 内核: sing-box 版本
     #[strum(serialize = "setting:kernel:sing_box_version")]
     #[serde(rename = "setting:kernel:sing_box_version")]

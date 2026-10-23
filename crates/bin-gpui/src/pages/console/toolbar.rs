@@ -164,6 +164,7 @@ pub fn subscribe(
             };
             if console.selected.as_deref() != Some(value.as_ref()) {
                 console.selected = Some(value.to_string());
+                console.remember(value.to_string(), cx);
                 cx.notify();
             }
         },

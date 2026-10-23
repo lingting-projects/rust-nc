@@ -106,4 +106,13 @@ impl Services {
         manager.upsert_kernel_log_level(log_level).await?;
         ConfigBiz::new(self.context()).sync(None).await
     }
+
+    /// 保存窗口行为设置。
+    ///
+    /// 两项都只在窗口与托盘层面生效，不需要推送配置刷新。
+    pub async fn save_window_setting(&self, tray: bool, minimize: bool) -> Result<()> {
+        SettingManager::new(self.context())
+            .upsert_software_window(tray, minimize)
+            .await
+    }
 }

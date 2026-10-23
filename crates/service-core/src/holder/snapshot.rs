@@ -77,6 +77,9 @@ impl Snapshot {
             minimize: self
                 .boolean(&AppConfigKey::SettingSoftwareMinimize)
                 .unwrap_or(default.minimize),
+            tray: self
+                .boolean(&AppConfigKey::SettingSoftwareTray)
+                .unwrap_or(default.tray),
             version: default.version,
             fast_github: default.fast_github,
             test_url: default.test_url,

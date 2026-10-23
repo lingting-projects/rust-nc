@@ -14,7 +14,7 @@ use gpui_kit::*;
 use lib_core::LogLevel;
 use types_core::dto::setting::SettingKernel;
 
-use super::shared::{ROW_GAP, card, input_row, select_row};
+use crate::pages::settings::shared::{ROW_GAP, card, input_row, select_row};
 use crate::services::{self, AppServices};
 
 /// 分区标题。

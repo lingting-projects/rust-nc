@@ -6,6 +6,7 @@ mod pages;
 mod services;
 mod single;
 mod theme;
+mod tray;
 mod utils;
 
 use gpui_kit::assets::IconName;
@@ -13,6 +14,7 @@ use gpui_kit::*;
 use lingting_gpui_kit::WindowOptionsBuilder;
 use lingting_gpui_kit::desktop_sidebar_layout::{DesktopSidebarLayout, init_router};
 use lingting_gpui_kit::router::RouteDefinition;
+use service_core::holder::settings::SettingsHolder;
 
 use crate::assets::AppAssets;
 use crate::pages::{
@@ -42,7 +44,7 @@ fn main() {
     {
         use std::ptr;
         use winapi::um::wincon::GetConsoleWindow;
-        use winapi::um::winuser::{ShowWindow, SW_HIDE};
+        use winapi::um::winuser::{SW_HIDE, ShowWindow};
         let console_window = unsafe { GetConsoleWindow() };
 
         if console_window != ptr::null_mut() {
@@ -79,6 +81,13 @@ fn main() {
         let routes = routes();
         init_router(cx, DEFAULT_PATH, &routes);
         let (window, _) = open(cx, routes).expect("failed to open window");
+
+        // 托盘必须在主线程创建：它依赖当前线程的消息循环接收点击与菜单事件。
+        tray::init(cx, window);
+        // 「最小化启动」时窗口创建后立即收起，只留托盘入口。
+        if SettingsHolder::software().minimize {
+            tray::hide(cx, window);
+        }
 
         // 锁与窗口绑定：后续实例的唤醒信号由界面线程转成窗口前置。
         single::listen(cx, guard, window);

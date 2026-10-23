@@ -33,6 +33,10 @@ types-core = { workspace = true }
 
 [target.'cfg(windows)'.dependencies]
 winapi = { workspace = true, features = ["winuser", "wincon"] }
+# 托盘图标与右键菜单：菜单依赖 tray-icon 的 `menu` 再导出。
+tray-icon = { workspace = true }
+# 从 GPUI 窗口取 HWND，用于 ShowWindow 真正隐藏/恢复窗口。
+raw-window-handle = "0.6"
 
 # 把 assets/icons/256x256.ico 写入 exe 资源区，供窗口/任务栏图标使用。
 [target.'cfg(windows)'.build-dependencies]

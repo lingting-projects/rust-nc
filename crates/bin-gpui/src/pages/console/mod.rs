@@ -124,6 +124,8 @@ impl Console {
                             console.monitor.reset();
                         }
                         if changed {
+                            // 托盘菜单只在弹出时读状态，跟着这里一起刷新即可
+                            crate::tray::refresh(cx);
                             cx.notify();
                         }
                         (services::ready(cx), console.kernel.running())
@@ -251,6 +253,13 @@ impl Console {
                         let selected = console.selected.clone();
                         toolbar::replace(&console.select, options, selected.as_deref(), window, cx);
 
+                        // 预选出来的配置同样要落库，否则托盘菜单一直不知道能启动哪份配置。
+                        if let Some(id) = console.selected.clone()
+                            && data.last_used.as_deref() != Some(id.as_str())
+                        {
+                            console.remember(id, cx);
+                        }
+
                         LoadState::Ready(data)
                     }
                     Err(reason) => LoadState::Failed(reason.into()),
@@ -313,6 +322,26 @@ impl Console {
                 cx.notify();
             })
             .ok();
+        })
+        .detach();
+    }
+
+    /// 记录选中的配置 id。
+    ///
+    /// 下次启动用它预选配置，托盘菜单也用它作为「启动内核」的目标。
+    /// 写库失败只记录日志：选择本身已经在界面上生效，不影响本次使用。
+    pub fn remember(&self, id: String, cx: &mut Context<Self>) {
+        let Some(AppServices::Ready(services)) = services::get(cx) else {
+            return;
+        };
+        let services = services.clone();
+
+        cx.spawn(async move |_, _| {
+            let runner = services.clone();
+            let task = services.spawn(async move { runner.select_config(&id).await });
+            if let Ok(Err(error)) = task.await {
+                log::warn!("[控制台] 记录选中配置失败: {error:#}");
+            }
         })
         .detach();
     }

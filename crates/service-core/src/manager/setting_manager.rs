@@ -46,6 +46,19 @@ impl SettingManager {
         SettingsHolder::run()
     }
 
+    /// 只写入窗口行为设置（关闭到托盘、最小化启动），其余设置保持不变。
+    ///
+    /// 设置页的软件分区改完立即生效，与内核分区一样只写自己那几个键。
+    pub async fn upsert_software_window(&self, tray: bool, minimize: bool) -> Result<()> {
+        let items = [
+            (AppConfigKey::SettingSoftwareTray, tray.to_string()),
+            (AppConfigKey::SettingSoftwareMinimize, minimize.to_string()),
+        ];
+        self.app_config.set_all(&items).await?;
+        SettingsHolder::wake_and_wait().await;
+        Ok(())
+    }
+
     /// 只写入内核监听设置，其余设置保持不变。
     ///
     /// 设置页面的内核分区单独保存，避免为了改监听端口而读取并回写整份设置。
@@ -91,6 +104,10 @@ impl SettingManager {
         items.push((
             AppConfigKey::SettingSoftwareMinimize,
             setting.software.minimize.to_string(),
+        ));
+        items.push((
+            AppConfigKey::SettingSoftwareTray,
+            setting.software.tray.to_string(),
         ));
         items.push((
             AppConfigKey::SettingKernelUiListen,
