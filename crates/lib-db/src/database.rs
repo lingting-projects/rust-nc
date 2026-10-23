@@ -8,7 +8,7 @@ use std::time::Duration;
 use tracing::log;
 
 /// 数据库文件名，位于 `DatabaseOptions::path` 指定的目录下。
-const DATABASE_FILE_NAME: &str = "data.sqlite";
+const DATABASE_FILE_NAME: &str = "sqlite.db";
 /// 等待连接释放的最长时间。
 pub(crate) const ACQUIRE_TIMEOUT: Duration = Duration::from_secs(60);
 /// 写入锁等待超时，避免并发写入直接返回 SQLITE_BUSY。
@@ -19,10 +19,6 @@ pub struct Database {
 }
 
 impl Database {
-    pub async fn open(path: impl AsRef<Path>) -> Result<Self> {
-        Self::connect(DatabaseOptions::new(path.as_ref().to_path_buf())).await
-    }
-
     pub async fn connect(options: DatabaseOptions) -> Result<Self> {
         tokio::fs::create_dir_all(&options.path)
             .await

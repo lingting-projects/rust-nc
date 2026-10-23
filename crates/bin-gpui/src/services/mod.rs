@@ -9,7 +9,6 @@ use std::sync::Arc;
 
 use anyhow::{Context as _, Result};
 use gpui_kit::*;
-use lib_biz::timer;
 use lib_core::directorys;
 use lib_db::{Database, DatabaseOptions, DbContext};
 use service_core::holder::settings::SettingsHolder;
@@ -124,10 +123,9 @@ fn open() -> Result<Services> {
         .enable_all()
         .build()
         .context("创建异步运行时失败")?;
+    let options = DatabaseOptions::new(directory.data.clone());
     let database = runtime
-        .block_on(Database::connect(DatabaseOptions::new(
-            directory.data.clone(),
-        )))
+        .block_on(Database::connect(options))
         .context("打开数据库失败")?;
 
     Ok(Services {
