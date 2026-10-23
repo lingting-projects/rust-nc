@@ -31,6 +31,9 @@ rust-single = { workspace = true, features = ["ipc"] }
 tokio = { workspace = true }
 types-core = { workspace = true }
 
+[target.'cfg(windows)'.dependencies]
+winapi = { workspace = true, features = ["winuser", "wincon"] }
+
 # 把 assets/icons/256x256.ico 写入 exe 资源区，供窗口/任务栏图标使用。
 [target.'cfg(windows)'.build-dependencies]
 embed-resource.workspace = true

@@ -38,6 +38,20 @@ const MENU_ICON_SIZE: Rems = rems(1.125);
 const MENU_TEXT_SIZE: Rems = rems(1.);
 
 fn main() {
+    #[cfg(all(target_os = "windows", not(debug_assertions)))]
+    {
+        use std::ptr;
+        use winapi::um::wincon::GetConsoleWindow;
+        use winapi::um::winuser::{ShowWindow, SW_HIDE};
+        let console_window = unsafe { GetConsoleWindow() };
+
+        if console_window != ptr::null_mut() {
+            // 隐藏窗口
+            unsafe {
+                ShowWindow(console_window, SW_HIDE);
+            }
+        }
+    }
     // 日志必须在数据层之前初始化：后台同步任务的失败原因只体现在日志里。
     // 初始化失败不阻塞启动，只在控制台提示，界面本身不依赖日志。
     let logging = match logging::init() {
