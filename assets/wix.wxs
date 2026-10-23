@@ -1,13 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
-    <?ifndef LIB ?>
-      <?define LIB = 0 ?>
-    <?endif ?>
     <?ifndef BIN ?>
       <?define BIN = 0 ?>
-    <?endif ?>
-    <?ifndef UI ?>
-      <?define UI = 0 ?>
     <?endif ?>
     <?ifndef IconDesktop ?>
       <?define IconDesktop = 0 ?>
@@ -39,10 +33,7 @@
         <!-- 定义安装程序的目录结构 -->
         <StandardDirectory Id="ProgramFiles64Folder">
             <Directory Id="ParentProgramFilesFolder" Name="lingting">
-                <Directory Id="INSTALLFOLDER" Name="_name">
-                    <Directory Id="WebViewFolder" Name="_name.exe.WebView2" />
-                    <Directory Id="UiFolder" Name="ui" />
-                </Directory>
+                <Directory Id="INSTALLFOLDER" Name="_name" />
             </Directory>
         </StandardDirectory>
 
@@ -64,9 +55,6 @@
                 <File Source="_name.exe" />
                 <?if $(var.BIN) = 1 ?>
                 <File Source="_name-singbox" />
-                <?endif ?>
-                <?if $(var.LIB) = 1 ?>
-                <File Source="libsingbox.dll" />
                 <?endif ?>
 
                 <!-- 卸载安装目录 -->
@@ -104,39 +92,8 @@
 
                 <RemoveFolder Id="CleanUpShortcuts" Directory="ApplicationProgramsFolder" On="uninstall" />
             </Component>
-
-            <!-- WebViewFolder 组件 - 配置文件夹及权限 -->
-            <Component Id="WebViewDirectory"
-                Guid="a1b2c3d4-e5f6-4a5b-9c8d-7e6f5a4b3c2d"
-                Directory="WebViewFolder"
-            >
-                <!-- 确保文件夹被创建 -->
-                <CreateFolder>
-                    <!-- 设置所有人可读写权限 -->
-                    <Permission User="Everyone" GenericAll="yes" />
-                </CreateFolder>
-
-                <RemoveFolder Id="RemoveWebViewFolder" Directory="WebViewFolder" On="uninstall" />
-            </Component>
-
-            <!-- 包含所有的icon -->
-            <Files Include="icons/**" Directory="INSTALLFOLDER" Subdirectory="icons" />
-
-            <?if $(var.UI) = 1 ?>
-            <!-- UiFolder 组件 - 配置文件夹及权限 -->
-            <Component Id="UiDirectory"
-                Guid="a1b2c3d1-e5f6-4a5b-9c8d-7e6f5a4b3c2d"
-                Directory="UiFolder"
-            >
-                <CreateFolder>
-                    <Permission User="Everyone" Read="yes" GenericRead="yes" />
-                </CreateFolder>
-
-                <RemoveFolder Id="RemoveUiFolder" Directory="UiFolder" On="uninstall" />
-            </Component>
-
-            <Files Include="ui/**" Directory="INSTALLFOLDER" Subdirectory="ui" />
-            <?endif ?>
+            <!-- 运行期资源, 程序按安装目录下的 assets/ 读取图标 -->
+            <Files Include="assets/**" Directory="INSTALLFOLDER" Subdirectory="assets" />
         </ComponentGroup>
 
         <!-- 可安装功能 -->

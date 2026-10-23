@@ -20,17 +20,14 @@ env:
 jobs:
   build:
     name: Build
-    # 只发布 Linux 桌面端。系统依赖见 scripts/install-dependencies.sh。
-    runs-on: ubuntu-latest
+    # GPUI 依赖一批系统库, 且 msi 依赖 WiX 6, 只发布 Windows 桌面端。
+    # 编译与打包全部收敛到 scripts/package_windows.sh, workflow 只负责环境准备与调用。
+    runs-on: windows-latest
     timeout-minutes: 120
 
     steps:
       - name: 拉取代码
         uses: actions/checkout@v5
-
-      # GPUI 依赖 fontconfig / freetype / wayland / vulkan 等系统库
-      - name: 安装系统依赖
-        run: bash scripts/install-dependencies.sh
 
       # 与 Cargo.toml 的 rust-version 保持一致, 避免 stable 漂移导致构建结果变化
       - name: 安装 Rust
@@ -46,19 +43,36 @@ jobs:
           go-version-file: crates/lib-singbox/go.mod
           cache-dependency-path: crates/lib-singbox/go.sum
 
+      # 下载后把 bin 目录写入 GITHUB_PATH, 后续步骤直接可用 wix, 无需重复导出
+      - name: 安装 WiX
+        shell: pwsh
+        run: |
+          $url = "https://github.com/lingting/wix/releases/download/6.0.1/Wix.tar.gz"
+          $archive = Join-Path $env:RUNNER_TEMP "Wix.tar.gz"
+          Invoke-WebRequest -Uri $url -OutFile $archive -UseBasicParsing
+          tar zxf $archive
+          $wixBin = Join-Path $env:GITHUB_WORKSPACE "Wix\bin"
+          $wixBin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          & (Join-Path $wixBin "wix.exe") -version
+
+      # 脚本是 bash 语法, 用 runner 自带的 Git Bash 执行
       - name: 构建与打包
-        run: bash scripts/package_linux.sh
+        shell: bash
+        run: bash scripts/package_windows.sh
 
       # 产物缺失或结构不对时提前失败, 避免把坏包发到 release
       - name: 校验产物
+        shell: bash
         run: |
-          tar tzf target/lingting-nc-linux-x86_64.tar.gz
+          ls -l target/lingting-nc.msi target/lingting-nc.zip
 
       - name: 上传
         uses: actions/upload-artifact@v4
         with:
           name: BUILD
-          path: target/lingting-nc-linux-x86_64.tar.gz
+          path: |
+            target/lingting-nc.msi
+            target/lingting-nc.zip
           if-no-files-found: error
 
   release:
