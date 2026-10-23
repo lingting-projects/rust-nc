@@ -9,6 +9,7 @@ use log::{debug, error, info, warn};
 use service_core::service::inner_rule_service::InnerRuleService;
 use types_core::entity::inner_rule::InnerRule;
 
+use crate::file;
 use crate::inner_rule_file;
 use crate::scheduler::{Scheduler, SyncTask};
 
@@ -91,14 +92,18 @@ async fn sync(context: &Arc<DbContext>, id: &str) -> Result<()> {
     }
 
     info!("[内置规则] [{}] 开始下载: {}", id, rule.url);
-    match download(&rule, &path).await {
+    // 先下到临时文件再原子替换, 内核随时可能读取, 不能让它看到写了一半的规则集
+    let temp = file::temp_path(&inner_rule_file::inner_rule_temp_dir()?)?;
+    match download(&rule, &temp).await {
         Ok(etag) => {
+            file::rename(&temp, &path)?;
             service.ready(id, &etag).await?;
             info!("[内置规则] [{}] 下载完成", id);
             Ok(())
         }
         Err(error) => {
             // 下载失败不能继续引用旧文件, 否则内核可能读到过期内容
+            file::remove_file(&temp)?;
             service.not_ready(id).await?;
             Err(error)
         }

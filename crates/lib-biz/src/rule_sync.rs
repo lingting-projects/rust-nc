@@ -92,9 +92,19 @@ async fn sync(context: &Arc<DbContext>, id: &str) -> Result<()> {
         return Ok(());
     }
 
-    let files = rule_file::write(id, &source.content).await?;
+    let files = match rule_file::write(id, &source.content).await {
+        Ok(files) => files,
+        Err(error) => {
+            // 落盘失败时不更新同步结果, 保留上一次的标识与规则文件, 下一次同步重试
+            error!(
+                "[规则] [{}] 写入规则文件失败, 结束同步! {error:#}",
+                rule.name
+            );
+            return Err(error);
+        }
+    };
     if files.total == 0 {
-        // 无可用规则时目录已被清理, 避免配置继续引用已失效的规则文件
+        // 无可用规则时不落盘, 规则目录保持上一次的可用内容
         warn!("[规则] [{}] 未解析到规则, 结束同步", rule.name);
         return Ok(());
     }

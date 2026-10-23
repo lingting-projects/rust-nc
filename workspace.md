@@ -61,9 +61,13 @@ lib-core -> framework-*
 
 ## 公用配置
 
-- 应用目录根为 `live.lingting.nc.rust`，通过 `lib-core::directorys` 取得数据、缓存与安装目录；其中 `config`、`rule`、`inner_rule` 为运行期文件目录，`inner_rule` 存放内核内置规则集，文件名即内置规则 id。
+- 应用目录根为 `live.lingting.nc.rust`，通过 `lib-core::directorys` 取得数据、缓存与安装目录；其中 `config`、`rule`、`inner_rule` 为运行期文件目录，`config_temp`、`rule_temp` 为对应的写入暂存目录。
+  - `config/{id}/config.json` 为单个配置的内核配置文件，配置目录下只放该文件。
+  - `rule/{id}/{name}.json`、`rule/{id}/{name}.srs` 为单个规则的规则集产物，`name` 为 `ip`、`process`、`other`，存在 srs 时内核配置优先引用 srs。
+  - `inner_rule/{id}.srs` 存放内核内置规则集，文件名即内置规则 id。
+- 运行期文件一律先写到临时目录再原子替换到正式路径，不删除重建目录：配置文件写 `config_temp/{id}`，规则集写 `rule_temp/{id}`，内置规则下载到 `rule_temp/inner_rule`。替换失败只记录日志并让本次同步失败、不推进刷新时间，正式目录保持上一次的可用内容，因此内核按固定路径引用这些文件时不会读到半截内容或失效的目录监听。
 - 数据库为 SQLite，位于应用数据目录下的 `data.sqlite`；迁移脚本在 `migrations/`，应用启动连接时自动执行未应用的迁移。
-- 内核配置只引用本地规则集：远程规则集由 `tbl_inner_rule` 登记，`lib-biz` 的 `inner_rule_sync` 负责下载到 `inner_rule` 目录并把 `ready` 置为 1，内核启动前要求全部就绪，避免内核卡在规则集下载而导致 API 服务不监听。
+- 内核配置只引用本地规则集：远程规则集由 `tbl_inner_rule` 登记，`lib-biz` 的 `inner_rule_sync` 负责下载到 `inner_rule` 目录并把 `ready` 置为 1，内核启动前要求全部就绪，避免内核卡在规则集下载而导致 API 服务不监听。自定义规则同样只被引用、不在配置目录复制副本，规则集文件更新后由内核的文件监听自行热更新。
 - 所有业务表 ID 由项目统一 ID 生成器产生，时间字段统一为毫秒级时间戳。
 - 共享第三方依赖统一声明在根 `Cargo.toml` 的 `workspace.dependencies`，成员 Crate 通过 `.workspace = true` 引用；内部 Crate 使用相对 `path` 依赖。
 - sing-box 内核版本由 `lib-singbox` 的 `go.mod` 与 `src/lib.rs` 的 `VERSION` 共同确定，两者必须一致；升级版本时还需用同版本官方 `daemon/started_service.proto` 替换 `lib-singbox/proto/`，供 gRPC 客户端代码生成。

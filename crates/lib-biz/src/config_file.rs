@@ -19,9 +19,9 @@ use types_core::entity::subscribe::SubscribeSource;
 use crate::file;
 use crate::inner_rule_file;
 
-/// 生成配置的 sing-box 配置文件: `{config}/{id}/sing_box/config.json`。
+/// 生成配置的 sing-box 配置文件: `{config}/{id}/config.json`。
 ///
-/// 引用的规则会复制到同一目录, 配置目录因此自包含。
+/// 配置只引用规则文件, 不再复制规则副本, 规则更新由内核的文件监听自行生效。
 pub async fn write(context: &Arc<DbContext>, config: &Config) -> Result<PathBuf> {
     let (path, _) = write_changed(context, config).await?;
     Ok(path)
@@ -30,7 +30,7 @@ pub async fn write(context: &Arc<DbContext>, config: &Config) -> Result<PathBuf>
 /// 生成配置的 sing-box 配置文件, 并说明文件内容是否变化。
 ///
 /// 内容未变化时内核无需重载, 调用方据此避免无谓地重建内核实例。
-/// 配置目录每次都会整体重建, 文件修改时间必然变化, 因此按内容比较。
+/// 目录不再重建, 文件修改时间不能作为判断依据, 因此按内容比较。
 pub async fn write_changed(context: &Arc<DbContext>, config: &Config) -> Result<(PathBuf, bool)> {
     let path = file::sing_box_json(&config.id)?;
     let before = std::fs::read_to_string(&path).ok();
@@ -38,8 +38,6 @@ pub async fn write_changed(context: &Arc<DbContext>, config: &Config) -> Result<
     let kernel = kernel(context).await?;
     // 内置规则在生成配置前登记, 保证内核启动前的就绪检查能覆盖到本次引用的规则集
     register_inner_rules(context, config).await?;
-    // 先清空上一次的规则副本, 避免规则变更后残留旧文件
-    file::remove_config(&config.id)?;
     let rules = rules(context, config).await?;
 
     let platform = PlatformConfig {
@@ -63,6 +61,7 @@ pub async fn write_changed(context: &Arc<DbContext>, config: &Config) -> Result<
         exclude: exclude(config),
     };
 
+    let temp = file::config_temp_dir(&config.id)?;
     // 转换与写盘为同步计算, 放到阻塞线程池, 避免占住异步线程
     tokio::task::spawn_blocking(move || {
         let converted = if is_clash(&nodes) {
@@ -72,7 +71,7 @@ pub async fn write_changed(context: &Arc<DbContext>, config: &Config) -> Result<
         }?;
 
         let changed = before.as_deref() != Some(converted.as_str());
-        file::write(&path, converted)?;
+        file::write(&path, &temp, converted)?;
         Ok((path, changed))
     })
     .await?
@@ -131,12 +130,11 @@ async fn rules(
     ))
 }
 
-/// 取得规则 id 对应的本地规则集, 并把规则文件复制到配置的 sing_box 目录。
+/// 取得规则 id 对应的本地规则集, 直接引用规则目录中的文件。
 ///
-/// 每个规则按类型各有 json 与 srs 两份产物, 存在 srs 时优先使用;
-/// 复制后配置目录自包含, 规则更新后由下一次配置同步刷新副本。
+/// 每个规则按类型各有 json 与 srs 两份产物, 存在 srs 时优先使用。
+/// 规则文件由规则同步经临时文件原子替换, 内核的文件监听据此热更新, 无需在配置目录再存副本。
 fn collect(config_id: &str, exist: &[String], ids: &[String]) -> Result<Vec<Rule>> {
-    let root = file::sing_box_dir(config_id)?;
     let mut rules = Vec::new();
     for id in ids {
         if !exist.iter().any(|item| item == id) {
@@ -148,19 +146,15 @@ fn collect(config_id: &str, exist: &[String], ids: &[String]) -> Result<Vec<Rule
             let name = rule_type.name();
             let srs = file::rule_file(id, name, "srs")?;
             let json = file::rule_file(id, name, "json")?;
-            let (source, ext) = match srs.exists() {
-                true => (srs, "srs"),
-                false if json.exists() => (json, "json"),
+            let path = match srs.exists() {
+                true => srs,
+                false if json.exists() => json,
                 false => continue,
             };
 
-            // 不同规则可能产生同类型文件, 文件名带上规则 id 以免互相覆盖
-            let target = root.join(format!("rule_{}_{}.{}", id, name, ext));
-            file::copy(&source, &target)?;
-
-            let path = target
+            let path = path
                 .to_str()
-                .ok_or_else(|| anyhow!("规则文件路径非 UTF-8: {}", target.display()))?;
+                .ok_or_else(|| anyhow!("规则文件路径非 UTF-8: {}", path.display()))?;
             rules.push(Rule::from_local(rule_type, path.to_string()));
         }
     }

@@ -16,8 +16,12 @@ pub struct Directorys {
     pub install: PathBuf,
     // 配置文件根文件夹, 子目录是配置id, 子目录中的才是配置相关的文件
     pub config: PathBuf,
+    // 配置临时根文件夹, 子目录是配置id, 写入完成后整体替换到配置目录
+    pub config_temp: PathBuf,
     // 规则文件根文件夹, 子目录是规则id, 子目录中的才是规则相关文件
     pub rule: PathBuf,
+    // 规则临时根文件夹, 子目录是规则id, 写入完成后替换到规则目录
+    pub rule_temp: PathBuf,
     // 内核内置规则根文件夹, 文件名为内置规则id, 由内核配置直接引用
     pub inner_rule: PathBuf,
     // sing-box 工作目录, 内核在此目录下启动, 日志与缓存等运行时文件都落在这里
@@ -43,7 +47,9 @@ pub fn directorys() -> Result<Arc<Directorys>> {
         startup: directory.startup,
         install: directory.install,
         config: create_directory(root.join("config"))?,
+        config_temp: create_directory(root.join("config_temp"))?,
         rule: create_directory(root.join("rule"))?,
+        rule_temp: create_directory(root.join("rule_temp"))?,
         inner_rule: create_directory(root.join("inner_rule"))?,
         singbox_workspace: create_directory(root.join("singbox"))?,
     });

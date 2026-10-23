@@ -7,7 +7,7 @@ use log::{debug, warn};
 use service_core::service::config_service::ConfigService;
 use types_core::dto::config::ConfigUpsertDTO;
 
-use crate::config_sync::{self, ConfigSync};
+use crate::config_sync::ConfigSync;
 use crate::file;
 
 /// 配置的核心业务入口。
@@ -32,7 +32,10 @@ impl ConfigBiz {
             return Ok(ConfigSync::instance().push_all(ids));
         };
 
-        config_sync::sync(&self.context, id).await?;
+        // 与定时同步共用调度器, 避免同一配置被两处并发写入
+        let sync = ConfigSync::instance();
+        sync.push(id);
+        sync.wait(id).await;
         Ok(1)
     }
 

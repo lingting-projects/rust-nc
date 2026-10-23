@@ -21,7 +21,8 @@ static INSTANCE: LazyLock<Scheduler<ConfigTask>> = LazyLock::new(Scheduler::new)
 /// 配置同步调度器。
 ///
 /// 负责批量同步: 把配置 id 推入调度器, 由后台任务按并行上限校验。
-/// 单个配置由 [`sync`] 直接执行, 便于调用方拿到校验结果。
+/// 单个配置同样经调度器执行, 调用方用 [`wait`](Self::wait) 等待结果,
+/// 因此同一配置不会被定时任务与手动同步并发写入。
 pub struct ConfigSync {
     scheduler: &'static Scheduler<ConfigTask>,
 }
@@ -37,6 +38,11 @@ impl ConfigSync {
     /// 注入任务所需的数据库上下文与异步运行时, 重复调用会覆盖旧值。
     pub fn init(&self, context: Arc<DbContext>, runtime: tokio::runtime::Handle) {
         self.scheduler.init(context, runtime);
+    }
+
+    /// 等待指定 id 的同步任务结束, 没有对应任务时直接完成。
+    pub async fn wait(&self, id: &str) {
+        self.scheduler.wait(id).await;
     }
 
     /// 推送单个 id, 返回是否成功入队。
@@ -100,7 +106,6 @@ pub(crate) async fn sync(context: &Arc<DbContext>, id: &str) -> Result<()> {
     let (path, changed) = config_file::write_changed(context, &config).await?;
     // 配置已引用内置规则集, 立刻推动一次下载, 避免等到内核启动才开始
     push_inner_rules(context).await?;
-    service.touch_refresh(id, current_millis()?).await?;
     info!(
         "[配置] [{}] 同步完成, 节点数量: {count}, 配置文件: {}",
         config.name,
@@ -108,17 +113,19 @@ pub(crate) async fn sync(context: &Arc<DbContext>, id: &str) -> Result<()> {
     );
 
     // 内容没变时内核不必重建实例, 定时刷新因此不会反复打断内核
-    if !changed {
+    if changed {
+        // 内核正在运行该配置时, 新配置要立刻生效, 否则改动要等到下次重启内核
+        match SingBoxInstance::instance().reload(id) {
+            Ok(true) => info!("[配置] [{}] 已通知内核重载", config.name),
+            Ok(false) => debug!("[配置] [{}] 不是内核运行中的配置, 无需重载", config.name),
+            Err(error) => error!("[配置] [{}] 通知内核重载失败! {error:#}", config.name),
+        }
+    } else {
         debug!("[配置] [{}] 配置内容未变化, 无需重载内核", config.name);
-        return Ok(());
     }
 
-    // 内核正在运行该配置时, 新配置要立刻生效, 否则改动要等到下次重启内核
-    match SingBoxInstance::instance().reload(id) {
-        Ok(true) => info!("[配置] [{}] 已通知内核重载", config.name),
-        Ok(false) => debug!("[配置] [{}] 不是内核运行中的配置, 无需重载", config.name),
-        Err(error) => error!("[配置] [{}] 通知内核重载失败! {error:#}", config.name),
-    }
+    // 刷新时间最后更新: 前面任何一步失败都不推进, 下一次定时同步会重新尝试
+    service.touch_refresh(id, current_millis()?).await?;
     Ok(())
 }
 
