@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use anyhow::Result;
 use lib_db::{DbPool, DbRow};
 use types_core::dto::subscribe::SubscribeRefreshDTO;
@@ -21,7 +19,7 @@ const LIST_FIELDS: &str = "`id`,`name`,`url`,\
 
 /// 刷新字段，远端订阅不回传已保存的完整内容。
 const REFRESH_FIELDS: &str = "`id`,`name`,`url`,\
-    CASE WHEN `url` LIKE 'http%' THEN '' ELSE `content` END AS `content`";
+    CASE WHEN `url` LIKE 'http%' THEN '' ELSE `content` END AS `content`,`source`";
 
 /// 查询全部订阅, 按 id 倒序。
 pub(crate) async fn all(pool: &DbPool) -> Result<Vec<Subscribe>> {
@@ -45,7 +43,10 @@ pub(crate) async fn find(pool: &DbPool, id: &str) -> Result<Option<Subscribe>> {
 }
 
 /// 查询订阅解析后的节点 JSON 文本与源类型。
-pub(crate) async fn find_nodes(pool: &DbPool, id: &str) -> Result<Option<(String, String)>> {
+pub(crate) async fn find_nodes(
+    pool: &DbPool,
+    id: &str,
+) -> Result<Option<(String, SubscribeSource)>> {
     let sql = format!("select `nodes`,`source` from {TABLE} where `id` = ? limit 1");
     let row = sqlx::query(&sql).bind(id).fetch_optional(pool).await?;
     let Some(row) = row else {
@@ -53,7 +54,8 @@ pub(crate) async fn find_nodes(pool: &DbPool, id: &str) -> Result<Option<(String
     };
     Ok(Some((
         mapping::string(&row, "nodes")?,
-        mapping::string(&row, "source")?,
+        // 旧数据的取值异常，统一归为未知
+        SubscribeSource::parse(&mapping::string(&row, "source")?),
     )))
 }
 
@@ -204,8 +206,8 @@ fn from_row(row: &DbRow) -> Result<Subscribe> {
         url: mapping::string(row, "url")?,
         content: mapping::string(row, "content")?,
         nodes: mapping::string(row, "nodes")?,
-        // 库中文本无法识别时按未知处理
-        source: SubscribeSource::from_str(&mapping::string(row, "source")?).unwrap_or_default(),
+        // 旧数据的取值异常, 统一归为未知
+        source: SubscribeSource::parse(&mapping::string(row, "source")?),
         interval: mapping::millis(row, "interval")?,
         update_time: mapping::millis(row, "update_time")?,
         create_time: mapping::millis(row, "create_time")?,
@@ -223,5 +225,7 @@ fn from_refresh_row(row: &DbRow) -> Result<SubscribeRefreshDTO> {
         name: mapping::string(row, "name")?,
         url: mapping::string(row, "url")?,
         content: mapping::string(row, "content")?,
+        // 旧数据的取值异常，统一归为未知
+        source: SubscribeSource::parse(&mapping::string(row, "source")?),
     })
 }

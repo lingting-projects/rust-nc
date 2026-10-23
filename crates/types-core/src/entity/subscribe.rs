@@ -3,7 +3,9 @@ use framework_proc_auto::{auto_enum, auto_type};
 /// 订阅源类型, 决定已保存的节点按键如何解析。
 ///
 /// `unknown` 为默认值, 表示尚未识别出类型, 此时由节点自身内容判定。
-#[auto_enum]
+/// strum 只取 `Display`, 文本还原由 [`SubscribeSource::parse`] 统一处理, 避免出现两套解析口径。
+#[auto_enum(strum = false)]
+#[derive(strum_macros::Display)]
 pub enum SubscribeSource {
     /// 未知
     #[strum(serialize = "unknown")]
@@ -22,6 +24,20 @@ pub enum SubscribeSource {
 impl Default for SubscribeSource {
     fn default() -> Self {
         Self::Unknown
+    }
+}
+
+impl SubscribeSource {
+    /// 由库中保存的文本还原源类型, 任何异常取值都归为 [`SubscribeSource::Unknown`]。
+    ///
+    /// 旧数据的该字段可能是 `NULL`、空串、前后带空白或其它无法识别的文本,
+    /// 统一按未知处理, 由节点自身内容判定来源。
+    pub fn parse(source: &str) -> Self {
+        match source.trim().to_ascii_lowercase().as_str() {
+            "clash" => Self::Clash,
+            "pure" => Self::Pure,
+            _ => Self::Unknown,
+        }
     }
 }
 

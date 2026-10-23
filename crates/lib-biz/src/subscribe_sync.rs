@@ -76,8 +76,11 @@ async fn sync(context: &Arc<DbContext>, id: &str) -> Result<()> {
         return Ok(());
     };
 
+    // 旧数据没有源类型, 需要重新解析出源类型并落库
+    let legacy = subscribe.source == SubscribeSource::Unknown;
+
     info!("[订阅] [{}] 开始同步", subscribe.name);
-    let source = match source(&subscribe).await {
+    let source = match source(&subscribe, legacy).await {
         Ok(source) => source,
         Err(error) => {
             error!(
@@ -93,8 +96,10 @@ async fn sync(context: &Arc<DbContext>, id: &str) -> Result<()> {
         return Ok(());
     }
 
-    // 远端内容未变更时只刷新刷新时间, 避免重复写入相同的节点
-    if let Some(body) = &source.body
+    // 远端内容未变更时只刷新刷新时间, 避免重复写入相同的节点;
+    // 源类型未知的旧数据仍需重新解析并落库, 因此不跳过
+    if !legacy
+        && let Some(body) = &source.body
         && *body == subscribe.content
     {
         info!("[订阅] [{}] 内容未变更, 仅更新刷新时间", subscribe.name);
@@ -149,7 +154,9 @@ struct Source {
 }
 
 /// 获取订阅数据: 远端订阅拉取远程内容, 本地订阅解析已保存的内容。
-async fn source(subscribe: &SubscribeRefreshDTO) -> Result<Source> {
+///
+/// `legacy` 表示库中没有源类型, 远端拉取失败时退回已保存的内容完成来源识别。
+async fn source(subscribe: &SubscribeRefreshDTO, legacy: bool) -> Result<Source> {
     if subscribe.url.is_empty() {
         debug!("[订阅] [{}] 本地订阅, 解析已保存的内容", subscribe.name);
         return Ok(Source {
@@ -158,6 +165,24 @@ async fn source(subscribe: &SubscribeRefreshDTO) -> Result<Source> {
         });
     }
 
+    match remote(subscribe).await {
+        Ok(source) => Ok(source),
+        Err(error) if legacy && !subscribe.content.trim().is_empty() => {
+            warn!(
+                "[订阅] [{}] 拉取远程数据失败, 改用已保存的内容识别来源! {error:#}",
+                subscribe.name
+            );
+            Ok(Source {
+                body: None,
+                remote: pick(&subscribe.content, None)?,
+            })
+        }
+        Err(error) => Err(error),
+    }
+}
+
+/// 拉取远端订阅并解析节点。
+async fn remote(subscribe: &SubscribeRefreshDTO) -> Result<Source> {
     let url = url::fast(&subscribe.url);
     debug!("[订阅] [{}] 拉取远程数据: {}", subscribe.name, url);
     let response = FetchClient::new().fetch(&url).await?;

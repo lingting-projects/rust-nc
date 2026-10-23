@@ -35,7 +35,7 @@ impl SubscribeService {
     }
 
     /// 查询订阅解析后的节点 JSON 文本与源类型。
-    pub async fn find_nodes(&self, id: &str) -> Result<Option<(String, String)>> {
+    pub async fn find_nodes(&self, id: &str) -> Result<Option<(String, SubscribeSource)>> {
         repository::find_nodes(self.pool(), id).await
     }
 

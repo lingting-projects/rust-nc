@@ -1,5 +1,4 @@
 use std::path::PathBuf;
-use std::str::FromStr;
 use std::sync::Arc;
 
 use anyhow::{Result, anyhow, bail};
@@ -86,8 +85,7 @@ async fn nodes(context: &Arc<DbContext>, id: &str) -> Result<PickNodes> {
         bail!("订阅尚未同步出节点");
     }
 
-    // 库中文本无法识别时按未知处理
-    match SubscribeSource::from_str(&kind).unwrap_or_default() {
+    match kind {
         SubscribeSource::Clash => PickNodes::from_json_key(&nodes, KEY_TYPE),
         SubscribeSource::Pure => PickNodes::from_json_key(&nodes, KEY_SCHEME),
         // 尚未识别源类型时由节点自身内容判定

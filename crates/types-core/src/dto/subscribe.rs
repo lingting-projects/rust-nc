@@ -1,6 +1,6 @@
 use framework_proc_auto::auto_type;
 
-use crate::entity::subscribe::Subscribe;
+use crate::entity::subscribe::{Subscribe, SubscribeSource};
 
 /// 新增或修改订阅的入参。
 ///
@@ -22,6 +22,8 @@ pub struct SubscribeRefreshDTO {
     pub url: String,
     /// 远端订阅时为空，避免把已保存的内容读回内存
     pub content: String,
+    /// 已保存的源类型，旧数据与异常取值统一为 [`SubscribeSource::Unknown`]
+    pub source: SubscribeSource,
 }
 
 impl SubscribeRefreshDTO {
@@ -32,6 +34,7 @@ impl SubscribeRefreshDTO {
             name: entity.name,
             url: entity.url,
             content: entity.content,
+            source: entity.source,
         }
     }
 }
