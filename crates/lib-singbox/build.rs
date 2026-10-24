@@ -59,6 +59,8 @@ fn main() {
     // 确保重新构建的条件
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed=core.go");
+    println!("cargo:rerun-if-changed=debug_on.go");
+    println!("cargo:rerun-if-changed=debug_off.go");
     println!("cargo:rerun-if-changed=cmd/main.go");
     println!("cargo:rerun-if-changed=go.mod");
     println!("cargo:rerun-if-changed=go.sum");
@@ -103,6 +105,12 @@ fn build_proto(manifest_dir: &Path) {
 /// 不启用 `with_clash_api`: 内核 API 已改为 gRPC (`services[].type = "api"`)。
 static GO_TAGS: &str = "with_utls,with_quic,badlinkname,tfogo_checklinkname0";
 
+/// 调试模式构建标签。
+///
+/// 仅在 debug 编译时追加: 打开后内核接受 `--debug`, 父进程只要求存活,
+/// 供集成测试等非 `lingting-nc` 宿主使用; 正式构建的内核里不存在该分支。
+static GO_TAG_DEBUG: &str = "ncdebug";
+
 /// 内核链接器参数, 对齐官方 `release/LDFLAGS`。
 ///
 /// `-X runtime.godebugDefault` 关闭标准库 multipathtcp 并恢复 TLS SHA1 兼容,
@@ -110,12 +118,22 @@ static GO_TAGS: &str = "with_utls,with_quic,badlinkname,tfogo_checklinkname0";
 static GO_LDFLAGS: &str =
     "-X runtime.godebugDefault=multipathtcp=0,tlssha1=1 -checklinkname=0 -s -buildid=";
 
+/// 本次构建使用的 Go 构建标签。
+///
+/// debug 编译追加调试标签, 使内核支持 `--debug`; release 编译不含该标签。
+fn go_tags() -> String {
+    let debug = env::var("DEBUG").is_ok_and(|value| value == "true");
+    match debug {
+        true => format!("{GO_TAGS},{GO_TAG_DEBUG}"),
+        false => GO_TAGS.to_string(),
+    }
+}
 fn build_go(target: &str, bin_path: &Path, manifest_dir: &Path) {
     let mut cmd = Command::new("go");
     cmd.current_dir(manifest_dir)
         .arg("build")
         .arg("-trimpath")
-        .arg(format!("-tags={GO_TAGS}"))
+        .arg(format!("-tags={}", go_tags()))
         .arg(format!("-ldflags={GO_LDFLAGS}"))
         .arg("-o")
         .arg(bin_path)

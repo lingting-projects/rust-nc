@@ -8,7 +8,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"runtime"
-	"runtime/debug"
+	rdebug "runtime/debug"
 	"sync/atomic"
 	"syscall"
 	"time"
@@ -69,7 +69,7 @@ const (
 	RuleReadError
 )
 
-func isAlive(pid int) bool {
+func isAlive(pid int, debug bool) bool {
 	if pid < 1 {
 		return true
 	}
@@ -77,6 +77,10 @@ func isAlive(pid int) bool {
 	if e != nil || p == nil {
 		log.Debug("alive: false! ", e)
 		return false
+	}
+	// 调试模式只要求进程存活: 宿主可能是测试可执行文件或任意调试程序
+	if debug {
+		return true
 	}
 	name, e := p.Name()
 	if e != nil || len(name) < 1 || (name != "lingting-nc" && name != "lingting-nc.exe") {
@@ -220,7 +224,7 @@ func Check(configPath string, workDir string) string {
 //
 // reload 为重载标记文件名, 由上层传入: 上层生成新配置后在工作目录创建该文件,
 // 内核发现后重建实例。为空表示未启用自动重载, 此时只响应信号。
-func Start(configPath string, workDir string, pid int, reload string) (SingBoxError, error) {
+func Start(configPath string, workDir string, pid int, reload string, debug bool) (SingBoxError, error) {
 	setLog(false)
 	osSignals := make(chan os.Signal, 1)
 	signal.Notify(osSignals, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
@@ -254,7 +258,7 @@ func Start(configPath string, workDir string, pid int, reload string) (SingBoxEr
 	}()
 
 	for {
-		debug.FreeOSMemory()
+		rdebug.FreeOSMemory()
 		log.Info("开始创建内核实例, 配置文件: ", configPath, ", 工作目录: ", workDir)
 		_c, _i, _e := create(configPath, workDir)
 
@@ -301,7 +305,7 @@ func Start(configPath string, workDir string, pid int, reload string) (SingBoxEr
 				}
 			}
 
-			if !isAlive(pid) {
+			if !isAlive(pid, debug) {
 				log.Error("父进程失活, 停止实例. ", pid)
 				stop.Store(true)
 				continue

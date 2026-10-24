@@ -47,6 +47,11 @@ pub(super) fn spawn(bin: &str, config_path: &Path, work_dir: &Path) -> Result<Pr
         .stdout(out)
         .stderr(err);
 
+    // 调试模式只在 debug 编译的内核中存在, 此时父进程只要求存活
+    if cfg!(debug_assertions) {
+        cmd.arg("--debug");
+    }
+
     match Process::new(cmd) {
         Ok(process) => {
             log::info!("[内核] 进程已创建");

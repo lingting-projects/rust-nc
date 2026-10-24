@@ -36,6 +36,7 @@ func handleStart() {
 		workDir    string
 		pid        int
 		reload     string
+		debug      bool
 	)
 	for _, name := range []string{"c", "config"} {
 		args.StringVar(&configPath, name, "", "配置文件路径")
@@ -49,6 +50,12 @@ func handleStart() {
 	for _, name := range []string{"r", "reload"} {
 		args.StringVar(&reload, name, "", "重载标记文件名, 不传则不启用自动重载")
 	}
+	// 调试模式只在 ncdebug 标签构建的内核中生效, 正式构建下该参数不可用
+	if core.DebugEnabled {
+		for _, name := range []string{"d", "debug"} {
+			args.BoolVar(&debug, name, false, "调试模式, 父进程只要求存活")
+		}
+	}
 	if err := args.Parse(os.Args[2:]); err != nil {
 		os.Exit(1)
 	}
@@ -58,7 +65,7 @@ func handleStart() {
 		os.Exit(1)
 	}
 
-	code, err := core.Start(configPath, workDir, pid, reload)
+	code, err := core.Start(configPath, workDir, pid, reload, debug)
 	if !errors.Is(core.Nil, code) {
 		// 同时输出原始错误, 便于定位内核自身的异常原因
 		fmt.Printf("启动失败[%d]: %s: %v\n", code.ToInt(), code.Error(), err)
