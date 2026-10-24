@@ -1,3 +1,4 @@
+pub mod auto_run;
 pub mod config;
 pub mod config_file;
 pub mod config_sync;

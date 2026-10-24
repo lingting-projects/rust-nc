@@ -128,6 +128,9 @@ pub fn ready(cx: &App) -> Option<Arc<Services>> {
 /// 由启动流程调用一次：关闭了自动运行、没有选中配置或内核已在运行时都不做事。
 /// 内核不依赖界面，因此这一步在创建窗口之前执行，只把启动任务交给数据层运行时；
 /// 启动失败原因写日志，不打断启动，界面与托盘各自从内核实例读状态。
+///
+/// 旧数据迁移不同步刷新时间，迁移后首次启动时选中配置还是刷新时间 0，
+/// 此时先用 [`lib_biz::auto_run::wait_ready`] 等到配置刷新完成再启动内核。
 pub fn auto_run(services: &Arc<Services>) {
     let setting = SettingsHolder::kernel();
     if !setting.auto_run {
@@ -142,8 +145,19 @@ pub fn auto_run(services: &Arc<Services>) {
     }
 
     let runner = services.clone();
+    let context = services.context();
     // 任务句柄丢弃即分离，启动照常进行到底，不需要界面任务来驱动
     services.spawn(async move {
+        match lib_biz::auto_run::wait_ready(&context, id).await {
+            Ok(true) => {}
+            // 等待期间内核被其他入口启动，本次自动运行不再插手
+            Ok(false) => return,
+            Err(error) => {
+                log::error!("[启动] 自动运行选中配置失败: {error:#}");
+                return;
+            }
+        }
+
         if let Err(error) = runner.start_kernel(id).await {
             log::error!("[启动] 自动运行选中配置失败: {error:#}");
         }
