@@ -26,7 +26,7 @@ pub(super) fn run(shared: Arc<Shared>, bin: String) {
         };
         match intent {
             Intent::Idle => {}
-            Intent::Start { config, work, api } => start(&shared, &bin, config, work, api),
+            Intent::Start { config, work } => start(&shared, &bin, config, work),
             Intent::Stop => stop(&shared),
         }
 
@@ -47,8 +47,11 @@ pub(super) fn run(shared: Arc<Shared>, bin: String) {
     }
 }
 
-/// 创建日志文件与子进程，成功后把阶段置为运行中。
-fn start(shared: &Arc<Shared>, bin: &str, config: PathBuf, work: PathBuf, api: String) {
+/// 创建日志文件与子进程，成功后把阶段置为启动中。
+///
+/// 进程创建完成只代表内核已开始加载配置，API 是否可用还要由调用方探测，
+/// 因此这里不置为运行中。
+fn start(shared: &Arc<Shared>, bin: &str, config: PathBuf, work: PathBuf) {
     match spawn(bin, &config, &work) {
         Ok(process) => {
             {
@@ -56,7 +59,6 @@ fn start(shared: &Arc<Shared>, bin: &str, config: PathBuf, work: PathBuf, api: S
                 control.process = Some(process);
                 control.work = Some(work.clone());
             }
-            shared.api.store(Arc::new(api));
 
             // 上一轮连接、测速任务与日志都属于旧进程
             shared.invalidate();
@@ -66,7 +68,7 @@ fn start(shared: &Arc<Shared>, bin: &str, config: PathBuf, work: PathBuf, api: S
                 .logs
                 .subscribe(Some(work.join(lib_core::constants::KERNEL_LOG_FILE)));
 
-            shared.set_phase(Phase::Running, None);
+            shared.set_phase(Phase::Starting, None);
         }
         Err(error) => {
             let reason = format!("{error:#}");
@@ -101,7 +103,8 @@ fn stop(shared: &Arc<Shared>) {
 
 /// 检查进程是否已退出，退出时记录失败原因。
 fn poll_exit(shared: &Arc<Shared>) {
-    if !shared.phase().is_running() {
+    // 进程创建后阶段先为启动中, API 探测通过才转为运行中, 两种阶段都要检查退出
+    if !matches!(shared.phase(), Phase::Starting | Phase::Running) {
         return;
     }
 

@@ -5,6 +5,7 @@
 
 use std::path::Path;
 use std::process::Command;
+use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::{Context, Result, anyhow, bail};
@@ -19,41 +20,44 @@ use std::time::Instant;
 impl SingBox {
     /// 登记启动意图并唤醒监控线程，立即返回。
     ///
-    /// 进程由监控线程创建，因此返回时内核尚未真正启动；
-    /// 需要等待启动结果时用 [`start`](Self::start)，需要等 API 就绪时用
+    /// 返回时阶段为 [`Phase::Spawn`]，进程由监控线程创建，创建完成后转为
+    /// [`Phase::Starting`]；内核真正可用的标志是 API 探测通过，见
     /// [`wait_ready`](Self::wait_ready)。
     pub fn start_async(&self, config_path: &Path, work_dir: &Path, api: &str) -> Result<()> {
         match self.phase() {
             // 已在启动或已运行，重复登记没有意义
-            Phase::Starting | Phase::Running => return Ok(()),
+            Phase::Spawn | Phase::Starting | Phase::Running => return Ok(()),
             Phase::Stopping => bail!("内核正在停止"),
             Phase::Stopped => {}
         }
 
+        // API 地址在登记意图时就写入：启动期间监控线程创建进程后即可据此构造客户端探测就绪
+        self.shared.api.store(Arc::new(api.to_string()));
         {
             let mut control = self.shared.lock();
             control.intent = Intent::Start {
                 config: config_path.to_path_buf(),
                 work: work_dir.to_path_buf(),
-                api: api.to_string(),
             };
         }
         // 先登记意图再置阶段：监控线程被唤醒时意图已经就绪
-        self.shared.set_phase(Phase::Starting, None);
+        self.shared.set_phase(Phase::Spawn, None);
         Ok(())
     }
 
     /// 启动内核并等待进程创建完成。
     ///
+    /// 成功只表示进程已经创建、阶段进入 [`Phase::Starting`]，内核 API 是否可用
+    /// 还要由 [`wait_ready`](Self::wait_ready) 验证。
     /// 失败原因取自监控线程记录的异常，与 [`reason`](Self::reason) 一致。
     pub fn start(&self, config_path: &Path, work_dir: &Path, api: &str) -> Result<()> {
         self.start_async(config_path, work_dir, api)?;
 
         let phase = self
             .shared
-            .wait_phase(|phase| matches!(phase, Phase::Running | Phase::Stopped));
+            .wait_phase(|phase| matches!(phase, Phase::Starting | Phase::Running | Phase::Stopped));
         match phase {
-            Some(Phase::Running) => Ok(()),
+            Some(Phase::Starting | Phase::Running) => Ok(()),
             Some(_) => Err(anyhow!(
                 "{}",
                 self.reason().unwrap_or_else(|| "内核启动失败".to_string())
@@ -70,7 +74,7 @@ impl SingBox {
     pub fn stop_async(&self) {
         match self.phase() {
             Phase::Stopped | Phase::Stopping => return,
-            Phase::Starting | Phase::Running => {}
+            Phase::Spawn | Phase::Starting | Phase::Running => {}
         }
 
         {
@@ -117,7 +121,10 @@ impl SingBox {
     /// 等待内核 API 就绪。
     ///
     /// 启动命令执行完毕不代表内核真正可用，因此按固定间隔调用内核 API 探测，
-    /// 直到取得版本号才视为启动成功；进程提前退出或超时都返回失败原因。
+    /// 直到取得版本号才把阶段置为运行中；进程提前退出或超时都返回失败原因。
+    ///
+    /// 整个探测期间阶段保持 [`Phase::Starting`]：只有 API 验证通过才算启动完成，
+    /// 进程存在但 API 未响应的内核仍然不可用。超时视为启动失败，由调用方停止进程。
     #[cfg(feature = "grpc")]
     pub async fn wait_ready(&self, timeout: Duration) -> Result<()> {
         let start = Instant::now();
@@ -132,19 +139,21 @@ impl SingBox {
                         .unwrap_or_else(|| "内核进程已退出".to_string());
                     bail!("内核启动失败: {reason}");
                 }
-                Phase::Running => {
+                // 进程已创建（或已验证就绪），探测一次 API
+                Phase::Starting | Phase::Running => {
                     if let Some(grpc) = self.grpc()? {
                         match grpc.version().await {
                             Ok(version) => {
                                 log::info!("内核 API 就绪, 版本: {}", version.version);
+                                self.shared.set_phase(Phase::Running, None);
                                 return Ok(());
                             }
                             Err(error) => last = Some(error),
                         }
                     }
                 }
-                // 仍在启动或已在停止，继续等下一次探测
-                Phase::Starting | Phase::Stopping => {}
+                // 进程尚未创建或已在停止，继续等下一次探测
+                Phase::Spawn | Phase::Stopping => {}
             }
 
             if start.elapsed() >= timeout {

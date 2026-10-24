@@ -21,8 +21,8 @@ static INSTANCE: LazyLock<SingBoxInstance> = LazyLock::new(SingBoxInstance::new)
 
 /// 内核运行状态。
 ///
-/// 与 `lib-singbox` 的进程阶段一一对应，另外多出「停止中」，
-/// 供界面在停止过程尚未完成时给出准确的反馈。
+/// 取自 `lib-singbox` 的进程阶段，「创建中」与「启动中」都归为启动中，
+/// 供界面在启动与停止过程尚未完成时给出准确的反馈。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Status {
     /// 未运行
@@ -40,7 +40,7 @@ impl From<Phase> for Status {
     fn from(phase: Phase) -> Self {
         match phase {
             Phase::Stopped => Status::Stopped,
-            Phase::Starting => Status::Starting,
+            Phase::Spawn | Phase::Starting => Status::Starting,
             Phase::Running => Status::Running,
             Phase::Stopping => Status::Stopping,
         }

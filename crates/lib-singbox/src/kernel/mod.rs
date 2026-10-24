@@ -29,7 +29,9 @@ pub enum Phase {
     /// 未运行。
     #[default]
     Stopped,
-    /// 启动中：已登记启动意图，进程尚未创建完成。
+    /// 创建中：已登记启动意图，监控线程尚未创建进程。
+    Spawn,
+    /// 启动中：进程已创建，内核 API 尚未验证可用。
     Starting,
     /// 运行中。
     Running,
@@ -96,26 +98,36 @@ impl SingBox {
 
     /// 取得 gRPC 客户端。
     ///
-    /// 内核运行中时返回可用客户端，尚未构造则先按当前 API 地址构造并保存；
-    /// 内核未运行时返回 `None`。
+    /// 进程已创建时返回可用客户端（启动中也要用它探测 API），尚未构造则先按当前
+    /// API 地址构造并保存；进程未创建或正在停止时返回 `None`。
+    ///
+    /// 测速队列与连接订阅只在内核就绪后接上：启动期间客户端仅用于探测，
+    /// 提前订阅只会得到一连串连接失败。
     pub fn grpc(&self) -> Result<Option<Arc<SingBoxGrpc>>> {
-        if !self.phase().is_running() {
+        let phase = self.phase();
+        if matches!(phase, Phase::Stopped | Phase::Stopping) {
             // 内核已不在运行, 队列里的客户端与连接数据一并失效
             self.shared.url_test.set_grpc(None);
             self.shared.connections.subscribe(None);
             return Ok(None);
         }
 
-        if let Some(grpc) = self.shared.grpc.load_full() {
-            return Ok(Some(grpc));
-        }
+        let grpc = match self.shared.grpc.load_full() {
+            Some(grpc) => grpc,
+            None => {
+                let api = self.shared.api.load();
+                let grpc = Arc::new(SingBoxGrpc::new(&api)?);
+                self.shared.grpc.store(Some(grpc.clone()));
+                grpc
+            }
+        };
 
-        let api = self.shared.api.load();
-        let grpc = Arc::new(SingBoxGrpc::new(&api)?);
-        self.shared.grpc.store(Some(grpc.clone()));
-        self.shared.url_test.set_grpc(Some(grpc.clone()));
-        // 客户端就绪后订阅线程才能建立连接订阅
-        self.shared.connections.subscribe(Some(grpc.clone()));
+        // 就绪后接上订阅；重载会撤销客户端与订阅，下一次取用按新地址重新接上
+        if phase.is_running() && !self.shared.connections.same_grpc(&grpc) {
+            self.shared.url_test.set_grpc(Some(grpc.clone()));
+            // 客户端就绪后订阅线程才能建立连接订阅
+            self.shared.connections.subscribe(Some(grpc.clone()));
+        }
         Ok(Some(grpc))
     }
 

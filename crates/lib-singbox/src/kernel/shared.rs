@@ -27,7 +27,7 @@ pub(super) struct Shared {
     pub(super) phase: ArcSwap<Phase>,
     /// 最近一次异常的原因，正常运行期间为空。
     pub(super) reason: ArcSwapOption<String>,
-    /// 内核 API 监听地址，运行期间有效。
+    /// 本次启动的 API 监听地址，登记启动意图时写入。
     pub(super) api: ArcSwap<String>,
     /// 启停意图与进程句柄。
     pub(super) control: Mutex<Control>,
@@ -63,11 +63,7 @@ pub(super) enum Intent {
     #[default]
     Idle,
     /// 启动内核。
-    Start {
-        config: PathBuf,
-        work: PathBuf,
-        api: String,
-    },
+    Start { config: PathBuf, work: PathBuf },
     /// 停止内核。
     Stop,
 }
