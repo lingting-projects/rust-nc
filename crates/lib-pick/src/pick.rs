@@ -189,7 +189,9 @@ fn parse_params(source: &str) -> IndexMap<String, Value> {
             continue;
         }
 
-        let value = Value::String(value.to_string());
+        // 分享链接的参数按 URI 组件编码, 例如 path=%2Fpq%2Fsg1 表示 /pq/sg1;
+        // 未解码的 path 会让内核发出非法请求行, 服务端直接返回 400
+        let value = Value::String(decode(value).unwrap_or_else(|_| value.to_string()));
         match map.get_mut(key) {
             None => {
                 map.insert(key.to_string(), value);

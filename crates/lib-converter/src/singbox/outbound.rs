@@ -107,13 +107,7 @@ impl Outbound {
 
     /// clash 原生字段节点。
     fn clash_node(node: &PickNode) -> Self {
-        let mut attributes = IndexMap::new();
-        for (key, value) in &node.map {
-            if skip_key(key) {
-                continue;
-            }
-            attributes.insert(key.clone(), value.clone());
-        }
+        let mut attributes = raw_attributes(node);
 
         if node.protocol == "hysteria2" {
             attributes.insert("hop_interval".to_string(), Value::from("10s"));
@@ -124,7 +118,7 @@ impl Outbound {
 
     /// 分享链接字段节点。
     fn pure_node(node: &PickNode) -> Self {
-        let mut attributes = IndexMap::new();
+        let mut attributes = raw_attributes(node);
 
         // 分享链接中的 type 表示传输层, sing-box 用 transport 描述; 纯 tcp 不需要
         if let Some(transport) = node
@@ -268,11 +262,48 @@ fn transport_of(node: &PickNode, kind: &str) -> Option<Value> {
     Some(Value::Object(transport))
 }
 
+/// 节点原始字段转换为出口字段, 跳过已单独输出的键。
+///
+/// 两种来源共用: clash 的键即 sing-box 字段, 分享链接的键除传输层外同样可直接沿用
+/// (例如 vless 的 `uuid`、`flow`)。
+fn raw_attributes(node: &PickNode) -> IndexMap<String, Value> {
+    let mut attributes = IndexMap::new();
+    for (key, value) in &node.map {
+        if skip_key(key) || !pass_through(node, key) {
+            continue;
+        }
+        attributes.insert(key.clone(), value.clone());
+    }
+    attributes
+}
+
+/// 可直接沿用的节点键, 按协议限定, 避免把分享链接的私有参数写进内核配置。
+fn pass_through(node: &PickNode, key: &str) -> bool {
+    let keys: &[&str] = match node.protocol.as_str() {
+        "vless" => &["uuid", "flow", "packet_encoding"],
+        "vmess" => &[
+            "uuid",
+            "alter_id",
+            "security",
+            "global_padding",
+            "authenticated_length",
+        ],
+        "trojan" => &["flow"],
+        "shadowsocks" => &["method", "plugin", "plugin_opts", "udp_over_tcp"],
+        "hysteria2" => &["up", "down", "obfs", "obfs-password"],
+        "anytls" => &[],
+        _ => return false,
+    };
+    keys.contains(&key)
+}
+
 /// 节点中不参与出口输出的键。
 fn skip_key(key: &str) -> bool {
     matches!(
         key,
         "type"
+            // 分享链接的协议字段, 协议已由 type 输出
+            | "scheme"
             | "name"
             | "server"
             | "port"
