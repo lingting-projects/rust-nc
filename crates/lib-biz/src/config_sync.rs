@@ -5,12 +5,12 @@ use lib_core::current_millis;
 use lib_db::DbContext;
 use log::{debug, error, info, warn};
 use service_core::service::config_service::ConfigService;
-use service_core::service::inner_rule_service::InnerRuleService;
 use service_core::service::rule_service::RuleService;
 use service_core::service::subscribe_service::SubscribeService;
 use types_core::entity::config::Config;
 
 use crate::config_file;
+use crate::inner_rule;
 use crate::inner_rule_sync::InnerRuleSync;
 use crate::kernel::SingBoxInstance;
 use crate::scheduler::{Scheduler, SyncTask};
@@ -135,12 +135,12 @@ pub(crate) async fn sync(context: &Arc<DbContext>, id: i64) -> Result<()> {
     Ok(())
 }
 
-/// 推送未就绪的内置规则。
+/// 推送不可用的内置规则。
 ///
-/// 只负责入队, 下载结果由调度器自行记录日志, 不阻塞配置同步。
+/// 只负责入队, 下载结果由调度器自行记录日志, 不阻塞配置同步;
+/// 文件被删除的规则会在这里被置为未就绪后重新下载。
 async fn push_inner_rules(context: &Arc<DbContext>) -> Result<()> {
-    let ids = InnerRuleService::new(context.clone())
-        .list_not_ready()
+    let ids = inner_rule::pending(context)
         .await?
         .into_iter()
         .map(|item| item.id)

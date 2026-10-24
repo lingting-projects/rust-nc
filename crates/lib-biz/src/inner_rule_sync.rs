@@ -10,6 +10,7 @@ use service_core::service::inner_rule_service::InnerRuleService;
 use types_core::entity::inner_rule::InnerRule;
 
 use crate::file;
+use crate::inner_rule;
 use crate::inner_rule_file;
 use crate::scheduler::{Scheduler, SyncTask};
 
@@ -85,12 +86,17 @@ async fn sync(context: &Arc<DbContext>, id: i64) -> Result<()> {
     };
 
     let path = inner_rule_file::inner_rule_file(&rule.name)?;
-    // etag 未变且文件仍在时无需下载
-    if rule.ready && path.exists() && same_etag(&rule).await {
+    // 已就绪但文件不存在时先置为未就绪, 避免数据库状态与磁盘不一致
+    if rule.ready && !path.exists() {
+        warn!(
+            "[内置规则] [{}] 本地文件不存在, 标记为未就绪后重新下载",
+            rule.name
+        );
+        service.not_ready(id).await?;
+    } else if rule.ready && same_etag(&rule).await {
         debug!("[内置规则] [{}] 内容未变更, 仅确认就绪", rule.name);
         return Ok(());
     }
-
     info!("[内置规则] [{}] 开始下载: {}", rule.name, rule.url);
     // 先下到临时文件再原子替换, 内核随时可能读取, 不能让它看到写了一半的规则集
     let temp = file::temp_path(&inner_rule_file::inner_rule_temp_dir()?)?;
@@ -211,19 +217,13 @@ async fn download_any(client: &FetchClient, url: &str, path: &Path) -> Result<St
 /// 走调度器会把同步结果变成后台任务, 等待反而依赖调度器的初始化状态。
 /// 最多尝试 [`WAIT_ROUNDS`] 轮, 每轮间隔 [`WAIT_STEP`], 避免网络持续异常时无限挂起。
 pub async fn wait_ready(context: &Arc<DbContext>) -> Result<()> {
-    let service = InnerRuleService::new(context.clone());
-
     for round in 1..=WAIT_ROUNDS {
-        let pending = service.list_not_ready().await?;
+        let pending = inner_rule::pending(context).await?;
         if pending.is_empty() {
             return Ok(());
         }
 
-        let names = pending
-            .iter()
-            .map(|item| item.name.as_str())
-            .collect::<Vec<_>>()
-            .join(", ");
+        let names = names(&pending);
         debug!("[内置规则] 第 {round} 轮等待就绪: {names}");
         // 单条失败不直接中断, 全轮结束后统一检查, 让可用的规则先落盘
         for item in &pending {
@@ -235,17 +235,21 @@ pub async fn wait_ready(context: &Arc<DbContext>) -> Result<()> {
             }
         }
 
-        if service.list_not_ready().await?.is_empty() {
+        if inner_rule::pending(context).await?.is_empty() {
             return Ok(());
         }
         tokio::time::sleep(WAIT_STEP).await;
     }
 
-    let pending = service.list_not_ready().await?;
-    let names = pending
+    let pending = inner_rule::pending(context).await?;
+    Err(anyhow!("内置规则未就绪: {}", names(&pending)))
+}
+
+/// 规则名称列表, 用于日志。
+fn names(rules: &[InnerRule]) -> String {
+    rules
         .iter()
         .map(|item| item.name.as_str())
         .collect::<Vec<_>>()
-        .join(", ");
-    Err(anyhow!("内置规则未就绪: {names}"))
+        .join(", ")
 }

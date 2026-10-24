@@ -17,6 +17,13 @@ pub(crate) async fn all_not_ready(pool: &DbPool) -> Result<Vec<InnerRule>> {
     rows.iter().map(from_row).collect()
 }
 
+/// 查询全部已就绪的内置规则。
+pub(crate) async fn all_ready(pool: &DbPool) -> Result<Vec<InnerRule>> {
+    let sql = format!("select {FIELDS} from {TABLE} where `ready` = 1 order by `id`");
+    let rows = sqlx::query(&sql).fetch_all(pool).await?;
+    rows.iter().map(from_row).collect()
+}
+
 /// 按 id 查询内置规则。
 pub(crate) async fn find(pool: &DbPool, id: i64) -> Result<Option<InnerRule>> {
     let sql = format!("select {FIELDS} from {TABLE} where `id` = ? limit 1");

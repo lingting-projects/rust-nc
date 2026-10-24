@@ -2,12 +2,10 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use anyhow::{Result, anyhow, bail};
-use lib_converter::constants::{GEO_IP_CN, INNER_RULE_GEO_IP_CN};
 use lib_converter::{NodeContains, Platform, PlatformConfig, Rule, RuleType, clash_to, pure_to};
 use lib_db::DbContext;
 use lib_pick::{KEY_SCHEME, KEY_TYPE, PickNodes};
 use service_core::holder::settings::SettingsHolder;
-use service_core::service::inner_rule_service::InnerRuleService;
 use service_core::service::rule_service::RuleService;
 use service_core::service::subscribe_service::SubscribeService;
 use types_core::dto::setting::SettingKernel;
@@ -15,6 +13,7 @@ use types_core::entity::config::Config;
 use types_core::entity::subscribe::SubscribeSource;
 
 use crate::file;
+use crate::inner_rule;
 use crate::inner_rule_file;
 
 /// 生成配置的 sing-box 配置文件: `{config}/{id}/config.json`。
@@ -111,8 +110,8 @@ pub async fn register_inner_rules(context: &Arc<DbContext>, config: &Config) -> 
         return Ok(());
     }
 
-    let service = InnerRuleService::new(context.clone());
-    service.register(INNER_RULE_GEO_IP_CN, GEO_IP_CN).await
+    inner_rule::register_geo_cn(context).await?;
+    Ok(())
 }
 
 /// 按直连、代理、拒绝的顺序取得规则。

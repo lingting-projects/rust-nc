@@ -35,10 +35,11 @@ pub const URL_MMDB: &str =
 /// sing-box geoip 规则集地址
 pub const GEO_IP_CN: &str =
     "https://raw.githubusercontent.com/SagerNet/sing-geoip/rule-set/geoip-cn.srs";
-/// 内置规则 id: 国内 ip 直连
+
+/// 内置规则名称: 国内 ip 直连。
 ///
-/// 内核需要的远程规则集统一由内置规则提前下载到本地, 配置只引用本地文件,
-/// 避免内核启动时卡在规则集下载, 拖住 API 服务监听。
+/// 名称同时是本地文件名与内核配置的引用键; 内置规则的登记与下载由 `service-core`、
+/// `lib-biz` 负责, 这里只保留名称, 供内核配置引用本地规则集时使用。
 pub const INNER_RULE_GEO_IP_CN: &str = "geoip-cn";
 
 /// clash 出口名称

@@ -4,19 +4,22 @@
 //! 此时启动内核会用到尚未生成的配置文件。这里等到选中配置的刷新时间非 0 再返回,
 //! 由调用方继续自动运行: 依赖未就绪时先推动依赖自身同步, 依赖就绪后推动全部配置刷新,
 //! 如此循环直到配置刷新完成。刷新时间非 0 说明该数据已经同步过一次, 因此直接放行。
+//!
+//! 迁移后首次运行时内置规则也尚未登记, 等待期间一并登记并推入下载。
 
 use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::{Result, anyhow, bail};
 use lib_db::DbContext;
-use log::{debug, info};
+use log::{debug, error, info};
 use service_core::service::config_service::ConfigService;
 use service_core::service::rule_service::RuleService;
 use service_core::service::subscribe_service::SubscribeService;
 use types_core::entity::config::Config;
 
 use crate::config::ConfigBiz;
+use crate::inner_rule;
 use crate::kernel::{SingBoxInstance, Status};
 use crate::rule_sync::RuleSync;
 use crate::subscribe_sync::SubscribeSync;
@@ -31,6 +34,8 @@ const STEP: Duration = Duration::from_millis(300);
 /// 这类配置生成不出内核配置, 启动内核只会失败。
 pub async fn wait_ready(context: &Arc<DbContext>, id: i64) -> Result<bool> {
     let mut stage = None;
+    // 内置规则只登记一次, 避免轮询期间反复写库
+    let mut registered = false;
     loop {
         // 等待期间用户手动启动内核时不再插手, 避免与手动操作抢占启停
         if SingBoxInstance::instance().status() != Status::Stopped {
@@ -38,11 +43,22 @@ pub async fn wait_ready(context: &Arc<DbContext>, id: i64) -> Result<bool> {
         }
 
         let config = find(context, id).await?;
+        // 自启动配置的 refresh_time = 0 只有从旧版本升级的数据才有
         if config.refresh_time != 0 {
             if stage.is_some() {
                 info!("[启动] 配置「{}」已刷新完成", config.name);
             }
             return Ok(true);
+        }
+
+        // 迁移后首次运行时内置规则还没登记, 只在本轮补齐一次并推入下载,
+        // 否则配置生成后内核会引用不存在的本地规则集
+        if !registered {
+            registered = true;
+            if let Err(error) = inner_rule::register_all(context).await {
+                error!("[启动] 登记内置规则失败! {error:#}");
+                return Err(error);
+            }
         }
 
         let dependencies = dependencies(context, &config).await?;
