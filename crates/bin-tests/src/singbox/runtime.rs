@@ -14,7 +14,7 @@ use anyhow::{Context, Result};
 use lib_converter::constants::TAG_SELECTOR;
 use serde_json::Value;
 
-use crate::pipeline::Scenario;
+use super::pipeline::Scenario;
 
 /// 入口类型: 混合入口同时接受 socks5 与 http。
 const INBOUND_MIXED: &str = "mixed";

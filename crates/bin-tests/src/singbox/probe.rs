@@ -20,7 +20,7 @@ pub async fn head(proxy: &str) -> Result<()> {
     }
 
     log::info!(
-        "代理 {proxy} 访问 {TARGET} 成功, 状态码: {}",
+        "[singbox] 代理 {proxy} 访问 {TARGET} 成功, 状态码: {}",
         response.status
     );
     Ok(())

@@ -4,7 +4,7 @@ use std::path::Path;
 use anyhow::{Context, Result};
 use lib_converter::{PlatformConfig, Rule, RuleType};
 
-use crate::pipeline::Scenario;
+use super::pipeline::Scenario;
 
 /// 规则集目录名, 位于用例的工作目录下。
 const RULE_DIR: &str = "rules";

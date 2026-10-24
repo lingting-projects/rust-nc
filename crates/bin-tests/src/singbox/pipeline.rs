@@ -2,10 +2,10 @@ use anyhow::{Context, Result};
 use lib_converter::{Platform, PlatformConfig, clash_to, pure_to};
 use lib_pick::{KEY_TYPE, PickNodes, PickRemote, pick};
 
-use crate::kernel::Kernel;
-use crate::runtime::Runtime;
+use super::kernel::Kernel;
+use super::runtime::Runtime;
+use super::verify;
 use crate::source::Source;
-use crate::verify;
 
 /// 单个源的生成链路: 提取 -> 转换 -> 结构校验 -> 内核校验。
 pub struct Pipeline<'a> {
@@ -86,7 +86,7 @@ impl<'a> Pipeline<'a> {
             configs.push(Config { scenario, body });
         }
 
-        log::info!("[{}] 生成链路校验通过", source.name);
+        log::info!("[singbox] [{}] 生成链路校验通过", source.name);
         Ok(Self {
             source,
             remote,

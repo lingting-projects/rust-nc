@@ -1,17 +1,17 @@
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::time::Duration;
 
 use anyhow::{Context, Result, bail};
 use lib_converter::PlatformConfig;
 use lib_singbox::{BIN_NAME, SingBox};
 
-use crate::pipeline::Scenario;
-use crate::rules;
-use crate::runtime::Runtime;
+use super::pipeline::Scenario;
+use super::rules;
+use super::runtime::Runtime;
 
 /// 测试产物根目录名, 位于 `target/{profile}` 下。
-const WORK_DIR: &str = "test-singbox";
+const WORK_DIR: &str = "bin-tests";
 
 /// 等待内核 API 就绪的超时。
 ///
@@ -82,21 +82,14 @@ impl Kernel {
     }
 }
 
-/// 当前测试可执行文件所在的 profile 目录, 即 `target/{profile}`。
-///
-/// 构建脚本已把内核复制到该目录, 集成测试位于 `deps` 子目录下。
+/// 当前测试可执行文件所在的 profile 目录, 并校验内核已就位。
 fn profile_dir() -> Result<PathBuf> {
-    let exe = std::env::current_exe().context("获取当前可执行文件失败")?;
-    let dir = exe.parent().context("未找到当前可执行文件所在目录")?;
-    let dir = match dir.file_name().is_some_and(|name| name == "deps") {
-        true => dir.parent().context("未找到 target profile 目录")?,
-        false => dir,
-    };
+    let dir = crate::target::profile_dir()?;
 
     let bin = dir.join(BIN_NAME);
     if !bin.exists() {
         bail!("未找到 sing-box 内核: {}", bin.display());
     }
 
-    Ok(dir.to_path_buf())
+    Ok(dir)
 }

@@ -82,6 +82,8 @@ pub(crate) async fn head(client: &Client, request: FetchRequest) -> Result<Fetch
 /// 以 GET 请求取得响应体流。
 ///
 /// 响应体不做整体收集，由调用方逐块消费，因此大文件不会一次性进内存。
+/// wasm 目标不支持 `bytes_stream`, 只有下载会用到流式响应, 因此一并排除。
+#[cfg(not(target_arch = "wasm32"))]
 pub(crate) async fn get_stream(client: &Client, request: FetchRequest) -> Result<FetchStream> {
     let builder = client.get(&request.url).headers(headers(&request.headers));
     let response = builder.send().await?;
@@ -102,12 +104,14 @@ pub(crate) async fn get_stream(client: &Client, request: FetchRequest) -> Result
 }
 
 /// 流式响应：状态码、响应头与逐块到达的响应体。
+#[cfg(not(target_arch = "wasm32"))]
 pub(crate) struct FetchStream {
     status: u16,
     headers: MultiStringValue,
     body: std::pin::Pin<Box<dyn futures_util::Stream<Item = reqwest::Result<Bytes>> + Send>>,
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl FetchStream {
     /// 是否请求成功。
     pub(crate) fn is_success(&self) -> bool {

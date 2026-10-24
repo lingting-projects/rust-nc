@@ -4,7 +4,7 @@ use anyhow::{Context, Result, bail};
 use lib_pick::PickNodes;
 use serde_json::Value;
 
-use crate::pipeline::Scenario;
+use super::pipeline::Scenario;
 
 /// 出口类型: 节点选择组。
 const TYPE_SELECTOR: &str = "selector";

@@ -1,5 +1,5 @@
 [package]
-name = "test-singbox"
+name = "bin-tests"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -16,7 +16,10 @@ lib-pick = { workspace = true }
 lib-singbox = { workspace = true }
 
 anyhow = { workspace = true }
+form_urlencoded = { workspace = true }
+futures-util = { workspace = true }
 log = { workspace = true }
 serde_json = { workspace = true }
+serde_yaml = { workspace = true }
 simple_logger = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

@@ -23,10 +23,11 @@ lib-core = { workspace = true }
 bytes = { workspace = true }
 form_urlencoded = { workspace = true }
 futures-util = { workspace = true }
-tokio = { workspace = true, features = ["fs", "io-util"] }
 reqwest = { workspace = true, optional = true, features = ["gzip", "brotli", "zstd", "deflate", "socks"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+# 下载使用 tokio 的文件与任务能力, wasm 下只支持 sync/macros/io-util/rt/time
+tokio = { workspace = true, features = ["fs", "io-util"] }
 wreq = { workspace = true, optional = true, features = [
     "gzip",
     "brotli",

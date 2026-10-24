@@ -6,9 +6,11 @@ build/
 
 .plan/
 
-# sing-box 测试订阅源, 只保留占位文件
-crates/test-singbox/assets/source/*
-!crates/test-singbox/assets/source/.gitkeep
+# 集成测试订阅源与订阅地址, 只保留占位文件
+crates/bin-tests/assets/source/*
+!crates/bin-tests/assets/source/.gitkeep
+crates/bin-tests/assets/sub.json
+!crates/bin-tests/assets/sub.example.json
 
 ### IntelliJ IDEA ###
 .idea/

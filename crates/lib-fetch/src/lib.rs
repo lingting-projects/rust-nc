@@ -6,6 +6,7 @@
 //! 后端在 `wreq`、`reqwest`、无后端三者中按特性择一，调用方不感知差异。
 
 mod client;
+#[cfg(not(target_arch = "wasm32"))]
 mod download;
 #[cfg(all(
     not(any(feature = "wreq", feature = "reqwest")),
@@ -41,6 +42,7 @@ use reqwest_backend as backend;
 use wreq_backend as backend;
 
 pub use client::{FetchClient, UA};
+#[cfg(not(target_arch = "wasm32"))]
 pub use download::{DEFAULT_THREADS, DownloadOutcome, RemoteProbe};
 pub use request::{FetchRequest, HEADER_UA};
 pub use response::FetchResponse;
