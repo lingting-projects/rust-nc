@@ -18,13 +18,15 @@ use crate::utils::format;
 const NAME_WIDTH: Rems = rems(20.);
 const TRAFFIC_WIDTH: Rems = rems(10.);
 const EXPIRE_WIDTH: Rems = rems(10.);
+const REFRESH_WIDTH: Rems = rems(8.);
 const ACTION_WIDTH: Rems = rems(9.);
 
 /// 列定义：键、表头文案、宽度。
-const COLUMNS: [(&str, &str, Rems); 4] = [
+const COLUMNS: [(&str, &str, Rems); 5] = [
     ("name", "名称", NAME_WIDTH),
     ("traffic", "剩余流量", TRAFFIC_WIDTH),
     ("expire", "有效期", EXPIRE_WIDTH),
+    ("refresh", "上次更新", REFRESH_WIDTH),
     ("action", "操作", ACTION_WIDTH),
 ];
 
@@ -109,7 +111,7 @@ pub fn matched(items: &[Subscribe], keyword: &str) -> Vec<usize> {
 
 /// 订阅表格的数据与渲染。
 ///
-/// 四列：名称、剩余流量、有效期、操作。
+/// 五列：名称、剩余流量、有效期、上次更新、操作。
 /// 委托只持有数据与过滤结果的共享引用，由页面在渲染时同步；
 /// 页面是数据的唯一来源，表格不单独维护一份可变副本。
 pub struct SubscribeTable {
@@ -268,6 +270,9 @@ impl TableDelegate for SubscribeTable {
                 .into_any_element(),
             2 => div()
                 .child(format::until(item.expire_time))
+                .into_any_element(),
+            3 => div()
+                .child(format::since(item.refresh_time))
                 .into_any_element(),
             _ => self.action(item, cx),
         }
