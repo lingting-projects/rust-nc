@@ -5,7 +5,6 @@ use anyhow::Result;
 use bytes::Bytes;
 use futures_util::StreamExt as _;
 use lib_core::MultiStringValue;
-use wreq::Client;
 use wreq::header::HeaderMap;
 use wreq::redirect::Policy;
 use wreq_util::{Emulation, Platform, Profile};
@@ -26,8 +25,18 @@ const PROFILE: Profile = Profile::Chrome135;
 /// 模拟的操作系统。
 const PLATFORM: Platform = Platform::Windows;
 
-static CLIENT: LazyLock<Client> = LazyLock::new(|| {
-    Client::builder()
+pub(crate) type Client = wreq::Client;
+
+static CLIENT: LazyLock<Client> = LazyLock::new(|| create(None).expect("http client 初始化失败"));
+
+/// 共享的默认客户端, 复用同一连接池。
+pub(crate) fn shared() -> Client {
+    CLIENT.clone()
+}
+
+/// 构建后端客户端, `proxy` 非空时所有请求走该代理。
+pub(crate) fn create(proxy: Option<&str>) -> Result<Client> {
+    let builder = Client::builder()
         .emulation(
             Emulation::builder()
                 .profile(PROFILE)
@@ -42,31 +51,36 @@ static CLIENT: LazyLock<Client> = LazyLock::new(|| {
         .deflate(true)
         // 订阅源经常使用自签名证书
         .tls_cert_verification(false)
-        .tls_verify_hostname(false)
-        .build()
-        .expect("http client 初始化失败")
-});
+        .tls_verify_hostname(false);
+
+    match proxy {
+        Some(proxy) => builder.proxy(wreq::Proxy::all(proxy)?),
+        None => builder,
+    }
+    .build()
+    .map_err(Into::into)
+}
 
 /// 发送 GET 请求。
-pub(crate) async fn get(request: FetchRequest) -> Result<FetchResponse> {
-    send(CLIENT.get(&request.url), &request).await
+pub(crate) async fn get(client: &Client, request: FetchRequest) -> Result<FetchResponse> {
+    send(client.get(&request.url), &request).await
 }
 
 /// 发送 POST 请求。
-pub(crate) async fn post(request: FetchRequest) -> Result<FetchResponse> {
-    send(CLIENT.post(&request.url), &request).await
+pub(crate) async fn post(client: &Client, request: FetchRequest) -> Result<FetchResponse> {
+    send(client.post(&request.url), &request).await
 }
 
 /// 发送 HEAD 请求，只取响应头。
-pub(crate) async fn head(request: FetchRequest) -> Result<FetchResponse> {
-    send(CLIENT.head(&request.url), &request).await
+pub(crate) async fn head(client: &Client, request: FetchRequest) -> Result<FetchResponse> {
+    send(client.head(&request.url), &request).await
 }
 
 /// 以 GET 请求取得响应体流。
 ///
 /// 响应体不做整体收集，由调用方逐块消费，因此大文件不会一次性进内存。
-pub(crate) async fn get_stream(request: FetchRequest) -> Result<FetchStream> {
-    let builder = CLIENT.get(&request.url).headers(headers(&request.headers));
+pub(crate) async fn get_stream(client: &Client, request: FetchRequest) -> Result<FetchStream> {
+    let builder = client.get(&request.url).headers(headers(&request.headers));
     let response = builder.send().await?;
 
     let status = response.status().as_u16();

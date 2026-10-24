@@ -3,7 +3,6 @@ use std::sync::LazyLock;
 use anyhow::Result;
 use bytes::Bytes;
 use lib_core::MultiStringValue;
-use reqwest::Client;
 use reqwest::header::HeaderMap;
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -24,45 +23,67 @@ const TIMEOUT: Duration = Duration::from_secs(360);
 #[cfg(not(target_arch = "wasm32"))]
 const REDIRECT_LIMIT: usize = 10;
 
-static CLIENT: LazyLock<Client> = LazyLock::new(|| {
+pub(crate) type Client = reqwest::Client;
+
+static CLIENT: LazyLock<Client> = LazyLock::new(|| create(None).expect("http client 初始化失败"));
+
+/// 共享的默认客户端, 复用同一连接池。
+pub(crate) fn shared() -> Client {
+    CLIENT.clone()
+}
+
+/// 构建后端客户端, `proxy` 非空时所有请求走该代理。
+pub(crate) fn create(proxy: Option<&str>) -> Result<Client> {
     // wasm 目标由浏览器负责超时、重定向与解压缩, 仅保留请求头配置
     #[cfg(not(target_arch = "wasm32"))]
-    let builder = Client::builder()
-        .timeout(TIMEOUT)
-        .redirect(Policy::limited(REDIRECT_LIMIT))
-        .gzip(true)
-        .brotli(true)
-        .zstd(true)
-        .deflate(true)
-        // 订阅源经常使用自签名证书
-        .danger_accept_invalid_certs(true);
+    let builder = {
+        let builder = Client::builder()
+            .timeout(TIMEOUT)
+            .redirect(Policy::limited(REDIRECT_LIMIT))
+            .gzip(true)
+            .brotli(true)
+            .zstd(true)
+            .deflate(true)
+            // 订阅源经常使用自签名证书
+            .danger_accept_invalid_certs(true);
+
+        match proxy {
+            Some(proxy) => builder.proxy(reqwest::Proxy::all(proxy)?),
+            None => builder,
+        }
+    };
 
     #[cfg(target_arch = "wasm32")]
-    let builder = Client::builder();
+    let builder = {
+        if proxy.is_some() {
+            anyhow::bail!("wasm 目标不支持指定代理");
+        }
+        Client::builder()
+    };
 
-    builder.build().expect("http client 初始化失败")
-});
+    builder.build().map_err(Into::into)
+}
 
 /// 发送 GET 请求。
-pub(crate) async fn get(request: FetchRequest) -> Result<FetchResponse> {
-    send(CLIENT.get(&request.url), &request).await
+pub(crate) async fn get(client: &Client, request: FetchRequest) -> Result<FetchResponse> {
+    send(client.get(&request.url), &request).await
 }
 
 /// 发送 POST 请求。
-pub(crate) async fn post(request: FetchRequest) -> Result<FetchResponse> {
-    send(CLIENT.post(&request.url), &request).await
+pub(crate) async fn post(client: &Client, request: FetchRequest) -> Result<FetchResponse> {
+    send(client.post(&request.url), &request).await
 }
 
 /// 发送 HEAD 请求，只取响应头。
-pub(crate) async fn head(request: FetchRequest) -> Result<FetchResponse> {
-    send(CLIENT.head(&request.url), &request).await
+pub(crate) async fn head(client: &Client, request: FetchRequest) -> Result<FetchResponse> {
+    send(client.head(&request.url), &request).await
 }
 
 /// 以 GET 请求取得响应体流。
 ///
 /// 响应体不做整体收集，由调用方逐块消费，因此大文件不会一次性进内存。
-pub(crate) async fn get_stream(request: FetchRequest) -> Result<FetchStream> {
-    let builder = CLIENT.get(&request.url).headers(headers(&request.headers));
+pub(crate) async fn get_stream(client: &Client, request: FetchRequest) -> Result<FetchStream> {
+    let builder = client.get(&request.url).headers(headers(&request.headers));
     let response = builder.send().await?;
 
     let status = response.status().as_u16();

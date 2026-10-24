@@ -56,11 +56,13 @@ impl FetchClient {
     /// HEAD 不可用时退回一次 `Range: bytes=0-0` 的 GET，从响应头读同样的信息。
     pub async fn probe(&self, url: &str) -> RemoteProbe {
         let request = with_ua(FetchRequest::new(url));
-        if let Some(probe) = probe_head(&request).await {
+        if let Some(probe) = probe_head(&self.backend, &request).await {
             return probe;
         }
 
-        probe_range(&request).await.unwrap_or_default()
+        probe_range(&self.backend, &request)
+            .await
+            .unwrap_or_default()
     }
 
     /// 下载 `url` 到 `path`，必要时按 `threads` 分片并行。
@@ -92,11 +94,11 @@ impl FetchClient {
         let request = with_ua(FetchRequest::new(url));
         let threads = threads.max(1);
         if !probe.chunkable(threads) {
-            return download_single(request, path).await;
+            return download_single(&self.backend, request, path).await;
         }
 
         let total = probe.length.expect("分片下载要求已知文件大小");
-        download_chunks(request, path, threads, total).await
+        download_chunks(&self.backend, request, path, threads, total).await
     }
 
     /// 用一次 GET 顺序下载，已知 etag 时一并返回。
@@ -112,11 +114,15 @@ impl FetchClient {
 }
 
 /// 单线程顺序下载。
-async fn download_single(request: FetchRequest, path: &Path) -> Result<DownloadOutcome> {
+async fn download_single(
+    client: &backend::Client,
+    request: FetchRequest,
+    path: &Path,
+) -> Result<DownloadOutcome> {
     let mut file = File::create(path)
         .await
         .with_context(|| format!("创建文件失败: {}", path.display()))?;
-    let mut stream = backend::get_stream(request).await?;
+    let mut stream = backend::get_stream(client, request).await?;
     if !stream.is_success() {
         bail!("下载失败，状态码 {}", stream.status());
     }
@@ -132,6 +138,7 @@ async fn download_single(request: FetchRequest, path: &Path) -> Result<DownloadO
 
 /// 按分片并行下载，每块写入文件的对应偏移。
 async fn download_chunks(
+    client: &backend::Client,
     request: FetchRequest,
     path: &Path,
     threads: usize,
@@ -158,8 +165,9 @@ async fn download_chunks(
             .clone()
             .with("range", format!("bytes={start}-{end}"));
         let path = path.to_path_buf();
+        let client = client.clone();
         handles.push(tokio::spawn(async move {
-            download_chunk(request, &path, start, end).await
+            download_chunk(client, request, &path, start, end).await
         }));
     }
 
@@ -175,8 +183,14 @@ async fn download_chunks(
 }
 
 /// 下载一个分片并写入文件的对应偏移。
-async fn download_chunk(request: FetchRequest, path: &Path, start: u64, end: u64) -> Result<u64> {
-    let mut stream = backend::get_stream(request).await?;
+async fn download_chunk(
+    client: backend::Client,
+    request: FetchRequest,
+    path: &Path,
+    start: u64,
+    end: u64,
+) -> Result<u64> {
+    let mut stream = backend::get_stream(&client, request).await?;
     if !stream.is_success() {
         bail!("分片下载失败，状态码 {}", stream.status());
     }
@@ -215,8 +229,8 @@ async fn write_stream(file: &mut File, stream: &mut backend::FetchStream) -> Res
 }
 
 /// 用 HEAD 探测，HEAD 不可用时返回 `None` 交给 Range 探测。
-async fn probe_head(request: &FetchRequest) -> Option<RemoteProbe> {
-    let response = backend::head(request.clone()).await.ok()?;
+async fn probe_head(client: &backend::Client, request: &FetchRequest) -> Option<RemoteProbe> {
+    let response = backend::head(client, request.clone()).await.ok()?;
     if !response.is_success() {
         return None;
     }
@@ -233,9 +247,9 @@ async fn probe_head(request: &FetchRequest) -> Option<RemoteProbe> {
 /// 用一次 `Range: bytes=0-0` 的 GET 探测，从 `Content-Range` 读总大小。
 ///
 /// 服务器忽略 Range 时会返回整个文件，此时仍能按响应头判断大小与是否支持分段。
-async fn probe_range(request: &FetchRequest) -> Option<RemoteProbe> {
+async fn probe_range(client: &backend::Client, request: &FetchRequest) -> Option<RemoteProbe> {
     let request = request.clone().with("range", "bytes=0-0");
-    let stream = backend::get_stream(request).await.ok()?;
+    let stream = backend::get_stream(client, request).await.ok()?;
     if !stream.is_success() {
         return None;
     }
