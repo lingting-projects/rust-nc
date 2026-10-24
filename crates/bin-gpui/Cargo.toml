@@ -19,6 +19,7 @@ gpui-kit = { workspace = true, features = ["gpui-fast"] }
 lingting-gpui-kit = { workspace = true }
 
 anyhow = { workspace = true }
+arc-swap = { workspace = true }
 lib-biz = { workspace = true }
 lib-converter = { workspace = true }
 lib-singbox = { workspace = true }

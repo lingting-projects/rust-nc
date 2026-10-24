@@ -88,6 +88,8 @@ fn main() {
         // 没有托盘的平台不能隐藏，否则没有入口再把窗口叫回来。
         let hidden = tray::SUPPORTED && SettingsHolder::software().minimize;
         let (window, _) = open(cx, routes, hidden).expect("failed to open window");
+        // 窗口状态必须在页面创建之前就位：隐藏启动时页面会直接挂起轮询。
+        utils::window::window_state().set_visible(!hidden);
 
         // 托盘必须在主线程创建：它依赖当前线程的消息循环接收点击与菜单事件。
         let tray_ready = tray::init(cx, window);

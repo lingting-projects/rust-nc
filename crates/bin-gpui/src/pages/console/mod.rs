@@ -3,6 +3,7 @@ mod failure;
 mod monitor;
 mod preview;
 mod toolbar;
+use std::time::Duration;
 
 use gpui_kit::base::{StyledExt as _, h_flex, v_flex};
 use gpui_kit::component::ActiveTheme as _;
@@ -15,6 +16,7 @@ use lib_biz::kernel::Status;
 use lingting_gpui_kit::card::{ItemCard, ItemCardSelectedStyle};
 
 use crate::services::{self, AppServices, ConsoleData, KernelData};
+use crate::utils::window::window_state;
 use monitor::Monitor;
 use toolbar::ConfigOption;
 
@@ -29,6 +31,8 @@ pub(crate) const PADDING: Rems = rems(1.);
 /// 给一个下限，窗口变矮时改为整页滚动，图表本身仍然可读。
 const CHART_MIN_HEIGHT: Rems = rems(12.);
 
+/// 刷新间隔。内核状态与实时监控按此间隔重新采样，窗口隐藏时暂停。
+const REFRESH_INTERVAL: Duration = Duration::from_secs(1);
 /// 实时监控卡片的分区，可独立开关。
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum MonitorSection {
@@ -103,7 +107,7 @@ pub struct Console {
     /// 监控控制栏中被选中的分区，默认全部选中。
     sections: Vec<MonitorSection>,
     monitor: Monitor,
-    /// 每秒推进一次监控数据的任务，页面存活期间一直保留。
+    /// 推进监控数据的任务，页面存活期间一直保留；窗口隐藏时挂起。
     _ticker: Task<()>,
     /// 下拉框的选择事件订阅，页面存活期间一直保留。
     _select_subscription: Subscription,
@@ -114,11 +118,9 @@ impl Console {
         let monitor = Monitor::new();
         let ticker = cx.spawn(async move |this, cx| {
             loop {
-                cx.background_executor()
-                    .timer(std::time::Duration::from_secs(1))
-                    .await;
+                window_state().tick(cx, REFRESH_INTERVAL).await;
 
-                // 每秒同步一次内核状态：内核可能自行退出，状态变化后界面跟随。
+                // 每拍同步一次内核状态：内核可能自行退出，状态变化后界面跟随。
                 let Some((services, running)) = this
                     .update(cx, |console, cx| {
                         let changed = console.sync_kernel();

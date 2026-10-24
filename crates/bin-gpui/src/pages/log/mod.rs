@@ -25,13 +25,14 @@ use lingting_gpui_kit::virtual_card::VirtualCard;
 
 use crate::blocks::KernelOffline;
 use crate::services;
-
+use crate::utils::window::window_state;
 use filter::LevelOption;
 
 /// 页面内各卡片的内边距。
 pub(crate) const PADDING: Rems = rems(1.);
 
 /// 刷新间隔。读取线程按更短的间隔读文件，界面每秒取一次快照即可。
+/// 窗口隐藏时轮询挂起，恢复可见后立即刷新一次。
 const REFRESH_INTERVAL: Duration = Duration::from_secs(1);
 
 /// 日志页面：上方筛选栏，下方日志块列表。
@@ -57,7 +58,7 @@ pub struct LogPage {
     _query_subscription: Subscription,
     /// 等级下拉框的选择订阅。
     _select_subscription: Subscription,
-    /// 每秒取一次快照的任务，页面存活期间一直保留。
+    /// 按间隔取快照的任务，页面存活期间一直保留；窗口隐藏时挂起。
     _ticker: Task<()>,
 }
 
@@ -89,7 +90,7 @@ impl LogPage {
             _select_subscription: select_subscription,
             _ticker: cx.spawn(async move |this, cx| {
                 loop {
-                    cx.background_executor().timer(REFRESH_INTERVAL).await;
+                    window_state().tick(cx, REFRESH_INTERVAL).await;
                     if this.update(cx, |page, cx| page.poll(cx)).is_err() {
                         return;
                     }

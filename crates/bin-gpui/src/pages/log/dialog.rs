@@ -20,6 +20,7 @@ use lingting_gpui_kit::ex_dialog::ExDialog;
 use lib_singbox::LogBlock;
 
 use crate::services;
+use crate::utils::window::window_state;
 
 /// 详情弹窗宽度。
 const DIALOG_WIDTH: Rems = rems(48.);
@@ -79,7 +80,7 @@ impl Detail {
             let read = read.clone();
             async move |cx| {
                 loop {
-                    cx.background_executor().timer(PROGRESS_INTERVAL).await;
+                    window_state().tick(cx, PROGRESS_INTERVAL).await;
                     // 读取结束或实体已被释放时停止轮询
                     let alive = detail.update(cx, |detail, cx| {
                         let State::Loading { read: current, .. } = &mut detail.state else {

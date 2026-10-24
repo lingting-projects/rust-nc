@@ -15,12 +15,14 @@ use lib_biz::kernel::{SingBoxInstance, Status};
 
 use crate::blocks::KernelOffline;
 use crate::services::{self, AppServices, GroupInfo, GroupNode};
+use crate::utils::window::window_state;
 use delay::Delay;
 
 /// 页面内各卡片的内边距，左栏标题区与右栏搜索区共用，保证留白一致。
 pub(crate) const PADDING: Rems = rems(1.);
 
 /// 自动刷新间隔。测速结果由内核异步推送，界面按固定间隔重新读取分组即可跟上。
+/// 窗口隐藏时轮询挂起，恢复可见后立即刷新一次。
 const REFRESH_INTERVAL: Duration = Duration::from_secs(1);
 
 /// 页面的加载状态：读取中、已就绪或失败原因。
@@ -52,7 +54,7 @@ pub struct NodePage {
     refreshing: bool,
     /// 正在测速的分组标签，按钮据此保持加载态。
     testing: HashSet<String>,
-    /// 每秒重新读取分组、同步内核状态的任务，页面存活期间一直保留。
+    /// 按间隔重新读取分组、同步内核状态的任务，页面存活期间一直保留；窗口隐藏时挂起。
     _ticker: Task<()>,
 }
 
@@ -77,7 +79,7 @@ impl NodePage {
             testing: HashSet::new(),
             _ticker: cx.spawn(async move |this, cx| {
                 loop {
-                    cx.background_executor().timer(REFRESH_INTERVAL).await;
+                    window_state().tick(cx, REFRESH_INTERVAL).await;
                     if this.update(cx, |page, cx| page.refresh(cx)).is_err() {
                         return;
                     }

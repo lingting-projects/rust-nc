@@ -20,6 +20,7 @@ use lingting_gpui_kit::card::Card;
 
 use crate::blocks::KernelOffline;
 use crate::services;
+use crate::utils::window::window_state;
 
 use filter::Status as FilterStatus;
 use table::ConnectionTable;
@@ -28,6 +29,7 @@ use table::ConnectionTable;
 pub(crate) const PADDING: Rems = rems(1.);
 
 /// 刷新间隔。连接数据由内核推送并保存在 `lib-singbox`，界面按固定间隔取一次快照即可。
+/// 窗口隐藏时轮询挂起，恢复可见后立即刷新一次。
 const REFRESH_INTERVAL: Duration = Duration::from_secs(1);
 
 /// 页面的加载状态：读取中、已就绪或失败原因。
@@ -60,7 +62,7 @@ pub struct ConnectionPage {
     table: Entity<TableState<ConnectionTable>>,
     /// 搜索框的输入订阅，页面存活期间一直保留。
     _query_subscription: Subscription,
-    /// 每秒取一次快照的任务，页面存活期间一直保留。
+    /// 按间隔取快照的任务，页面存活期间一直保留；窗口隐藏时挂起。
     _ticker: Task<()>,
 }
 
@@ -83,7 +85,7 @@ impl ConnectionPage {
             _query_subscription: query_subscription,
             _ticker: cx.spawn(async move |this, cx| {
                 loop {
-                    cx.background_executor().timer(REFRESH_INTERVAL).await;
+                    window_state().tick(cx, REFRESH_INTERVAL).await;
                     if this.update(cx, |page, cx| page.poll(cx)).is_err() {
                         return;
                     }

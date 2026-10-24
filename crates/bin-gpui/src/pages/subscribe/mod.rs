@@ -15,6 +15,7 @@ use lingting_gpui_kit::card::Card;
 
 use crate::services::{self, AppServices};
 use crate::utils::refresh::{Refresher, TICK};
+use crate::utils::window::window_state;
 use table::SubscribeTable;
 use types_core::dto::subscribe::SubscribeUpsertDTO;
 use types_core::entity::subscribe::Subscribe;
@@ -328,7 +329,7 @@ impl SubscribePage {
         self._ticker = None;
         self._ticker = Some(cx.spawn(async move |this, cx| {
             loop {
-                cx.background_executor().timer(TICK).await;
+                window_state().tick(cx, TICK).await;
 
                 let alive = this
                     .update(cx, |page, cx| {

@@ -692,6 +692,7 @@ name = "bin-gpui"
 version = "26.10.0"
 dependencies = [
  "anyhow",
+ "arc-swap",
  "embed-resource",
  "gpui-kit",
  "lib-biz",

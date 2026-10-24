@@ -13,6 +13,8 @@ use winapi::shared::windef::HWND;
 #[cfg(target_os = "windows")]
 use winapi::um::winuser::{SW_HIDE, SW_SHOWNORMAL, ShowWindow};
 
+use crate::utils::window::window_state;
+
 /// 显示并前置窗口。
 pub fn show(cx: &mut App, window: AnyWindowHandle) {
     update(cx, window, show_now);
@@ -29,6 +31,8 @@ pub fn show_now(window: &mut Window, cx: &mut App) {
     // 隐藏态下 `activate_window` 只会激活一个看不见的窗口，所以顺序是先恢复再前置。
     window.activate_window();
     cx.activate(true);
+    // 先让窗口真正回到眼前再置位：轮询恢复后会立刻刷新一次，此时窗口已经可见
+    window_state().set_visible(true);
 }
 
 /// 在当前窗口上隐藏。
@@ -41,6 +45,8 @@ pub fn hide_now(window: &mut Window) {
     }
     #[cfg(not(target_os = "windows"))]
     window.minimize_window();
+    // 窗口已经不可见，挂起所有页面轮询：托盘常驻期间不再有定时器唤醒
+    window_state().set_visible(false);
 }
 
 /// 在窗口的上下文里执行 `f`，窗口已关闭时只记录日志。
