@@ -19,6 +19,10 @@ pub(super) fn spawn(bin: &str, config_path: &Path, work_dir: &Path) -> Result<Pr
         .to_str()
         .with_context(|| format!("工作目录非 UTF-8: {}", work_dir.display()))?;
 
+    log::info!(
+        "[内核] 启动进程: bin={bin}, config={config}, work={work}, 管理员权限={:?}",
+        lib_system::is_elevated()
+    );
     // 三个日志文件都在工作目录下, 每次启动都重新创建, 只保留本次启动的内容
     truncate(work_dir, lib_core::constants::KERNEL_LOG_FILE)?;
     let out = log_file(work_dir, lib_core::constants::KERNEL_STDOUT_FILE)?;
@@ -43,7 +47,16 @@ pub(super) fn spawn(bin: &str, config_path: &Path, work_dir: &Path) -> Result<Pr
         .stdout(out)
         .stderr(err);
 
-    Process::new(cmd)
+    match Process::new(cmd) {
+        Ok(process) => {
+            log::info!("[内核] 进程已创建");
+            Ok(process)
+        }
+        Err(error) => {
+            log::error!("[内核] 创建进程失败: {error:#}");
+            Err(error)
+        }
+    }
 }
 
 /// 进程异常时补充内核日志中的原始错误。

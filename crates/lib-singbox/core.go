@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"runtime/debug"
 	"sync/atomic"
 	"syscall"
@@ -98,6 +99,34 @@ func setLog(color bool) {
 	log.SetStdLogger(factory.Logger())
 }
 
+// 启动阶段卡住时的告警阈值。
+//
+// 正常启动在一秒内完成, 超过该阈值说明某个组件阻塞在内核内部;
+// 此时只有协程栈能说明卡在哪一步, 因此把全部协程栈打进日志。
+const stageTimeout = 20 * time.Second
+
+// stageWatch 标记一个启动阶段的开始, 返回结束函数。
+//
+// 阶段超时仍未结束时打印全部协程栈, 便于定位内核内部卡住的组件;
+// 该协程在阶段结束后退出, 不会泄漏。
+func stageWatch(name string) func() {
+	start := time.Now()
+	done := make(chan struct{})
+	go func() {
+		select {
+		case <-done:
+		case <-time.After(stageTimeout):
+			buf := make([]byte, 1<<20)
+			buf = buf[:runtime.Stack(buf, true)]
+			log.Error("启动阶段阻塞超过 ", stageTimeout, ": ", name, ", 全部协程栈:\n", string(buf))
+		}
+	}()
+	return func() {
+		close(done)
+		log.Debug("启动阶段完成: ", name, ", 耗时: ", time.Since(start))
+	}
+}
+
 func readConfig(ctx context.Context, path string) (option.Options, error) {
 	log.Debug("读取配置文件: ", path)
 	// 读取配置文件
@@ -106,6 +135,7 @@ func readConfig(ctx context.Context, path string) (option.Options, error) {
 		log.Error("读取配置文件失败: ", err)
 		return option.Options{}, err
 	}
+	log.Debug("配置文件读取完成, 大小: ", len(config))
 
 	options, err := json.UnmarshalExtendedContext[option.Options](ctx, config)
 
@@ -113,11 +143,13 @@ func readConfig(ctx context.Context, path string) (option.Options, error) {
 		log.Error("配置文件解析异常: ", err)
 		return option.Options{}, err
 	}
+	log.Debug("配置文件解析完成, 出口数量: ", len(options.Outbounds), ", 入口数量: ", len(options.Inbounds))
 
 	return options, nil
 }
 
 func create(configPath string, workDir string) (context.CancelFunc, *box.Box, error) {
+	log.Debug("初始化内核上下文")
 	// 1.14 起 box.Context 还需要证书提供者注册表，include.Context 已统一封装全部注册表
 	_ctx := include.Context(context.Background())
 	ctx, cancel := context.WithCancel(_ctx)
@@ -151,7 +183,15 @@ func create(configPath string, workDir string) (context.CancelFunc, *box.Box, er
 		Context: ctx,
 		Options: options,
 	}
+	// box.New 内部会创建日志工厂、缓存文件、路由与全部入口出口,
+	// 卡住时日志停在上一行, 因此用阶段看门狗在超时后打印协程栈
+	done := stageWatch("box.New")
 	instance, err := box.New(boxOptions)
+	done()
+	if err != nil {
+		log.Error("内核实例创建失败: ", err)
+		return cancel, instance, err
+	}
 
 	return cancel, instance, err
 }
@@ -215,6 +255,7 @@ func Start(configPath string, workDir string, pid int, reload string) (SingBoxEr
 
 	for {
 		debug.FreeOSMemory()
+		log.Info("开始创建内核实例, 配置文件: ", configPath, ", 工作目录: ", workDir)
 		_c, _i, _e := create(configPath, workDir)
 
 		if _e != nil {
@@ -233,7 +274,9 @@ func Start(configPath string, workDir string, pid int, reload string) (SingBoxEr
 			}
 			cancel = _c
 			instance = _i
+			done := stageWatch("instance.Start")
 			err := instance.Start()
+			done()
 			if err != nil {
 				log.Error("实例启动异常: ", err)
 				return StartError, err

@@ -68,6 +68,7 @@ fn start(shared: &Arc<Shared>, bin: &str, config: PathBuf, work: PathBuf) {
                 .logs
                 .subscribe(Some(work.join(lib_core::constants::KERNEL_LOG_FILE)));
 
+            log::info!("[内核] 进程已创建, 阶段转为启动中");
             shared.set_phase(Phase::Starting, None);
         }
         Err(error) => {

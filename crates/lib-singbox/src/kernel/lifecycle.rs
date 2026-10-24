@@ -129,6 +129,13 @@ impl SingBox {
     pub async fn wait_ready(&self, timeout: Duration) -> Result<()> {
         let start = Instant::now();
         let mut last: Option<anyhow::Error> = None;
+        // 探测失败的内核只在界面上体现为超时, 因此把每次探测的失败原因与阶段记进日志
+        let mut probe = 0u64;
+        log::info!(
+            "[内核] 等待 API 就绪, 地址: {}, 超时: {:?}",
+            self.shared.api.load(),
+            timeout
+        );
 
         loop {
             match self.phase() {
@@ -137,18 +144,26 @@ impl SingBox {
                     let reason = self
                         .reason()
                         .unwrap_or_else(|| "内核进程已退出".to_string());
+                    log::error!("[内核] 启动期间进程已停止: {reason}");
                     bail!("内核启动失败: {reason}");
                 }
                 // 进程已创建（或已验证就绪），探测一次 API
                 Phase::Starting | Phase::Running => {
                     if let Some(grpc) = self.grpc()? {
+                        probe += 1;
                         match grpc.version().await {
                             Ok(version) => {
                                 log::info!("内核 API 就绪, 版本: {}", version.version);
                                 self.shared.set_phase(Phase::Running, None);
                                 return Ok(());
                             }
-                            Err(error) => last = Some(error),
+                            Err(error) => {
+                                // 首次探测必然失败, 每 5 次(约 1 秒)记录一次即可
+                                if probe == 1 || probe % 5 == 0 {
+                                    log::debug!("[内核] API 探测失败, 第 {probe} 次: {error:#}");
+                                }
+                                last = Some(error);
+                            }
                         }
                     }
                 }
@@ -161,6 +176,10 @@ impl SingBox {
                     Some(error) => format!("{error:#}"),
                     None => "内核 API 未响应".to_string(),
                 };
+                log::error!(
+                    "[内核] 等待 API 就绪超时, 探测次数: {probe}, 阶段: {:?}, 原因: {reason}",
+                    self.phase()
+                );
                 bail!("等待内核 API 就绪超时: {reason}");
             }
 
