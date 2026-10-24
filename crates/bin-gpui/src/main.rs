@@ -84,13 +84,17 @@ fn main() {
 
         let routes = routes();
         init_router(cx, DEFAULT_PATH, &routes);
-        let (window, _) = open(cx, routes).expect("failed to open window");
+        // 「最小化启动」时窗口直接以隐藏状态创建：先显示再收起会闪一下。
+        // 没有托盘的平台不能隐藏，否则没有入口再把窗口叫回来。
+        let hidden = tray::SUPPORTED && SettingsHolder::software().minimize;
+        let (window, _) = open(cx, routes, hidden).expect("failed to open window");
 
         // 托盘必须在主线程创建：它依赖当前线程的消息循环接收点击与菜单事件。
-        tray::init(cx, window);
-        // 「最小化启动」时窗口创建后立即收起，只留托盘入口。
-        if SettingsHolder::software().minimize {
-            tray::hide(cx, window);
+        let tray_ready = tray::init(cx, window);
+        // 托盘没建起来就没有唤回入口，隐藏的窗口必须显示出来，否则应用等于不见了。
+        if hidden && !tray_ready {
+            log::error!("[启动] 托盘不可用，取消最小化启动");
+            tray::show(cx, window);
         }
 
         // 锁与窗口绑定：后续实例的唤醒信号由界面线程转成窗口前置。
@@ -122,13 +126,19 @@ fn routes() -> Vec<RouteDefinition> {
 }
 
 /// 打开应用窗口。
+///
+/// `hidden` 为真时窗口以隐藏状态创建，从不显示，因此不会闪一下；
+/// 之后由托盘入口把窗口叫回来。
 fn open(
     cx: &mut App,
     routes: Vec<RouteDefinition>,
+    hidden: bool,
 ) -> Result<(AnyWindowHandle, Entity<DesktopSidebarLayout>)> {
     // 窗口尺寸、居中与自绘标题栏所需的设置都取构建器的默认值。
-    let options = WindowOptionsBuilder::new().title(APP_TITLE).build();
-
+    let mut options = WindowOptionsBuilder::new().title(APP_TITLE).build();
+    // 构建器没有对应方法，这里直接改选项：为 `false` 时窗口创建时不调用
+    // `SetWindowPlacement`，只在内部记下初始位置，之后第一次显示才真正摆好。
+    options.show = !hidden;
     open_window(options, cx, |_, cx| {
         cx.new(|cx| {
             DesktopSidebarLayout::new(cx)

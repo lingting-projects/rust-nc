@@ -15,7 +15,7 @@ mod menu;
 mod window;
 
 #[cfg(target_os = "windows")]
-pub use self::imp::{hide, init, refresh, refresh_kernel, show};
+pub use self::imp::{init, refresh, refresh_kernel, show};
 
 use gpui_kit::AnyWindowHandle;
 
@@ -48,19 +48,16 @@ pub fn close_action() -> CloseAction {
 mod imp {
     use gpui_kit::{AnyWindowHandle, App};
 
-    /// 当前平台没有托盘，直接返回。
-    pub fn init(_: &mut App, _: AnyWindowHandle) {}
+    /// 当前平台没有托盘，返回「没有托盘入口」。
+    pub fn init(_: &mut App, _: AnyWindowHandle) -> bool {
+        false
+    }
 
     /// 当前平台没有托盘，不需要刷新菜单。
     pub fn refresh_kernel(_: &mut App, _: bool, _: bool) {}
 
     /// 当前平台没有托盘，没有需要刷新的菜单。
     pub fn refresh(_: &mut App) {}
-
-    /// 当前平台没有托盘，隐藏窗口就是普通的窗口隐藏。
-    pub fn hide(cx: &mut App, window: AnyWindowHandle) {
-        super::window::hide(cx, window);
-    }
 
     /// 当前平台没有托盘，显示窗口就是普通的窗口前置。
     pub fn show(cx: &mut App, window: AnyWindowHandle) {
@@ -112,8 +109,9 @@ mod imp {
 
     /// 创建托盘图标并开始消费它的事件。
     ///
-    /// 图标或菜单创建失败时只记录日志：界面本身仍可用，只是没有托盘入口。
-    pub fn init(cx: &mut App, window: AnyWindowHandle) {
+    /// 图标或菜单创建失败时只记录日志并返回 `false`：界面本身仍可用，只是没有托盘入口。
+    /// 调用方据此决定能不能把主窗口收起来——没有托盘就没有入口再把窗口叫回来。
+    pub fn init(cx: &mut App, window: AnyWindowHandle) -> bool {
         let (events, receiver) = unbounded_channel::<Event>();
 
         let tray_events = events.clone();
@@ -146,7 +144,7 @@ mod imp {
             Ok(icon) => icon,
             Err(error) => {
                 log::error!("[托盘] 创建托盘图标失败: {error:#}");
-                return;
+                return false;
             }
         };
 
@@ -160,6 +158,7 @@ mod imp {
         close::install(cx, window);
         listen(cx, window, receiver);
         kernel::refresh(cx);
+        true
     }
 
     /// 按内核的当前状态刷新菜单项。
@@ -172,11 +171,6 @@ mod imp {
         if let Some(tray) = cx.try_global::<Tray>() {
             tray.menu.refresh_kernel(running, enabled);
         }
-    }
-
-    /// 隐藏窗口。
-    pub fn hide(cx: &mut App, window: AnyWindowHandle) {
-        window::hide(cx, window);
     }
 
     /// 显示并前置主窗口。

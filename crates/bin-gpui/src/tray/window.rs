@@ -18,11 +18,6 @@ pub fn show(cx: &mut App, window: AnyWindowHandle) {
     update(cx, window, show_now);
 }
 
-/// 隐藏窗口。
-pub fn hide(cx: &mut App, window: AnyWindowHandle) {
-    update(cx, window, |window, _| hide_now(window));
-}
-
 /// 在当前窗口上显示并前置。
 ///
 /// 供已经在窗口上下文里的调用方使用：关闭回调里不能再对同一个窗口发起一次更新。
