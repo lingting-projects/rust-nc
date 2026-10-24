@@ -76,6 +76,10 @@ fn main() {
     application().with_assets(AppAssets::new()).run(|cx| {
         init(cx);
         services::init(cx);
+        // 内核不依赖界面：数据层就绪后立即按设置自动运行，不等窗口创建。
+        if let Some(services) = services::ready(cx) {
+            services::auto_run(&services);
+        }
         theme::apply(cx);
 
         let routes = routes();
@@ -84,8 +88,6 @@ fn main() {
 
         // 托盘必须在主线程创建：它依赖当前线程的消息循环接收点击与菜单事件。
         tray::init(cx, window);
-        // 「自动运行」时启动上次选中的配置，内核状态变化后控制台与托盘会自行刷新。
-        services::auto_run(cx);
         // 「最小化启动」时窗口创建后立即收起，只留托盘入口。
         if SettingsHolder::software().minimize {
             tray::hide(cx, window);

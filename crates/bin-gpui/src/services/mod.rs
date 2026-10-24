@@ -126,11 +126,9 @@ pub fn ready(cx: &App) -> Option<Arc<Services>> {
 /// 按设置自动运行上次选中的配置。
 ///
 /// 由启动流程调用一次：关闭了自动运行、没有选中配置或内核已在运行时都不做事。
-/// 启动本身异步完成，这里只负责派生任务，失败原因写日志，不打断启动。
-pub fn auto_run(cx: &App) {
-    let Some(services) = ready(cx) else {
-        return;
-    };
+/// 内核不依赖界面，因此这一步在创建窗口之前执行，只把启动任务交给数据层运行时；
+/// 启动失败原因写日志，不打断启动，界面与托盘各自从内核实例读状态。
+pub fn auto_run(services: &Arc<Services>) {
     let setting = SettingsHolder::kernel();
     if !setting.auto_run {
         return;
@@ -144,13 +142,12 @@ pub fn auto_run(cx: &App) {
     }
 
     let runner = services.clone();
-    cx.spawn(async move |_| {
-        let task = services.spawn(async move { runner.start_kernel(&id).await });
-        if let Ok(Err(error)) = task.await {
+    // 任务句柄丢弃即分离，启动照常进行到底，不需要界面任务来驱动
+    services.spawn(async move {
+        if let Err(error) = runner.start_kernel(&id).await {
             log::error!("[启动] 自动运行选中配置失败: {error:#}");
         }
-    })
-    .detach();
+    });
 }
 
 /// 打开数据库并建好运行时。
