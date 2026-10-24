@@ -12,7 +12,7 @@ const FIELDS: &str = "`id`,`name`,`tun`,`fake_ip`,`ipv6`,`subscribe_id`,`geo_cn`
     `rule_direct_ids`,`rule_proxy_ids`,`rule_reject_ids`,\
     `include_area_non`,`include_area`,`include_name_contains`,\
     `exclude_area`,`exclude_name_contains`,\
-    `interval`,`refresh_time`,`update_time`,`create_time`";
+    `refresh_time`,`update_time`,`create_time`";
 
 /// 查询全部配置。
 pub(crate) async fn all(pool: &DbPool) -> Result<Vec<Config>> {
@@ -61,16 +61,6 @@ pub(crate) async fn find(pool: &DbPool, id: i64) -> Result<Option<Config>> {
     row.as_ref().map(from_row).transpose()
 }
 
-/// 查询到达刷新时间的配置。
-pub(crate) async fn find_need_refresh(pool: &DbPool, millis: i64) -> Result<Vec<Config>> {
-    let sql = format!(
-        "select {FIELDS} from {TABLE} \
-         where `interval` > 0 and `refresh_time` + `interval` <= ?"
-    );
-    let rows = sqlx::query(&sql).bind(millis).fetch_all(pool).await?;
-    rows.iter().map(from_row).collect()
-}
-
 /// 新增配置。
 pub(crate) async fn insert(pool: &DbPool, entity: &Config) -> Result<()> {
     let sql = format!(
@@ -78,8 +68,8 @@ pub(crate) async fn insert(pool: &DbPool, entity: &Config) -> Result<()> {
          `subscribe_id`,`geo_cn`,`rule_direct_ids`,`rule_proxy_ids`,`rule_reject_ids`,\
          `include_area_non`,`include_area`,`include_name_contains`,\
          `exclude_area`,`exclude_name_contains`,\
-         `interval`,`refresh_time`,`update_time`,`create_time`) \
-         values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+         `refresh_time`,`update_time`,`create_time`) \
+         values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
     );
     sqlx::query(&sql)
         .bind(entity.id)
@@ -97,7 +87,6 @@ pub(crate) async fn insert(pool: &DbPool, entity: &Config) -> Result<()> {
         .bind(to_json(&entity.include_name_contains)?)
         .bind(to_json(&entity.exclude_area)?)
         .bind(to_json(&entity.exclude_name_contains)?)
-        .bind(entity.interval)
         .bind(entity.refresh_time)
         .bind(entity.update_time)
         .bind(entity.create_time)
@@ -115,7 +104,7 @@ pub(crate) async fn update(pool: &DbPool, entity: &Config) -> Result<()> {
          `rule_direct_ids` = ?, `rule_proxy_ids` = ?, `rule_reject_ids` = ?, \
          `include_area_non` = ?, `include_area` = ?, `include_name_contains` = ?, \
          `exclude_area` = ?, `exclude_name_contains` = ?, \
-         `interval` = ?, `update_time` = ? where `id` = ?"
+         `update_time` = ? where `id` = ?"
     );
     sqlx::query(&sql)
         .bind(&entity.name)
@@ -132,7 +121,6 @@ pub(crate) async fn update(pool: &DbPool, entity: &Config) -> Result<()> {
         .bind(to_json(&entity.include_name_contains)?)
         .bind(to_json(&entity.exclude_area)?)
         .bind(to_json(&entity.exclude_name_contains)?)
-        .bind(entity.interval)
         .bind(entity.update_time)
         .bind(entity.id)
         .execute(pool)
@@ -179,7 +167,6 @@ fn from_row(row: &DbRow) -> Result<Config> {
         include_name_contains: mapping::json_vec(row, "include_name_contains")?,
         exclude_area: mapping::json_vec(row, "exclude_area")?,
         exclude_name_contains: mapping::json_vec(row, "exclude_name_contains")?,
-        interval: mapping::millis(row, "interval")?,
         refresh_time: mapping::millis(row, "refresh_time")?,
         update_time: mapping::millis(row, "update_time")?,
         create_time: mapping::millis(row, "create_time")?,

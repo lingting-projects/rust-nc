@@ -5,7 +5,6 @@
 //!
 //! 使用前必须通过 [`init`] 注入数据库上下文与异步运行时, 再由 [`start`] 启动运行时。
 
-mod config;
 mod inner_rule;
 mod rule;
 mod subscribe;
@@ -18,7 +17,6 @@ use framework_timer::TimerOption;
 use lib_db::DbContext;
 use tokio::runtime::Handle;
 
-pub use config::timer_config_sync;
 pub use inner_rule::timer_inner_rule_sync;
 pub use rule::timer_rule_sync;
 pub use subscribe::timer_subscribe_sync;

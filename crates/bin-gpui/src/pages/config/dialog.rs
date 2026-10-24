@@ -23,8 +23,6 @@ use super::form::{
     SubscribeDelegate, id_value, rule_peers, rule_register, rule_state, subscribe_delegate,
 };
 
-/// 刷新间隔的单位换算：界面用小时，落库用毫秒。
-const MILLIS_PER_HOUR: i64 = 60 * 60 * 1000;
 /// 弹窗宽度，单位为 rem，随界面缩放一起变化。
 const DIALOG_WIDTH: Rems = rems(40.);
 /// 表单区域的最大高度，超出后滚动，避免弹窗撑出窗口。
@@ -40,7 +38,6 @@ pub struct ConfigDraft {
     id: Option<i64>,
     name: String,
     subscribe_id: Option<i64>,
-    interval: i64,
     rule_direct_ids: Vec<i64>,
     rule_proxy_ids: Vec<i64>,
     rule_reject_ids: Vec<i64>,
@@ -56,7 +53,6 @@ impl ConfigDraft {
             id: Some(config.id),
             name: config.name.clone(),
             subscribe_id: config.subscribe_id,
-            interval: config.interval,
             rule_direct_ids: config.rule_direct_ids.clone(),
             rule_proxy_ids: config.rule_proxy_ids.clone(),
             rule_reject_ids: config.rule_reject_ids.clone(),
@@ -72,22 +68,12 @@ impl ConfigDraft {
             id: None,
             name: String::new(),
             subscribe_id: None,
-            interval: 0,
             rule_direct_ids: Vec::new(),
             rule_proxy_ids: Vec::new(),
             rule_reject_ids: Vec::new(),
             include_name_contains: Vec::new(),
             exclude_name_contains: ConfigUpsertDTO::default().exclude_name_contains,
             form: ConfigForm::new(),
-        }
-    }
-
-    /// 界面展示的刷新间隔，单位为小时。
-    fn hours(&self) -> i64 {
-        if self.interval > 0 {
-            self.interval / MILLIS_PER_HOUR
-        } else {
-            ConfigUpsertDTO::default().interval / MILLIS_PER_HOUR
         }
     }
 }
@@ -115,11 +101,6 @@ pub fn open(
         InputState::new(window, cx)
             .placeholder("例如：公司网络")
             .default_value(draft.name.clone())
-    });
-    let interval = cx.new(|cx| {
-        InputState::new(window, cx)
-            .placeholder("0 表示不自动刷新")
-            .default_value(draft.hours().to_string())
     });
     let include_names = cx.new(|cx| {
         InputState::new(window, cx)
@@ -206,7 +187,6 @@ pub fn open(
                         let page = page.clone();
                         let id = id;
                         let name = name.clone();
-                        let interval = interval.clone();
                         let include_names = include_names.clone();
                         let exclude_names = exclude_names.clone();
                         let subscribe = subscribe.clone();
@@ -236,14 +216,6 @@ pub fn open(
                                 include_name_contains: split(&include_names.read(cx).value()),
                                 exclude_area: state.exclude_area.clone(),
                                 exclude_name_contains: split(&exclude_names.read(cx).value()),
-                                interval: interval
-                                    .read(cx)
-                                    .value()
-                                    .trim()
-                                    .parse::<i64>()
-                                    .unwrap_or_default()
-                                    .max(0)
-                                    * MILLIS_PER_HOUR,
                             };
                             page.update(cx, |page, cx| page.submit(dto, window, cx));
                         }
@@ -256,7 +228,6 @@ pub fn open(
             .overlay_closable(false)
             .content({
                 let name = name.clone();
-                let interval = interval.clone();
                 let include_names = include_names.clone();
                 let exclude_names = exclude_names.clone();
                 let subscribe = subscribe.clone();
@@ -297,8 +268,7 @@ pub fn open(
                         )
                         .child(rule_field("直连规则", &direct))
                         .child(rule_field("代理规则", &proxy))
-                        .child(rule_field("拒绝规则", &reject))
-                        .child(field("更新间隔（小时）", &interval, None, cx));
+                        .child(rule_field("拒绝规则", &reject));
 
                     content.pb_2().child(
                         v_flex()

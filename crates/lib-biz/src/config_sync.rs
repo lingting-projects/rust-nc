@@ -22,7 +22,7 @@ static INSTANCE: LazyLock<Scheduler<ConfigTask>> = LazyLock::new(Scheduler::new)
 ///
 /// 负责批量同步: 把配置 id 推入调度器, 由后台任务按并行上限校验。
 /// 单个配置同样经调度器执行, 调用方用 [`wait`](Self::wait) 等待结果,
-/// 因此同一配置不会被定时任务与手动同步并发写入。
+/// 因此同一配置不会被多处并发写入。
 pub struct ConfigSync {
     scheduler: &'static Scheduler<ConfigTask>,
 }
@@ -118,7 +118,7 @@ pub(crate) async fn sync(context: &Arc<DbContext>, id: i64) -> Result<()> {
         path.display()
     );
 
-    // 内容没变时内核不必重建实例, 定时刷新因此不会反复打断内核
+    // 内容没变时内核不必重建实例, 因此重复同步不会反复打断内核
     if changed {
         // 内核正在运行该配置时, 新配置要立刻生效, 否则改动要等到下次重启内核
         match SingBoxInstance::instance().reload(id) {
@@ -130,7 +130,7 @@ pub(crate) async fn sync(context: &Arc<DbContext>, id: i64) -> Result<()> {
         debug!("[配置] [{}] 配置内容未变化, 无需重载内核", config.name);
     }
 
-    // 刷新时间最后更新: 前面任何一步失败都不推进, 下一次定时同步会重新尝试
+    // 刷新时间最后更新: 前面任何一步失败都不推进, 下一次同步仍会重试
     service.touch_refresh(id, current_millis()?).await?;
     Ok(())
 }

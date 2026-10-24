@@ -76,7 +76,7 @@ impl Services {
 impl Services {
     /// 注入定时同步环境并启动定时任务运行时。
     ///
-    /// 定时任务按固定间隔扫描到达刷新时间的数据并推入同步队列;
+    /// 定时任务按固定间隔扫描到达刷新时间的订阅、规则与内置规则并推入同步队列;
     /// 启动失败只记录日志, 手动同步不受影响。
     pub fn init_timer(&self) {
         timer::init(self.context(), self.runtime_handle());

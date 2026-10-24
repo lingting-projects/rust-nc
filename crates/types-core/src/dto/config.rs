@@ -34,8 +34,6 @@ pub struct ConfigUpsertDTO {
     pub exclude_area: Vec<String>,
     /// 排除名称中存在关键字的节点
     pub exclude_name_contains: Vec<String>,
-    /// 刷新间隔, 单位: 毫秒
-    pub interval: i64,
 }
 
 impl Default for ConfigUpsertDTO {
@@ -56,7 +54,6 @@ impl Default for ConfigUpsertDTO {
             include_name_contains: Vec::new(),
             exclude_area: to_vec(constants::NODE_EXCLUDE_AREA),
             exclude_name_contains: to_vec(constants::NODE_EXCLUDE_NAME_CONTAINS),
-            interval: 36_000_000,
         }
     }
 }

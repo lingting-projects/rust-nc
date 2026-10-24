@@ -34,11 +34,6 @@ impl ConfigService {
         repository::find(self.pool(), id).await
     }
 
-    /// 查询到达刷新时间的配置。
-    pub async fn list_need_refresh(&self, millis: i64) -> Result<Vec<Config>> {
-        repository::find_need_refresh(self.pool(), millis).await
-    }
-
     /// 查询引用了订阅 `id` 的配置 id。
     pub async fn list_ids_by_subscribe(&self, id: i64) -> Result<Vec<i64>> {
         repository::all_id_by_subscribe(self.pool(), id).await
@@ -71,7 +66,6 @@ impl ConfigService {
                 include_name_contains: dto.include_name_contains,
                 exclude_area: dto.exclude_area,
                 exclude_name_contains: dto.exclude_name_contains,
-                interval: dto.interval,
                 refresh_time: 0,
                 update_time: millis,
                 create_time: millis,
@@ -101,7 +95,6 @@ impl ConfigService {
             include_name_contains: dto.include_name_contains,
             exclude_area: dto.exclude_area,
             exclude_name_contains: dto.exclude_name_contains,
-            interval: dto.interval,
             refresh_time,
             update_time: millis,
             create_time,

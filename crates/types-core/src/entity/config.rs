@@ -33,8 +33,6 @@ pub struct Config {
     pub exclude_area: Vec<String>,
     /// 排除名称中存在关键字的节点
     pub exclude_name_contains: Vec<String>,
-    /// 刷新间隔, 单位: 毫秒
-    pub interval: i64,
     /// 刷新时间: 毫秒级别时间戳
     pub refresh_time: i64,
     /// 更新时间: 毫秒级别时间戳

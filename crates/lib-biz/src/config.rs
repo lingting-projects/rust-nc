@@ -32,7 +32,7 @@ impl ConfigBiz {
             return Ok(ConfigSync::instance().push_all(ids));
         };
 
-        // 与定时同步共用调度器, 避免同一配置被两处并发写入
+        // 与其他同步入口共用调度器, 避免同一配置被两处并发写入
         let sync = ConfigSync::instance();
         sync.push(id);
         sync.wait(id).await;
