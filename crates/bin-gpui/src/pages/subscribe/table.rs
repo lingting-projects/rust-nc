@@ -17,7 +17,7 @@ use crate::utils::format;
 use crate::utils::refresh::RefreshState;
 
 /// 各列宽度，单位为 rem，随界面缩放一起变化。
-const NAME_WIDTH: Rems = rems(16.);
+const NAME_WIDTH: Rems = rems(9.);
 const TRAFFIC_WIDTH: Rems = rems(8.);
 const EXPIRE_WIDTH: Rems = rems(10.);
 const STATE_WIDTH: Rems = rems(7.);
