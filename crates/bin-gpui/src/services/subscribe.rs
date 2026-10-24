@@ -47,3 +47,12 @@ impl Services {
         SubscribeSync::instance().init(self.context(), self.runtime_handle());
     }
 }
+
+impl Services {
+    /// 正在刷新中的订阅 id。
+    ///
+    /// 同步任务跑在后台调度器上，界面靠它区分「刷新中」与「已刷新」。
+    pub fn subscribe_pending(&self) -> Vec<String> {
+        SubscribeSync::instance().pending()
+    }
+}

@@ -36,8 +36,11 @@ pub fn render(console: &Console, cx: &mut Context<Console>) -> impl IntoElement 
             IconName::Play
         })
         .label(if running { "停止" } else { "启动" })
-        .loading(console.kernel.loading)
-        .disabled(console.kernel.loading || !ready || (!running && !has_config))
+        // 本页发起的操作或全局任意入口（托盘、自动运行）发起的操作都算加载中
+        .loading(console.kernel.loading || console.kernel.acting)
+        .disabled(
+            console.kernel.loading || console.kernel.acting || !ready || (!running && !has_config),
+        )
         .when(running, |this| this.danger())
         .when(!running, |this| this.primary())
         .on_click(cx.listener(|console, _, _, cx| console.toggle_kernel(cx)));

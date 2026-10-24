@@ -85,6 +85,19 @@ impl<T: SyncTask> Scheduler<T> {
         ids.into_iter().filter(|id| self.push(id)).count()
     }
 
+    /// 正在运行或排队中的任务 id。
+    ///
+    /// 供界面判断「刷新中」: 只读共享状态, 不阻塞也不触发 IO。
+    pub(crate) fn pending(&self) -> Vec<String> {
+        let inner = self.state.lock();
+        inner
+            .running
+            .keys()
+            .chain(inner.queue.iter().map(|task| &task.id))
+            .cloned()
+            .collect()
+    }
+
     /// 等待指定 id 的同步任务结束, 没有对应任务时直接完成。
     pub(crate) async fn wait(&self, id: &str) {
         let Some(slot) = self.slot(id) else {

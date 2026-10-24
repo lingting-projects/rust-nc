@@ -119,3 +119,12 @@ impl Services {
             .await
     }
 }
+
+impl Services {
+    /// 正在刷新中的配置 id。
+    ///
+    /// 同步任务跑在后台调度器上，界面靠它区分「刷新中」与「已刷新」。
+    pub fn config_pending(&self) -> Vec<String> {
+        ConfigSync::instance().pending()
+    }
+}

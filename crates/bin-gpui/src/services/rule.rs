@@ -45,3 +45,12 @@ impl Services {
         RuleSync::instance().init(self.context(), self.runtime_handle());
     }
 }
+
+impl Services {
+    /// 正在刷新中的规则 id。
+    ///
+    /// 同步任务跑在后台调度器上，界面靠它区分「刷新中」与「已刷新」。
+    pub fn rule_pending(&self) -> Vec<String> {
+        RuleSync::instance().pending()
+    }
+}

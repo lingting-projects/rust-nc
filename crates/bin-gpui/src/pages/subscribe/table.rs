@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::rc::Rc;
 
 use gpui_kit::assets::IconName;
@@ -13,19 +14,22 @@ use types_core::entity::subscribe::Subscribe;
 use super::SubscribePage;
 use crate::components::delete_button;
 use crate::utils::format;
+use crate::utils::refresh::RefreshState;
 
 /// 各列宽度，单位为 rem，随界面缩放一起变化。
-const NAME_WIDTH: Rems = rems(20.);
-const TRAFFIC_WIDTH: Rems = rems(10.);
+const NAME_WIDTH: Rems = rems(16.);
+const TRAFFIC_WIDTH: Rems = rems(8.);
 const EXPIRE_WIDTH: Rems = rems(10.);
+const STATE_WIDTH: Rems = rems(7.);
 const REFRESH_WIDTH: Rems = rems(8.);
 const ACTION_WIDTH: Rems = rems(9.);
 
 /// 列定义：键、表头文案、宽度。
-const COLUMNS: [(&str, &str, Rems); 5] = [
+const COLUMNS: [(&str, &str, Rems); 6] = [
     ("name", "名称", NAME_WIDTH),
     ("traffic", "剩余流量", TRAFFIC_WIDTH),
     ("expire", "有效期", EXPIRE_WIDTH),
+    ("state", "状态", STATE_WIDTH),
     ("refresh", "上次更新", REFRESH_WIDTH),
     ("action", "操作", ACTION_WIDTH),
 ];
@@ -56,15 +60,17 @@ pub fn sync(
     table: &Entity<TableState<SubscribeTable>>,
     items: Rc<Vec<Subscribe>>,
     rows: Rc<Vec<usize>>,
+    pending: Rc<HashSet<String>>,
     rem_size: Pixels,
     cx: &mut App,
 ) {
     table.update(cx, |state, cx| {
         let changed = state.delegate_mut().set_content(items, rows);
+        let refreshing = state.delegate_mut().set_pending(pending);
         let resized = state.delegate_mut().set_rem_size(rem_size);
         // 委托只持有数据，表格实体本身不会被通知：不主动通知的话，
         // 保留渲染会复用上一帧，列表就停在旧内容上。
-        if changed || resized {
+        if changed || refreshing || resized {
             state.refresh(cx);
             cx.notify();
         }
@@ -111,12 +117,14 @@ pub fn matched(items: &[Subscribe], keyword: &str) -> Vec<usize> {
 
 /// 订阅表格的数据与渲染。
 ///
-/// 五列：名称、剩余流量、有效期、上次更新、操作。
+/// 六列：名称、剩余流量、有效期、状态、上次更新、操作。
 /// 委托只持有数据与过滤结果的共享引用，由页面在渲染时同步；
 /// 页面是数据的唯一来源，表格不单独维护一份可变副本。
 pub struct SubscribeTable {
     items: Rc<Vec<Subscribe>>,
     rows: Rc<Vec<usize>>,
+    /// 正在刷新中的订阅 id，来自同步调度器
+    pending: Rc<HashSet<String>>,
     rem_size: Pixels,
     page: WeakEntity<SubscribePage>,
 }
@@ -126,6 +134,7 @@ impl SubscribeTable {
         Self {
             items: Rc::new(Vec::new()),
             rows: Rc::new(Vec::new()),
+            pending: Rc::new(HashSet::new()),
             rem_size,
             page,
         }
@@ -136,6 +145,12 @@ impl SubscribeTable {
         let changed = !Rc::ptr_eq(&self.items, &items) || !Rc::ptr_eq(&self.rows, &rows);
         self.items = items;
         self.rows = rows;
+        changed
+    }
+    /// 更新刷新中的订阅集合，返回是否发生了变化。
+    fn set_pending(&mut self, pending: Rc<HashSet<String>>) -> bool {
+        let changed = !Rc::ptr_eq(&self.pending, &pending);
+        self.pending = pending;
         changed
     }
 
@@ -151,6 +166,12 @@ impl SubscribeTable {
     /// 第 `row_ix` 行对应的订阅，行号是过滤后的位置。
     fn item(&self, row_ix: usize) -> Option<&Subscribe> {
         self.rows.get(row_ix).map(|ix| &self.items[*ix])
+    }
+
+    /// 状态列：未刷新、刷新中、已刷新。
+    fn state(&self, item: &Subscribe) -> AnyElement {
+        let refreshing = self.pending.contains(&item.id);
+        RefreshState::of(item.refresh_time, refreshing).render()
     }
 
     /// 名称列：名称在上、地址在下，一行就能看出订阅指向哪里。
@@ -271,7 +292,8 @@ impl TableDelegate for SubscribeTable {
             2 => div()
                 .child(format::until(item.expire_time))
                 .into_any_element(),
-            3 => div()
+            3 => self.state(item),
+            4 => div()
                 .child(format::since(item.refresh_time))
                 .into_any_element(),
             _ => self.action(item, cx),

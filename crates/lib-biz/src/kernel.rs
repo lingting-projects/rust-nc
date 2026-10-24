@@ -69,6 +69,30 @@ struct Inner {
     config_id: Option<String>,
     /// 最近一次异常的原因
     reason: Option<String>,
+    /// 是否正在执行启停操作
+    ///
+    /// 启动可能由托盘、自动运行或控制台发起，界面只认这一处标记，
+    /// 因此任何入口的启动都会让控制台的启动按钮进入加载态。
+    acting: bool,
+}
+/// 启停进行中标记的守卫。
+///
+/// 启动与停止有多条提前返回的路径，用守卫保证无论成功、失败还是 panic
+/// 都会把标记清掉，界面不会永远停在加载态。
+struct Acting<'a>(&'a SingBoxInstance);
+
+impl<'a> Acting<'a> {
+    /// 置位标记，存活期间 [`SingBoxInstance::acting`] 为真。
+    fn new(instance: &'a SingBoxInstance) -> Self {
+        instance.lock().acting = true;
+        Self(instance)
+    }
+}
+
+impl Drop for Acting<'_> {
+    fn drop(&mut self) {
+        self.0.lock().acting = false;
+    }
 }
 
 impl SingBoxInstance {
@@ -131,6 +155,14 @@ impl SingBoxInstance {
             inner.reason = Some(reason);
         }
         inner.reason.clone()
+    }
+
+    /// 是否正在执行启停操作。
+    ///
+    /// 启动与停止可能来自控制台、托盘或启动时的自动运行，界面统一读这里，
+    /// 因此自动启动期间控制台的启动按钮同样处于加载态。
+    pub fn acting(&self) -> bool {
+        self.lock().acting
     }
 
     /// 内核对象，尚未创建时按安装目录创建并保存。
@@ -235,8 +267,10 @@ impl SingBoxInstance {
     ///
     /// 启动命令执行完毕不代表内核可用，因此等内核 API 探测通过后才置为运行中。
     /// 进程本身由内核对象的监控线程创建，这里只登记意图并等待结果。
+    /// 启动期间保持「进行中」标记，任意路径结束都会清掉。
     pub async fn start(&self, id: &str) -> Result<()> {
         let _action = self.action.lock().await;
+        let _acting = Acting::new(self);
         if self.status() != Status::Stopped {
             bail!("内核已在运行或启动中");
         }
@@ -309,6 +343,7 @@ impl SingBoxInstance {
     /// 结束进程由内核对象的监控线程完成，这里只登记停止意图并等待进程回收。
     pub async fn stop(&self) -> Result<()> {
         let _action = self.action.lock().await;
+        let _acting = Acting::new(self);
         let Some(singbox) = self.singbox.load_full() else {
             self.set(None, None);
             return Ok(());

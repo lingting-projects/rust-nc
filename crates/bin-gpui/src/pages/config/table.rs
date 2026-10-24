@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::rc::Rc;
 
 use gpui_kit::assets::IconName;
@@ -16,19 +17,22 @@ use types_core::entity::config::Config;
 use super::ConfigPage;
 use crate::components::{PolicyTags, delete_button};
 use crate::utils::format;
+use crate::utils::refresh::RefreshState;
 
 /// 各列宽度，单位为 rem，随界面缩放一起变化。
 const NAME_WIDTH: Rems = rems(10.);
 const COUNT_WIDTH: Rems = rems(5.);
 const POLICY_WIDTH: Rems = rems(14.);
+const STATE_WIDTH: Rems = rems(7.);
 const REFRESH_WIDTH: Rems = rems(7.);
 const ACTION_WIDTH: Rems = rems(9.);
 
 /// 列定义：键、表头文案、宽度。
-const COLUMNS: [(&str, &str, Rems); 5] = [
+const COLUMNS: [(&str, &str, Rems); 6] = [
     ("name", "名称", NAME_WIDTH),
     ("count", "规则数量", COUNT_WIDTH),
     ("policy", "节点策略", POLICY_WIDTH),
+    ("state", "状态", STATE_WIDTH),
     ("refresh", "上次更新", REFRESH_WIDTH),
     ("action", "操作", ACTION_WIDTH),
 ];
@@ -59,15 +63,17 @@ pub fn sync(
     table: &Entity<TableState<ConfigTable>>,
     items: Rc<Vec<Config>>,
     rows: Rc<Vec<usize>>,
+    pending: Rc<HashSet<String>>,
     rem_size: Pixels,
     cx: &mut App,
 ) {
     table.update(cx, |state, cx| {
         let changed = state.delegate_mut().set_content(items, rows);
+        let refreshing = state.delegate_mut().set_pending(pending);
         let resized = state.delegate_mut().set_rem_size(rem_size);
         // 委托只持有数据，表格实体本身不会被通知：不主动通知的话，
         // 保留渲染会复用上一帧，列表就停在旧内容上。
-        if changed || resized {
+        if changed || refreshing || resized {
             state.refresh(cx);
             cx.notify();
         }
@@ -110,12 +116,14 @@ pub fn matched(items: &[Config], keyword: &str) -> Vec<usize> {
 
 /// 配置表格的数据与渲染。
 ///
-/// 五列：名称、规则数量、节点策略、上次更新、操作。
+/// 六列：名称、规则数量、节点策略、状态、上次更新、操作。
 /// 委托只持有数据与过滤结果的共享引用，由页面在渲染时同步；
 /// 页面是数据的唯一来源，表格不单独维护一份可变副本。
 pub struct ConfigTable {
     items: Rc<Vec<Config>>,
     rows: Rc<Vec<usize>>,
+    /// 正在刷新中的配置 id，来自同步调度器
+    pending: Rc<HashSet<String>>,
     rem_size: Pixels,
     page: WeakEntity<ConfigPage>,
 }
@@ -125,6 +133,7 @@ impl ConfigTable {
         Self {
             items: Rc::new(Vec::new()),
             rows: Rc::new(Vec::new()),
+            pending: Rc::new(HashSet::new()),
             rem_size,
             page,
         }
@@ -135,6 +144,13 @@ impl ConfigTable {
         let changed = !Rc::ptr_eq(&self.items, &items) || !Rc::ptr_eq(&self.rows, &rows);
         self.items = items;
         self.rows = rows;
+        changed
+    }
+
+    /// 更新刷新中的配置集合，返回是否发生了变化。
+    fn set_pending(&mut self, pending: Rc<HashSet<String>>) -> bool {
+        let changed = !Rc::ptr_eq(&self.pending, &pending);
+        self.pending = pending;
         changed
     }
 
@@ -165,6 +181,12 @@ impl ConfigTable {
             .tooltip(move |window, cx| Tooltip::new(name.clone()).build(window, cx))
             .child(item.name.clone())
             .into_any_element()
+    }
+
+    /// 状态列：未刷新、刷新中、已刷新。
+    fn state(&self, item: &Config) -> AnyElement {
+        let refreshing = self.pending.contains(&item.id);
+        RefreshState::of(item.refresh_time, refreshing).render()
     }
 
     /// 操作列：同步、编辑、删除。
@@ -262,7 +284,8 @@ impl TableDelegate for ConfigTable {
             0 => self.name(item),
             1 => count(item).into_any_element(),
             2 => policy(item).into_any_element(),
-            3 => div()
+            3 => self.state(item),
+            4 => div()
                 .child(format::since(item.refresh_time))
                 .into_any_element(),
             _ => self.action(item, cx),

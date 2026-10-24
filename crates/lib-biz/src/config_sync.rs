@@ -56,6 +56,12 @@ impl ConfigSync {
     pub fn push_all(&self, ids: impl IntoIterator<Item = String>) -> usize {
         self.scheduler.push_all(ids)
     }
+    /// 正在运行或排队中的同步任务 id。
+    ///
+    /// 界面据此判断「刷新中」，只读内存状态，不触发 IO。
+    pub fn pending(&self) -> Vec<String> {
+        self.scheduler.pending()
+    }
 
     /// 刷新引用了订阅 `id` 的配置, 返回成功入队的数量。
     ///

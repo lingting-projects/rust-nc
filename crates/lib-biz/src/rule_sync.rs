@@ -46,6 +46,12 @@ impl RuleSync {
     pub fn push_all(&self, ids: impl IntoIterator<Item = String>) -> usize {
         self.scheduler.push_all(ids)
     }
+    /// 正在运行或排队中的同步任务 id。
+    ///
+    /// 界面据此判断「刷新中」，只读内存状态，不触发 IO。
+    pub fn pending(&self) -> Vec<String> {
+        self.scheduler.pending()
+    }
 
     /// 等待指定 id 的同步任务结束, 没有对应任务时直接完成。
     pub async fn wait(&self, id: &str) {

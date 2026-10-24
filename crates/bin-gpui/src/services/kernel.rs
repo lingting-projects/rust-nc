@@ -14,6 +14,8 @@ pub struct KernelData {
     pub config_id: Option<String>,
     /// 最近一次异常的原因。
     pub reason: Option<String>,
+    /// 是否正在执行启停操作，任意入口发起都算。
+    pub acting: bool,
 }
 
 /// 内核运行状态快照，取自内核 gRPC API。
@@ -35,6 +37,7 @@ pub fn kernel_data() -> KernelData {
         status: kernel.status(),
         config_id: kernel.config_id(),
         reason: kernel.reason(),
+        acting: kernel.acting(),
     }
 }
 

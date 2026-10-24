@@ -53,8 +53,10 @@ impl MonitorSection {
 pub struct Kernel {
     /// 内核状态。
     pub status: Status,
-    /// 是否正在执行启停操作。
+    /// 本页发起的启停操作是否还没结束。
     pub loading: bool,
+    /// 全局是否有启停操作在进行，可能来自托盘或启动时的自动运行。
+    pub acting: bool,
     /// 正在运行的配置 id，未运行时为 `None`。
     pub config_id: Option<String>,
     /// 最近一次异常的原因。
@@ -67,6 +69,7 @@ impl Kernel {
         Self {
             status: data.status,
             loading: false,
+            acting: data.acting,
             config_id: data.config_id,
             reason: data.reason,
         }
@@ -273,8 +276,8 @@ impl Console {
 
     /// 启停内核。
     ///
-    /// 启动需要等内核 API 探测通过，因此按钮在整个等待期间保持 loading；
-    /// 状态本身由全局内核实例维护，这里只在操作结束后回读。
+    /// 启动需要等内核 API 探测通过，按钮在整个等待期间保持 loading；
+    /// 加载态由内核实例统一维护，因此托盘或自动运行发起的启动同样会显示。
     pub fn toggle_kernel(&mut self, cx: &mut Context<Self>) {
         if self.kernel.loading {
             return;
@@ -290,6 +293,7 @@ impl Console {
             Some(AppServices::Failed(_)) | None => return,
         };
 
+        // 先置位再渲染：派生任务要等下一帧才真正开始，期间按钮不能看起来空闲
         self.kernel.loading = true;
         cx.notify();
 
@@ -350,9 +354,11 @@ impl Console {
     fn sync_kernel(&mut self) -> bool {
         let data = services::kernel_data();
         let changed = self.kernel.status != data.status
+            || self.kernel.acting != data.acting
             || self.kernel.config_id != data.config_id
             || self.kernel.reason != data.reason;
         self.kernel.status = data.status;
+        self.kernel.acting = data.acting;
         self.kernel.config_id = data.config_id;
         self.kernel.reason = data.reason;
         changed
