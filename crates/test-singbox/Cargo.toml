@@ -11,6 +11,7 @@ publish = false
 
 [dependencies]
 lib-converter = { workspace = true }
+lib-fetch = { workspace = true }
 lib-pick = { workspace = true }
 lib-singbox = { workspace = true }
 
@@ -18,3 +19,4 @@ anyhow = { workspace = true }
 log = { workspace = true }
 serde_json = { workspace = true }
 simple_logger = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

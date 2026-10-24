@@ -1,8 +1,9 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use lib_converter::{Platform, PlatformConfig, clash_to, pure_to};
 use lib_pick::{KEY_TYPE, PickNodes, PickRemote, pick};
 
 use crate::kernel::Kernel;
+use crate::runtime::Runtime;
 use crate::source::Source;
 use crate::verify;
 
@@ -106,6 +107,16 @@ impl<'a> Pipeline<'a> {
     /// 各场景生成的配置。
     pub fn configs(&self) -> &[Config] {
         &self.configs
+    }
+
+    /// 取出指定场景的配置, 改成可真实运行的形态。
+    pub fn runtime(&self, scenario: &str) -> Result<Runtime> {
+        let config = self
+            .configs
+            .iter()
+            .find(|config| config.scenario.name == scenario)
+            .with_context(|| format!("未生成场景配置: {scenario}"))?;
+        Runtime::new(config.scenario, &config.body)
     }
 }
 

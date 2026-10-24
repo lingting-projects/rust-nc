@@ -8934,11 +8934,13 @@ version = "26.10.0"
 dependencies = [
  "anyhow",
  "lib-converter",
+ "lib-fetch",
  "lib-pick",
  "lib-singbox",
  "log",
  "serde_json",
  "simple_logger",
+ "tokio",
 ]
 
 [[package]]
