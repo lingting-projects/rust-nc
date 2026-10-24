@@ -18,22 +18,22 @@ impl Services {
     /// 同步订阅，未指定 id 时同步全部。
     ///
     /// 同步全部只负责推送，等待由后台任务继续完成。
-    pub async fn sync_subscribe(&self, id: Option<&str>) -> Result<usize> {
+    pub async fn sync_subscribe(&self, id: Option<i64>) -> Result<usize> {
         SubscribeBiz::new(self.context()).sync(id).await
     }
 
     /// 新增订阅，写库后触发一次同步。
-    pub async fn create_subscribe(&self, dto: SubscribeUpsertDTO) -> Result<String> {
+    pub async fn create_subscribe(&self, dto: SubscribeUpsertDTO) -> Result<i64> {
         SubscribeBiz::new(self.context()).create(dto).await
     }
 
     /// 修改订阅，地址变更后触发一次同步。
-    pub async fn edit_subscribe(&self, dto: SubscribeUpsertDTO) -> Result<String> {
+    pub async fn edit_subscribe(&self, dto: SubscribeUpsertDTO) -> Result<i64> {
         SubscribeBiz::new(self.context()).edit(dto).await
     }
 
     /// 删除一条订阅。
-    pub async fn delete_subscribe(&self, id: &str) -> Result<()> {
+    pub async fn delete_subscribe(&self, id: i64) -> Result<()> {
         SubscribeService::new(self.context()).delete(id).await?;
         Ok(())
     }
@@ -52,7 +52,7 @@ impl Services {
     /// 正在刷新中的订阅 id。
     ///
     /// 同步任务跑在后台调度器上，界面靠它区分「刷新中」与「已刷新」。
-    pub fn subscribe_pending(&self) -> Vec<String> {
+    pub fn subscribe_pending(&self) -> Vec<i64> {
         SubscribeSync::instance().pending()
     }
 }

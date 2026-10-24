@@ -5,7 +5,7 @@ use types_core::entity::config::Config;
 use super::mapping;
 
 /// 表名。
-const TABLE: &str = "tbl_config";
+const TABLE: &str = "tbl2_config";
 
 /// 查询字段，与 [`Config`] 字段一一对应。
 const FIELDS: &str = "`id`,`name`,`tun`,`fake_ip`,`ipv6`,`subscribe_id`,`geo_cn`,\
@@ -22,23 +22,23 @@ pub(crate) async fn all(pool: &DbPool) -> Result<Vec<Config>> {
 }
 
 /// 查询全部配置 id。
-pub(crate) async fn all_id(pool: &DbPool) -> Result<Vec<String>> {
+pub(crate) async fn all_id(pool: &DbPool) -> Result<Vec<i64>> {
     let sql = format!("select `id` from {TABLE}");
     let rows = sqlx::query(&sql).fetch_all(pool).await?;
-    rows.iter().map(|row| mapping::string(row, "id")).collect()
+    rows.iter().map(|row| mapping::id(row, "id")).collect()
 }
 
 /// 查询引用了订阅 `id` 的配置 id。
-pub(crate) async fn all_id_by_subscribe(pool: &DbPool, id: &str) -> Result<Vec<String>> {
+pub(crate) async fn all_id_by_subscribe(pool: &DbPool, id: i64) -> Result<Vec<i64>> {
     let sql = format!("select `id` from {TABLE} where `subscribe_id` = ?");
     let rows = sqlx::query(&sql).bind(id).fetch_all(pool).await?;
-    rows.iter().map(|row| mapping::string(row, "id")).collect()
+    rows.iter().map(|row| mapping::id(row, "id")).collect()
 }
 
 /// 查询引用了规则 `id` 的配置 id。
 ///
 /// 三类规则以 json 数组落库, 用 `json_each` 展开后逐个比较, 避免字符串匹配的误判。
-pub(crate) async fn all_id_by_rule(pool: &DbPool, id: &str) -> Result<Vec<String>> {
+pub(crate) async fn all_id_by_rule(pool: &DbPool, id: i64) -> Result<Vec<i64>> {
     let sql = format!(
         "select `id` from {TABLE} where \
          exists (select 1 from json_each(`rule_direct_ids`) where `value` = ?) \
@@ -51,11 +51,11 @@ pub(crate) async fn all_id_by_rule(pool: &DbPool, id: &str) -> Result<Vec<String
         .bind(id)
         .fetch_all(pool)
         .await?;
-    rows.iter().map(|row| mapping::string(row, "id")).collect()
+    rows.iter().map(|row| mapping::id(row, "id")).collect()
 }
 
 /// 按 id 查询配置。
-pub(crate) async fn find(pool: &DbPool, id: &str) -> Result<Option<Config>> {
+pub(crate) async fn find(pool: &DbPool, id: i64) -> Result<Option<Config>> {
     let sql = format!("select {FIELDS} from {TABLE} where `id` = ? limit 1");
     let row = sqlx::query(&sql).bind(id).fetch_optional(pool).await?;
     row.as_ref().map(from_row).transpose()
@@ -82,12 +82,12 @@ pub(crate) async fn insert(pool: &DbPool, entity: &Config) -> Result<()> {
          values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
     );
     sqlx::query(&sql)
-        .bind(&entity.id)
+        .bind(entity.id)
         .bind(&entity.name)
         .bind(entity.tun)
         .bind(entity.fake_ip)
         .bind(entity.ipv6)
-        .bind(&entity.subscribe_id)
+        .bind(entity.subscribe_id)
         .bind(entity.geo_cn)
         .bind(to_json(&entity.rule_direct_ids)?)
         .bind(to_json(&entity.rule_proxy_ids)?)
@@ -122,7 +122,7 @@ pub(crate) async fn update(pool: &DbPool, entity: &Config) -> Result<()> {
         .bind(entity.tun)
         .bind(entity.fake_ip)
         .bind(entity.ipv6)
-        .bind(&entity.subscribe_id)
+        .bind(entity.subscribe_id)
         .bind(entity.geo_cn)
         .bind(to_json(&entity.rule_direct_ids)?)
         .bind(to_json(&entity.rule_proxy_ids)?)
@@ -134,14 +134,14 @@ pub(crate) async fn update(pool: &DbPool, entity: &Config) -> Result<()> {
         .bind(to_json(&entity.exclude_name_contains)?)
         .bind(entity.interval)
         .bind(entity.update_time)
-        .bind(&entity.id)
+        .bind(entity.id)
         .execute(pool)
         .await?;
     Ok(())
 }
 
 /// 更新配置的刷新时间。
-pub(crate) async fn update_refresh_time(pool: &DbPool, id: &str, millis: i64) -> Result<()> {
+pub(crate) async fn update_refresh_time(pool: &DbPool, id: i64, millis: i64) -> Result<()> {
     let sql = format!("update {TABLE} set `refresh_time` = ? where `id` = ?");
     sqlx::query(&sql)
         .bind(millis)
@@ -152,24 +152,24 @@ pub(crate) async fn update_refresh_time(pool: &DbPool, id: &str, millis: i64) ->
 }
 
 /// 按 id 删除配置。
-pub(crate) async fn delete(pool: &DbPool, id: &str) -> Result<u64> {
+pub(crate) async fn delete(pool: &DbPool, id: i64) -> Result<u64> {
     let sql = format!("delete from {TABLE} where `id` = ?");
     let result = sqlx::query(&sql).bind(id).execute(pool).await?;
     Ok(result.rows_affected())
 }
 
-fn to_json(values: &[String]) -> Result<String> {
+fn to_json<T: serde::Serialize>(values: &[T]) -> Result<String> {
     Ok(serde_json::to_string(values)?)
 }
 
 fn from_row(row: &DbRow) -> Result<Config> {
     Ok(Config {
-        id: mapping::string(row, "id")?,
+        id: mapping::id(row, "id")?,
         name: mapping::string(row, "name")?,
         tun: mapping::boolean(row, "tun")?,
         fake_ip: mapping::boolean(row, "fake_ip")?,
         ipv6: mapping::boolean(row, "ipv6")?,
-        subscribe_id: mapping::string(row, "subscribe_id")?,
+        subscribe_id: mapping::option_id(row, "subscribe_id")?,
         geo_cn: mapping::boolean(row, "geo_cn")?,
         rule_direct_ids: mapping::json_vec(row, "rule_direct_ids")?,
         rule_proxy_ids: mapping::json_vec(row, "rule_proxy_ids")?,

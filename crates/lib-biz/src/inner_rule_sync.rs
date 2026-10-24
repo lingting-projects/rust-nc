@@ -48,17 +48,17 @@ impl InnerRuleSync {
     /// 推送单个 id, 返回是否成功入队。
     ///
     /// 已在运行或已在队列中的 id 不会重复推入。
-    pub fn push(&self, id: &str) -> bool {
+    pub fn push(&self, id: i64) -> bool {
         self.scheduler.push(id)
     }
 
     /// 批量推送 id, 返回成功入队的数量。
-    pub fn push_all(&self, ids: impl IntoIterator<Item = String>) -> usize {
+    pub fn push_all(&self, ids: impl IntoIterator<Item = i64>) -> usize {
         self.scheduler.push_all(ids)
     }
 
     /// 等待指定 id 的同步任务结束, 没有对应任务时直接完成。
-    pub async fn wait(&self, id: &str) {
+    pub async fn wait(&self, id: i64) {
         self.scheduler.wait(id).await
     }
 }
@@ -69,36 +69,36 @@ struct InnerRuleTask;
 impl SyncTask for InnerRuleTask {
     const THREAD: &'static str = "inner-rule-sync";
 
-    async fn run(context: Arc<DbContext>, id: String) {
-        if let Err(error) = sync(&context, &id).await {
-            error!("[内置规则] [{}] 同步异常! {error:#}", id);
+    async fn run(context: Arc<DbContext>, id: i64) {
+        if let Err(error) = sync(&context, id).await {
+            error!("[内置规则] [{id}] 同步异常! {error:#}");
         }
     }
 }
 
 /// 同步单条内置规则: 检查 etag, 需要时下载到本地。
-async fn sync(context: &Arc<DbContext>, id: &str) -> Result<()> {
+async fn sync(context: &Arc<DbContext>, id: i64) -> Result<()> {
     let service = InnerRuleService::new(context.clone());
     let Some(rule) = service.find(id).await? else {
-        warn!("[内置规则] [{}] 不存在, 结束同步", id);
+        warn!("[内置规则] [{id}] 不存在, 结束同步");
         return Ok(());
     };
 
-    let path = inner_rule_file::inner_rule_file(id)?;
+    let path = inner_rule_file::inner_rule_file(&rule.name)?;
     // etag 未变且文件仍在时无需下载
     if rule.ready && path.exists() && same_etag(&rule).await {
-        debug!("[内置规则] [{}] 内容未变更, 仅确认就绪", id);
+        debug!("[内置规则] [{}] 内容未变更, 仅确认就绪", rule.name);
         return Ok(());
     }
 
-    info!("[内置规则] [{}] 开始下载: {}", id, rule.url);
+    info!("[内置规则] [{}] 开始下载: {}", rule.name, rule.url);
     // 先下到临时文件再原子替换, 内核随时可能读取, 不能让它看到写了一半的规则集
     let temp = file::temp_path(&inner_rule_file::inner_rule_temp_dir()?)?;
     match download(&rule, &temp).await {
         Ok(etag) => {
             file::rename(&temp, &path)?;
             service.ready(id, &etag).await?;
-            info!("[内置规则] [{}] 下载完成", id);
+            info!("[内置规则] [{}] 下载完成", rule.name);
             Ok(())
         }
         Err(error) => {
@@ -147,11 +147,11 @@ async fn download(rule: &InnerRule, path: &Path) -> Result<String> {
     if mirror != rule.url {
         match download_chunked(&client, &mirror, path).await {
             Ok(Some(etag)) => return Ok(etag),
-            Ok(None) => debug!("[内置规则] [{}] 镜像不支持分片, 改用原始地址", rule.id),
+            Ok(None) => debug!("[内置规则] [{}] 镜像不支持分片, 改用原始地址", rule.name),
             Err(error) => {
                 warn!(
                     "[内置规则] [{}] 镜像分片下载失败, 改用原始地址: {error:#}",
-                    rule.id
+                    rule.name
                 );
             }
         }
@@ -163,7 +163,7 @@ async fn download(rule: &InnerRule, path: &Path) -> Result<String> {
             // 原始地址不可用时退回镜像整体下载, 部分镜像只支持整体 GET
             warn!(
                 "[内置规则] [{}] 原始地址下载失败, 改用镜像: {error:#}",
-                rule.id
+                rule.name
             );
             let (_, probe) = client.download_single_etag(&mirror, path).await?;
             Ok(probe.etag)
@@ -219,16 +219,19 @@ pub async fn wait_ready(context: &Arc<DbContext>) -> Result<()> {
             return Ok(());
         }
 
-        let ids = pending
+        let names = pending
             .iter()
-            .map(|item| item.id.as_str())
+            .map(|item| item.name.as_str())
             .collect::<Vec<_>>()
             .join(", ");
-        debug!("[内置规则] 第 {round} 轮等待就绪: {ids}");
+        debug!("[内置规则] 第 {round} 轮等待就绪: {names}");
         // 单条失败不直接中断, 全轮结束后统一检查, 让可用的规则先落盘
         for item in &pending {
-            if let Err(error) = sync(context, &item.id).await {
-                warn!("[内置规则] [{}] 第 {round} 轮下载失败: {error:#}", item.id);
+            if let Err(error) = sync(context, item.id).await {
+                warn!(
+                    "[内置规则] [{}] 第 {round} 轮下载失败: {error:#}",
+                    item.name
+                );
             }
         }
 
@@ -241,7 +244,7 @@ pub async fn wait_ready(context: &Arc<DbContext>) -> Result<()> {
     let pending = service.list_not_ready().await?;
     let names = pending
         .iter()
-        .map(|item| item.id.as_str())
+        .map(|item| item.name.as_str())
         .collect::<Vec<_>>()
         .join(", ");
     Err(anyhow!("内置规则未就绪: {names}"))

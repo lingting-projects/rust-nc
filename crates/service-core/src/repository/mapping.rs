@@ -9,6 +9,17 @@ pub(crate) fn string(row: &DbRow, name: &str) -> Result<String> {
     Ok(value.unwrap_or_default())
 }
 
+/// 读取主键，`NULL` 视为 `0`。
+pub(crate) fn id(row: &DbRow, name: &str) -> Result<i64> {
+    let value = row.try_get::<Option<i64>, _>(name)?;
+    Ok(value.unwrap_or(0))
+}
+
+/// 读取可空主键，`NULL` 视为 `None`。
+pub(crate) fn option_id(row: &DbRow, name: &str) -> Result<Option<i64>> {
+    Ok(row.try_get::<Option<i64>, _>(name)?)
+}
+
 /// 读取布尔字段，`NULL` 视为 `false`。
 pub(crate) fn boolean(row: &DbRow, name: &str) -> Result<bool> {
     let value = row.try_get::<Option<bool>, _>(name)?;

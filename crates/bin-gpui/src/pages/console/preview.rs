@@ -41,10 +41,9 @@ pub fn render(console: &Console, cx: &App) -> AnyElement {
         config.rule_direct_ids.len() + config.rule_proxy_ids.len() + config.rule_reject_ids.len();
     items.push(pair("规则数量", &rules.to_string(), theme).into_any_element());
 
-    if let Some(subscribe) = data
-        .subscribes
-        .iter()
-        .find(|subscribe| subscribe.id == config.subscribe_id)
+    if let Some(subscribe) = config
+        .subscribe_id
+        .and_then(|id| data.subscribes.iter().find(|subscribe| subscribe.id == id))
     {
         items.push(
             pair(

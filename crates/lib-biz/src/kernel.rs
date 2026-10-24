@@ -66,7 +66,7 @@ struct Inner {
     /// 服务运行时的数据库上下文，未初始化时为空
     context: Option<Arc<DbContext>>,
     /// 正在运行的配置 id
-    config_id: Option<String>,
+    config_id: Option<i64>,
     /// 最近一次异常的原因
     reason: Option<String>,
     /// 是否正在执行启停操作
@@ -130,14 +130,14 @@ impl SingBoxInstance {
     /// 正在运行的配置 id，未运行时为 `None`。
     ///
     /// 内核已被监控线程判定退出时同步清掉，避免界面还显示上一轮的配置。
-    pub fn config_id(&self) -> Option<String> {
+    pub fn config_id(&self) -> Option<i64> {
         let singbox = self.singbox.load_full();
         let running = singbox.is_some_and(|singbox| singbox.phase().is_running());
         let mut inner = self.lock();
         if !running {
             inner.config_id = None;
         }
-        inner.config_id.clone()
+        inner.config_id
     }
 
     /// 最近一次异常的原因。
@@ -268,7 +268,7 @@ impl SingBoxInstance {
     /// 启动命令执行完毕不代表内核可用，因此等内核 API 探测通过后才置为运行中。
     /// 进程本身由内核对象的监控线程创建，这里只登记意图并等待结果。
     /// 启动期间保持「进行中」标记，任意路径结束都会清掉。
-    pub async fn start(&self, id: &str) -> Result<()> {
+    pub async fn start(&self, id: i64) -> Result<()> {
         let _action = self.action.lock().await;
         let _acting = Acting::new(self);
         if self.status() != Status::Stopped {
@@ -325,8 +325,8 @@ impl SingBoxInstance {
     ///
     /// 只对内核正在运行的配置生效: `id` 不是运行中的配置或内核未运行时返回 `false`;
     /// 配置文件由调用方负责生成, 这里只通知内核按新配置重建实例。
-    pub fn reload(&self, id: &str) -> Result<bool> {
-        if self.config_id().as_deref() != Some(id) {
+    pub fn reload(&self, id: i64) -> Result<bool> {
+        if self.config_id() != Some(id) {
             return Ok(false);
         }
         if self.status() != Status::Running {
@@ -374,9 +374,9 @@ impl SingBoxInstance {
     /// 同步正在运行的配置 id 与失败原因。
     ///
     /// 进程阶段由内核对象持有，这里只记录阶段之外的信息。
-    fn set(&self, config_id: Option<&str>, reason: Option<String>) {
+    fn set(&self, config_id: Option<i64>, reason: Option<String>) {
         let mut inner = self.lock();
-        inner.config_id = config_id.map(str::to_string);
+        inner.config_id = config_id;
         inner.reason = reason;
     }
 

@@ -43,24 +43,24 @@ impl Services {
     /// 同步配置，未指定 id 时同步全部。
     ///
     /// 同步全部只负责推送，等待由后台任务继续完成。
-    pub async fn sync_config(&self, id: Option<&str>) -> Result<usize> {
+    pub async fn sync_config(&self, id: Option<i64>) -> Result<usize> {
         ConfigBiz::new(self.context()).sync(id).await
     }
 }
 
 impl Services {
     /// 新增配置，写库后触发一次同步，返回配置 id。
-    pub async fn create_config(&self, dto: ConfigUpsertDTO) -> Result<String> {
+    pub async fn create_config(&self, dto: ConfigUpsertDTO) -> Result<i64> {
         ConfigBiz::new(self.context()).create(dto).await
     }
 
     /// 修改配置，写库后触发一次同步，返回配置 id。
-    pub async fn edit_config(&self, dto: ConfigUpsertDTO) -> Result<String> {
+    pub async fn edit_config(&self, dto: ConfigUpsertDTO) -> Result<i64> {
         ConfigBiz::new(self.context()).edit(dto).await
     }
 
     /// 删除一条配置。
-    pub async fn delete_config(&self, id: &str) -> Result<()> {
+    pub async fn delete_config(&self, id: i64) -> Result<()> {
         ConfigBiz::new(self.context()).delete(id).await?;
         Ok(())
     }
@@ -124,7 +124,7 @@ impl Services {
     /// 正在刷新中的配置 id。
     ///
     /// 同步任务跑在后台调度器上，界面靠它区分「刷新中」与「已刷新」。
-    pub fn config_pending(&self) -> Vec<String> {
+    pub fn config_pending(&self) -> Vec<i64> {
         ConfigSync::instance().pending()
     }
 }

@@ -7,7 +7,7 @@ use crate::entity::subscribe::{Subscribe, SubscribeSource};
 /// `id` 为空表示新增，`content` 为空表示由 `url` 拉取。
 #[auto_type]
 pub struct SubscribeUpsertDTO {
-    pub id: Option<String>,
+    pub id: Option<i64>,
     pub name: String,
     pub url: String,
     pub content: Option<String>,
@@ -17,7 +17,7 @@ pub struct SubscribeUpsertDTO {
 /// 订阅刷新所需的字段，不含解析后的节点。
 #[auto_type]
 pub struct SubscribeRefreshDTO {
-    pub id: String,
+    pub id: i64,
     pub name: String,
     pub url: String,
     /// 远端订阅时为空，避免把已保存的内容读回内存

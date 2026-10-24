@@ -36,14 +36,14 @@ impl SubscribeSource {
     }
 }
 
-/// 订阅, 对应 tbl_subscribe。
+/// 订阅, 对应 tbl2_subscribe。
 ///
 /// `nodes` 为订阅解析后的节点 JSON 文本, 结构由订阅解析逻辑决定,
 /// 键的解析方式见 [`SubscribeSource`]。
 /// `download`、`upload`、`max` 单位为 Bytes, 时间字段为毫秒级时间戳。
 #[auto_type(default = false)]
 pub struct Subscribe {
-    pub id: String,
+    pub id: i64,
     pub name: String,
     /// 订阅地址, 为空表示本地订阅
     pub url: String,

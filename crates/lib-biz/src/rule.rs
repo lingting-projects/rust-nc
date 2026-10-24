@@ -26,7 +26,7 @@ impl RuleBiz {
     /// 同步规则，返回新推入的任务数量。
     ///
     /// 未指定 `id` 时推送全部规则并立即返回；指定 `id` 时推送该 id 并等待同步结束。
-    pub async fn sync(&self, id: Option<&str>) -> Result<usize> {
+    pub async fn sync(&self, id: Option<i64>) -> Result<usize> {
         let sync = RuleSync::instance();
         let Some(id) = id else {
             return Ok(sync.push_all(self.service().list_ids().await?));
@@ -38,9 +38,9 @@ impl RuleBiz {
     }
 
     /// 新增规则，写库后触发一次同步。
-    pub async fn create(&self, dto: RuleUpsertDTO) -> Result<String> {
+    pub async fn create(&self, dto: RuleUpsertDTO) -> Result<i64> {
         let id = self.service().upsert(dto, current_millis()?).await?;
-        self.push(&id);
+        self.push(id);
         Ok(id)
     }
 
@@ -48,10 +48,10 @@ impl RuleBiz {
     ///
     /// 地址变更后已保存的远端内容不再对应当前地址，因此清空；
     /// 地址未变更时沿用调用方提交的内容（本地规则即手写内容），未提交则保留原内容。
-    pub async fn edit(&self, dto: RuleUpsertDTO) -> Result<String> {
+    pub async fn edit(&self, dto: RuleUpsertDTO) -> Result<i64> {
         let id = existing_id(&dto)?;
         let service = self.service();
-        let current = service.find(&id).await?;
+        let current = service.find(id).await?;
         let changed = current.as_ref().is_none_or(|item| item.url != dto.url);
         let content = match (&dto.content, &current) {
             (Some(content), _) => Some(content.clone()),
@@ -63,13 +63,13 @@ impl RuleBiz {
         let dto = RuleUpsertDTO { content, ..dto };
         let id = service.upsert(dto, current_millis()?).await?;
         if changed {
-            self.push(&id);
+            self.push(id);
         }
         Ok(id)
     }
 
     /// 删除规则，返回删除行数，并清理该规则的规则文件目录。
-    pub async fn delete(&self, id: &str) -> Result<u64> {
+    pub async fn delete(&self, id: i64) -> Result<u64> {
         let count = self.service().delete(id).await?;
         if let Err(error) = file::remove_rule(id) {
             warn!("[规则] [{}] 清理规则文件失败: {error:#}", id);
@@ -78,7 +78,7 @@ impl RuleBiz {
     }
 
     /// 触发同步但不等待结果；写库结果不受同步推送影响。
-    fn push(&self, id: &str) {
+    fn push(&self, id: i64) {
         if !RuleSync::instance().push(id) {
             debug!("[规则] [{}] 未推入同步队列", id);
         }
@@ -90,9 +90,6 @@ impl RuleBiz {
 }
 
 /// 取出修改入参中的有效 id。
-fn existing_id(dto: &RuleUpsertDTO) -> Result<String> {
-    match dto.id.as_ref().filter(|id| !id.is_empty()) {
-        Some(id) => Ok(id.clone()),
-        None => Err(anyhow!("修改规则缺少 id")),
-    }
+fn existing_id(dto: &RuleUpsertDTO) -> Result<i64> {
+    dto.id.ok_or_else(|| anyhow!("修改规则缺少 id"))
 }

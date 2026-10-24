@@ -76,7 +76,7 @@ impl RefreshState {
 /// 为了让「刷新中」有机会自己变成「已刷新」，这里记录刷新中的集合与
 /// 本轮轮询的截止时刻：查到仍在刷新的数据就把截止时刻往后推。
 pub struct Refresher {
-    pending: Rc<HashSet<String>>,
+    pending: Rc<HashSet<i64>>,
     /// 轮询截止时刻，`None` 表示不再轮询
     until: Option<Instant>,
     /// 是否已有轮询任务在跑
@@ -94,13 +94,13 @@ impl Refresher {
     }
 
     /// 刷新中的 id 集合，交给表格渲染状态列。
-    pub fn pending(&self) -> Rc<HashSet<String>> {
+    pub fn pending(&self) -> Rc<HashSet<i64>> {
         self.pending.clone()
     }
 
     /// 用调度器的最新结果替换刷新中的 id，返回是否发生变化。
-    pub fn update(&mut self, ids: Vec<String>) -> bool {
-        let next: HashSet<String> = ids.into_iter().collect();
+    pub fn update(&mut self, ids: Vec<i64>) -> bool {
+        let next: HashSet<i64> = ids.into_iter().collect();
         if next == *self.pending {
             return false;
         }
@@ -120,7 +120,7 @@ impl Refresher {
         true
     }
     /// 轮询一拍：刷新集合，仍有数据在刷新时重新计时，返回集合是否变化。
-    pub fn tick(&mut self, ids: Vec<String>) -> bool {
+    pub fn tick(&mut self, ids: Vec<i64>) -> bool {
         let changed = self.update(ids);
         if !self.pending.is_empty() {
             self.until = Some(Instant::now() + HOLD);

@@ -41,32 +41,32 @@ impl ConfigSync {
     }
 
     /// 等待指定 id 的同步任务结束, 没有对应任务时直接完成。
-    pub async fn wait(&self, id: &str) {
+    pub async fn wait(&self, id: i64) {
         self.scheduler.wait(id).await;
     }
 
     /// 推送单个 id, 返回是否成功入队。
     ///
     /// 已在运行或已在队列中的 id 不会重复推入。
-    pub fn push(&self, id: &str) -> bool {
+    pub fn push(&self, id: i64) -> bool {
         self.scheduler.push(id)
     }
 
     /// 批量推送 id, 返回成功入队的数量。
-    pub fn push_all(&self, ids: impl IntoIterator<Item = String>) -> usize {
+    pub fn push_all(&self, ids: impl IntoIterator<Item = i64>) -> usize {
         self.scheduler.push_all(ids)
     }
     /// 正在运行或排队中的同步任务 id。
     ///
     /// 界面据此判断「刷新中」，只读内存状态，不触发 IO。
-    pub fn pending(&self) -> Vec<String> {
+    pub fn pending(&self) -> Vec<i64> {
         self.scheduler.pending()
     }
 
     /// 刷新引用了订阅 `id` 的配置, 返回成功入队的数量。
     ///
     /// 订阅同步出新节点后调用, 让依赖它的配置重新生成内核配置。
-    pub async fn push_by_subscribe(&self, context: &Arc<DbContext>, id: &str) -> Result<usize> {
+    pub async fn push_by_subscribe(&self, context: &Arc<DbContext>, id: i64) -> Result<usize> {
         let ids = ConfigService::new(context.clone())
             .list_ids_by_subscribe(id)
             .await?;
@@ -76,7 +76,7 @@ impl ConfigSync {
     /// 刷新引用了规则 `id` 的配置, 返回成功入队的数量。
     ///
     /// 规则同步出新内容后调用, 让依赖它的配置重新生成内核配置。
-    pub async fn push_by_rule(&self, context: &Arc<DbContext>, id: &str) -> Result<usize> {
+    pub async fn push_by_rule(&self, context: &Arc<DbContext>, id: i64) -> Result<usize> {
         let ids = ConfigService::new(context.clone())
             .list_ids_by_rule(id)
             .await?;
@@ -90,8 +90,8 @@ struct ConfigTask;
 impl SyncTask for ConfigTask {
     const THREAD: &'static str = "config-sync";
 
-    async fn run(context: Arc<DbContext>, id: String) {
-        if let Err(error) = sync(&context, &id).await {
+    async fn run(context: Arc<DbContext>, id: i64) {
+        if let Err(error) = sync(&context, id).await {
             error!("[配置] [{}] 同步异常! {error:#}", id);
         }
     }
@@ -100,7 +100,7 @@ impl SyncTask for ConfigTask {
 /// 同步单个配置: 校验订阅节点与引用的规则, 通过后生成配置文件并刷新刷新时间。
 ///
 /// 配置若是内核正在运行的那一份且文件内容发生变化, 同步完成后通知内核重载, 让新配置立即生效。
-pub(crate) async fn sync(context: &Arc<DbContext>, id: &str) -> Result<()> {
+pub(crate) async fn sync(context: &Arc<DbContext>, id: i64) -> Result<()> {
     let service = ConfigService::new(context.clone());
     let Some(config) = service.find(id).await? else {
         warn!("[配置] [{}] 不存在, 结束同步", id);
@@ -155,16 +155,21 @@ async fn validate(context: &Arc<DbContext>, config: &Config) -> Result<usize> {
 
     // 三类规则共用同一张表, 因此一次读取即可判断全部引用
     let rules = RuleService::new(context.clone()).list_ids().await?;
-    let missing: Vec<&str> = config
+    let missing: Vec<i64> = config
         .rule_direct_ids
         .iter()
         .chain(&config.rule_proxy_ids)
         .chain(&config.rule_reject_ids)
-        .map(String::as_str)
-        .filter(|id| !rules.iter().any(|exist| exist == id))
+        .copied()
+        .filter(|id| !rules.contains(id))
         .collect();
     if !missing.is_empty() {
-        return Err(anyhow!("规则不存在: {}", missing.join(", ")));
+        let names = missing
+            .iter()
+            .map(i64::to_string)
+            .collect::<Vec<_>>()
+            .join(", ");
+        return Err(anyhow!("规则不存在: {names}"));
     }
 
     debug!(
@@ -178,19 +183,16 @@ async fn validate(context: &Arc<DbContext>, config: &Config) -> Result<usize> {
 
 /// 校验订阅已同步出节点, 返回节点数量。
 async fn nodes(context: &Arc<DbContext>, config: &Config) -> Result<usize> {
-    if config.subscribe_id.is_empty() {
+    let Some(subscribe_id) = config.subscribe_id else {
         return Err(anyhow!("未选择订阅"));
-    }
-
-    let service = SubscribeService::new(context.clone());
-    let Some(subscribe) = service.find(&config.subscribe_id).await? else {
-        return Err(anyhow!("订阅不存在: {}", config.subscribe_id));
     };
 
-    let (nodes, _) = service
-        .find_nodes(&config.subscribe_id)
-        .await?
-        .unwrap_or_default();
+    let service = SubscribeService::new(context.clone());
+    let Some(subscribe) = service.find(subscribe_id).await? else {
+        return Err(anyhow!("订阅不存在: {subscribe_id}"));
+    };
+
+    let (nodes, _) = service.find_nodes(subscribe_id).await?.unwrap_or_default();
     let count = match nodes.trim().is_empty() {
         true => 0,
         false => serde_json::from_str::<Vec<serde_json::Value>>(&nodes)?.len(),

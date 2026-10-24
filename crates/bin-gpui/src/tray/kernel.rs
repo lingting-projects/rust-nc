@@ -37,7 +37,7 @@ pub fn toggle(cx: &mut App) {
         let task = services.spawn(async move {
             match (running, selected) {
                 (true, _) => runner.stop_kernel().await,
-                (false, Some(id)) => runner.start_kernel(&id).await,
+                (false, Some(id)) => runner.start_kernel(id).await,
                 (false, None) => Ok(()),
             }
         });

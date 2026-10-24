@@ -133,7 +133,7 @@ impl RulePage {
     }
 
     /// 打开编辑规则的弹窗。
-    pub fn edit(&mut self, id: &str, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn edit(&mut self, id: i64, window: &mut Window, cx: &mut Context<Self>) {
         let draft = self
             .rules()
             .and_then(|items| items.iter().find(|item| item.id == id))
@@ -162,7 +162,7 @@ impl RulePage {
         cx.notify();
 
         // 无 id 视为新增，两者在业务层是不同流程：新增总会触发同步，修改只在地址变更后触发
-        let create = dto.id.as_deref().is_none_or(|id| id.is_empty());
+        let create = dto.id.is_none();
         let loader = services.clone();
         let runner = services.clone();
         cx.spawn_in(window, async move |this, cx| {
@@ -197,7 +197,7 @@ impl RulePage {
     }
 
     /// 删除一条规则，调用方负责先取得确认。
-    pub fn remove(&mut self, id: String, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn remove(&mut self, id: i64, window: &mut Window, cx: &mut Context<Self>) {
         let Some(services) = self.ready_services(cx) else {
             return;
         };
@@ -206,7 +206,7 @@ impl RulePage {
         let runner = services.clone();
         cx.spawn_in(window, async move |this, cx| {
             let result = loader
-                .spawn(async move { runner.delete_rule(&id).await })
+                .spawn(async move { runner.delete_rule(id).await })
                 .await;
 
             this.update_in(cx, |page, window, cx| match result {
@@ -260,7 +260,7 @@ impl RulePage {
     }
 
     /// 同步一条规则，等待该规则同步结束后刷新列表。
-    pub fn sync_one(&mut self, id: &str, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn sync_one(&mut self, id: i64, window: &mut Window, cx: &mut Context<Self>) {
         if self.syncing {
             return;
         }
@@ -271,12 +271,11 @@ impl RulePage {
         self.syncing = true;
         cx.notify();
 
-        let id = id.to_string();
         let loader = services.clone();
         let runner = services.clone();
         cx.spawn_in(window, async move |this, cx| {
             let result = loader
-                .spawn(async move { runner.sync_rule(Some(&id)).await })
+                .spawn(async move { runner.sync_rule(Some(id)).await })
                 .await;
 
             this.update_in(cx, |page, window, cx| {

@@ -1,6 +1,6 @@
 //! 设置的内存快照。
 //!
-//! 快照保存 `app_config` 的全部键值, 以及读取时无法由数据库得到的系统状态;
+//! 快照保存 `tbl2_app_config` 的全部键值, 以及读取时无法由数据库得到的系统状态;
 //! 需要具体设置时再由快照转换为对应的 DTO, 不再访问数据库。
 
 use std::collections::HashMap;
@@ -17,7 +17,7 @@ use crate::service::app_config_service::AppConfigService;
 
 /// 一份完整的内存设置。
 pub(crate) struct Snapshot {
-    /// `app_config` 的全部键值
+    /// `tbl2_app_config` 的全部键值
     config: HashMap<String, String>,
     /// 是否已注册开机自启, 取自系统计划任务状态
     startup: bool,
@@ -125,11 +125,9 @@ impl Snapshot {
         serde_json::from_str(self.value(key)?).ok()
     }
 
-    /// 取选中的配置 id, 空串视为未选中。
-    fn selected(&self, key: &AppConfigKey) -> Option<String> {
-        self.value(key)
-            .filter(|value| !value.is_empty())
-            .map(str::to_string)
+    /// 取选中的配置 id, 缺失或非法时视为未选中。
+    fn selected(&self, key: &AppConfigKey) -> Option<i64> {
+        self.number(key)
     }
 
     /// 按配置键取原始文本。

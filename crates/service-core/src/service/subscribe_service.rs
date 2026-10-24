@@ -25,17 +25,17 @@ impl SubscribeService {
     }
 
     /// 查询全部订阅 id。
-    pub async fn list_ids(&self) -> Result<Vec<String>> {
+    pub async fn list_ids(&self) -> Result<Vec<i64>> {
         repository::all_id(self.pool()).await
     }
 
     /// 按 id 查询订阅。
-    pub async fn find(&self, id: &str) -> Result<Option<Subscribe>> {
+    pub async fn find(&self, id: i64) -> Result<Option<Subscribe>> {
         repository::find(self.pool(), id).await
     }
 
     /// 查询订阅解析后的节点 JSON 文本与源类型。
-    pub async fn find_nodes(&self, id: &str) -> Result<Option<(String, SubscribeSource)>> {
+    pub async fn find_nodes(&self, id: i64) -> Result<Option<(String, SubscribeSource)>> {
         repository::find_nodes(self.pool(), id).await
     }
 
@@ -45,7 +45,7 @@ impl SubscribeService {
     }
 
     /// 按 id 查询订阅的刷新字段。
-    pub async fn find_refresh(&self, id: &str) -> Result<Option<SubscribeRefreshDTO>> {
+    pub async fn find_refresh(&self, id: i64) -> Result<Option<SubscribeRefreshDTO>> {
         repository::find_refresh(self.pool(), id).await
     }
 
@@ -57,11 +57,11 @@ impl SubscribeService {
     /// 新增或修改订阅，返回订阅 id。
     ///
     /// 新增时补全 id、创建时间与刷新时间；修改时保留创建时间与刷新时间。
-    pub async fn upsert(&self, dto: SubscribeUpsertDTO, millis: i64) -> Result<String> {
-        let Some(id) = existing_id(&dto) else {
-            let id = next_id()?.to_string();
+    pub async fn upsert(&self, dto: SubscribeUpsertDTO, millis: i64) -> Result<i64> {
+        let Some(id) = dto.id else {
+            let id = next_id()?;
             let entity = Subscribe {
-                id: id.clone(),
+                id,
                 name: dto.name,
                 url: dto.url,
                 content: dto.content.unwrap_or_default(),
@@ -80,7 +80,7 @@ impl SubscribeService {
             return Ok(id);
         };
 
-        let current = repository::find(self.pool(), &id).await?;
+        let current = repository::find(self.pool(), id).await?;
         let content = dto.content.unwrap_or_else(|| {
             current
                 .as_ref()
@@ -89,7 +89,7 @@ impl SubscribeService {
         });
         repository::update(
             self.pool(),
-            &id,
+            id,
             &dto.name,
             &dto.url,
             &content,
@@ -101,7 +101,7 @@ impl SubscribeService {
     }
 
     /// 仅更新刷新时间。
-    pub async fn touch_refresh(&self, id: &str, millis: i64) -> Result<()> {
+    pub async fn touch_refresh(&self, id: i64, millis: i64) -> Result<()> {
         repository::update_refresh_time(self.pool(), id, millis).await
     }
 
@@ -109,7 +109,7 @@ impl SubscribeService {
     #[allow(clippy::too_many_arguments)]
     pub async fn save_refresh(
         &self,
-        id: &str,
+        id: i64,
         content: Option<&str>,
         nodes: &str,
         source: &str,
@@ -135,19 +135,11 @@ impl SubscribeService {
     }
 
     /// 按 id 删除订阅，返回删除行数。
-    pub async fn delete(&self, id: &str) -> Result<u64> {
+    pub async fn delete(&self, id: i64) -> Result<u64> {
         repository::delete(self.pool(), id).await
     }
 
     fn pool(&self) -> &lib_db::DbPool {
         self.context.pool()
-    }
-}
-
-/// 取出入参中的有效 id，`None` 与空串都视为新增。
-fn existing_id(dto: &SubscribeUpsertDTO) -> Option<String> {
-    match dto.id.as_ref() {
-        Some(id) if !id.is_empty() => Some(id.clone()),
-        _ => None,
     }
 }

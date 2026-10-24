@@ -102,9 +102,9 @@ pub struct ConfigOption {
 }
 
 impl ConfigOption {
-    pub fn new(id: impl Into<SharedString>, name: impl Into<SharedString>) -> Self {
+    pub fn new(id: i64, name: impl Into<SharedString>) -> Self {
         Self {
-            id: id.into(),
+            id: id.to_string().into(),
             name: name.into(),
         }
     }
@@ -137,14 +137,14 @@ pub fn create_state(
 pub fn replace(
     state: &Entity<SelectState<SearchableVec<ConfigOption>>>,
     options: Vec<ConfigOption>,
-    selected: Option<&str>,
+    selected: Option<i64>,
     window: &mut Window,
     cx: &mut App,
 ) {
     let index = selected.and_then(|selected| {
         options
             .iter()
-            .position(|option| option.id.as_ref() == selected)
+            .position(|option| option.id.as_ref() == selected.to_string())
             .map(IndexPath::new)
     });
 
@@ -165,9 +165,10 @@ pub fn subscribe(
             let SelectEvent::Confirm(Some(value)) = event else {
                 return;
             };
-            if console.selected.as_deref() != Some(value.as_ref()) {
-                console.selected = Some(value.to_string());
-                console.remember(value.to_string(), cx);
+            let id = value.parse().unwrap_or_default();
+            if console.selected != Some(id) {
+                console.selected = Some(id);
+                console.remember(id, cx);
                 cx.notify();
             }
         },

@@ -159,7 +159,7 @@ impl SingBox {
                             }
                             Err(error) => {
                                 // 首次探测必然失败, 每 5 次(约 1 秒)记录一次即可
-                                if probe == 1 || probe % 5 == 0 {
+                                if probe == 1 || probe.is_multiple_of(5) {
                                     log::debug!("[内核] API 探测失败, 第 {probe} 次: {error:#}");
                                 }
                                 last = Some(error);

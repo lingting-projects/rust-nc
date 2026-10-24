@@ -7,7 +7,7 @@ use crate::entity::rule::Rule;
 /// `id` 为空表示新增，`content` 为空表示由 `url` 拉取。
 #[auto_type]
 pub struct RuleUpsertDTO {
-    pub id: Option<String>,
+    pub id: Option<i64>,
     pub name: String,
     pub url: String,
     pub content: Option<String>,
@@ -17,7 +17,7 @@ pub struct RuleUpsertDTO {
 /// 规则刷新所需的字段，不含统计数量。
 #[auto_type]
 pub struct RuleRefreshDTO {
-    pub id: String,
+    pub id: i64,
     pub name: String,
     pub url: String,
     /// 远端规则时为空，避免把已保存的内容读回内存

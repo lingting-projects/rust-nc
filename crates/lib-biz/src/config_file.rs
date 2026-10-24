@@ -30,9 +30,9 @@ pub async fn write(context: &Arc<DbContext>, config: &Config) -> Result<PathBuf>
 /// 内容未变化时内核无需重载, 调用方据此避免无谓地重建内核实例。
 /// 目录不再重建, 文件修改时间不能作为判断依据, 因此按内容比较。
 pub async fn write_changed(context: &Arc<DbContext>, config: &Config) -> Result<(PathBuf, bool)> {
-    let path = file::sing_box_json(&config.id)?;
+    let path = file::sing_box_json(config.id)?;
     let before = std::fs::read_to_string(&path).ok();
-    let nodes = nodes(context, &config.subscribe_id).await?;
+    let nodes = nodes(context, config.subscribe_id).await?;
     let kernel = kernel();
     // 内置规则在生成配置前登记, 保证内核启动前的就绪检查能覆盖到本次引用的规则集
     register_inner_rules(context, config).await?;
@@ -59,7 +59,7 @@ pub async fn write_changed(context: &Arc<DbContext>, config: &Config) -> Result<
         exclude: exclude(config),
     };
 
-    let temp = file::config_temp_dir(&config.id)?;
+    let temp = file::config_temp_dir(config.id)?;
     // 转换与写盘为同步计算, 放到阻塞线程池, 避免占住异步线程
     tokio::task::spawn_blocking(move || {
         let converted = if is_clash(&nodes) {
@@ -76,7 +76,11 @@ pub async fn write_changed(context: &Arc<DbContext>, config: &Config) -> Result<
 }
 
 /// 读取订阅已同步的节点, 按订阅记录的源类型解析。
-async fn nodes(context: &Arc<DbContext>, id: &str) -> Result<PickNodes> {
+async fn nodes(context: &Arc<DbContext>, id: Option<i64>) -> Result<PickNodes> {
+    let Some(id) = id else {
+        bail!("未选择订阅");
+    };
+
     let (nodes, kind) = SubscribeService::new(context.clone())
         .find_nodes(id)
         .await?
@@ -117,7 +121,7 @@ async fn rules(
     config: &Config,
 ) -> Result<(Vec<Rule>, Vec<Rule>, Vec<Rule>)> {
     let exist = RuleService::new(context.clone()).list_ids().await?;
-    let id = &config.id;
+    let id = config.id;
 
     Ok((
         collect(id, &exist, &config.rule_direct_ids)?,
@@ -130,18 +134,18 @@ async fn rules(
 ///
 /// 每个规则按类型各有 json 与 srs 两份产物, 存在 srs 时优先使用。
 /// 规则文件由规则同步经临时文件原子替换, 内核的文件监听据此热更新, 无需在配置目录再存副本。
-fn collect(config_id: &str, exist: &[String], ids: &[String]) -> Result<Vec<Rule>> {
+fn collect(config_id: i64, exist: &[i64], ids: &[i64]) -> Result<Vec<Rule>> {
     let mut rules = Vec::new();
     for id in ids {
-        if !exist.iter().any(|item| item == id) {
+        if !exist.contains(id) {
             log::warn!("[配置] [{}] 规则不存在, 跳过: {id}", config_id);
             continue;
         }
 
         for rule_type in [RuleType::Process, RuleType::Other, RuleType::Ip] {
             let name = rule_type.name();
-            let srs = file::rule_file(id, name, "srs")?;
-            let json = file::rule_file(id, name, "json")?;
+            let srs = file::rule_file(*id, name, "srs")?;
+            let json = file::rule_file(*id, name, "json")?;
             let path = match srs.exists() {
                 true => srs,
                 false if json.exists() => json,

@@ -26,7 +26,7 @@ impl ConfigBiz {
     /// 同步配置，返回同步的配置数量。
     ///
     /// 未指定 `id` 时只把全部配置推入队列并立即返回；指定 `id` 时等待该配置同步结束。
-    pub async fn sync(&self, id: Option<&str>) -> Result<usize> {
+    pub async fn sync(&self, id: Option<i64>) -> Result<usize> {
         let Some(id) = id else {
             let ids = self.service().list_ids().await?;
             return Ok(ConfigSync::instance().push_all(ids));
@@ -40,21 +40,21 @@ impl ConfigBiz {
     }
 
     /// 新增配置，写库后触发一次同步。
-    pub async fn create(&self, dto: ConfigUpsertDTO) -> Result<String> {
+    pub async fn create(&self, dto: ConfigUpsertDTO) -> Result<i64> {
         let id = self.service().create(dto, current_millis()?).await?;
-        self.push(&id);
+        self.push(id);
         Ok(id)
     }
 
     /// 修改配置，写库后触发一次同步。
-    pub async fn edit(&self, dto: ConfigUpsertDTO) -> Result<String> {
+    pub async fn edit(&self, dto: ConfigUpsertDTO) -> Result<i64> {
         let id = self.service().edit(dto, current_millis()?).await?;
-        self.push(&id);
+        self.push(id);
         Ok(id)
     }
 
     /// 删除配置，返回删除行数，并清理该配置的文件目录。
-    pub async fn delete(&self, id: &str) -> Result<u64> {
+    pub async fn delete(&self, id: i64) -> Result<u64> {
         let count = self.service().delete(id).await?;
         if let Err(error) = file::remove_config(id) {
             warn!("[配置] [{}] 清理配置文件失败: {error:#}", id);
@@ -63,7 +63,7 @@ impl ConfigBiz {
     }
 
     /// 触发同步但不等待结果；写库结果不受同步推送影响。
-    fn push(&self, id: &str) {
+    fn push(&self, id: i64) {
         if !ConfigSync::instance().push(id) {
             debug!("[配置] [{}] 未推入同步队列", id);
         }

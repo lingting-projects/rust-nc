@@ -18,9 +18,9 @@ pub fn inner_rule_temp_dir() -> Result<PathBuf> {
     Ok(directorys()?.rule_temp.join("inner_rule"))
 }
 
-/// 内置规则文件: `{inner_rule}/{id}.srs`。
-pub fn inner_rule_file(id: &str) -> Result<PathBuf> {
-    Ok(inner_rule_root()?.join(format!("{id}.srs")))
+/// 内置规则文件: `{inner_rule}/{name}.srs`, 文件名即规则集名称。
+pub fn inner_rule_file(name: &str) -> Result<PathBuf> {
+    Ok(inner_rule_root()?.join(format!("{name}.srs")))
 }
 
 /// 下载地址。

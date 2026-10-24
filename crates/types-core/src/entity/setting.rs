@@ -1,6 +1,6 @@
 use framework_proc_auto::{auto_enum, auto_type};
 
-/// 应用配置键, 与 app_config 表已存在的 key 保持一致
+/// 应用配置键, 与 tbl2_app_config 表已存在的 key 保持一致
 #[auto_enum]
 pub enum AppConfigKey {
     /// 数据库结构版本
@@ -61,7 +61,7 @@ pub enum AppConfigKey {
     SettingKernelAutoRun,
 }
 
-/// 应用配置, 对应 app_config 表。
+/// 应用配置, 对应 tbl2_app_config 表。
 ///
 /// `key` 取值见 [`AppConfigKey`]。
 #[auto_type(default = false)]

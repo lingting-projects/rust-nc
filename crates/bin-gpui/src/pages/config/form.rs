@@ -18,7 +18,14 @@ use types_core::entity::subscribe::Subscribe;
 
 use crate::utils::format;
 
+/// 下拉项的取值：下拉组件按文本值比对，id 在界面上一律用文本形式承载。
+pub fn id_value(id: i64) -> SharedString {
+    id.to_string().into()
+}
+
 /// 订阅下拉的一行：名称 + 剩余流量，选择时能区分同名订阅。
+///
+/// 值保存订阅 id 的文本形式：下拉组件要求值可比对，id 本身是整型。
 #[derive(Clone)]
 pub struct SubscribeItem {
     id: SharedString,
@@ -51,7 +58,7 @@ pub fn subscribe_delegate(items: &[Subscribe]) -> SubscribeDelegate {
         items
             .iter()
             .map(|item| SubscribeItem {
-                id: item.id.clone().into(),
+                id: id_value(item.id),
                 name: item.name.clone().into(),
                 traffic: format::remaining(item.max, item.upload + item.download).into(),
             })
@@ -213,7 +220,7 @@ pub fn rule_delegate(items: &[Rule], peers: RulePeers, slot: usize) -> RuleDeleg
             items
                 .iter()
                 .map(|item| RuleItem {
-                    id: item.id.clone().into(),
+                    id: id_value(item.id),
                     name: item.name.clone().into(),
                     count: format!("{} 条", item.count).into(),
                 })
@@ -233,14 +240,14 @@ pub fn rule_state(
     items: &[Rule],
     peers: RulePeers,
     slot: usize,
-    selected: &[String],
+    selected: &[i64],
     window: &mut Window,
     cx: &mut App,
 ) -> Entity<ComboboxState<RuleDelegate>> {
     let delegate = rule_delegate(items, peers, slot);
     let indices = selected
         .iter()
-        .filter_map(|id| delegate.position(&SharedString::from(id.clone())))
+        .filter_map(|id| delegate.position(&id_value(*id)))
         .collect::<Vec<_>>();
 
     cx.new(|cx| {

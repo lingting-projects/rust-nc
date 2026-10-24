@@ -20,7 +20,7 @@ use types_core::entity::config::Config;
 use super::ConfigPage;
 use super::form::{
     ConfigForm, RULE_SLOT_DIRECT, RULE_SLOT_PROXY, RULE_SLOT_REJECT, RuleDelegate,
-    SubscribeDelegate, rule_peers, rule_register, rule_state, subscribe_delegate,
+    SubscribeDelegate, id_value, rule_peers, rule_register, rule_state, subscribe_delegate,
 };
 
 /// 刷新间隔的单位换算：界面用小时，落库用毫秒。
@@ -37,13 +37,13 @@ const SWITCH_GAP: Rems = rems(1.5);
 /// 实体本身不实现 `Clone`，弹窗又需要在页面可变借用之外持有这些值，
 /// 因此这里只取出编辑所需的几个字段。
 pub struct ConfigDraft {
-    id: Option<String>,
+    id: Option<i64>,
     name: String,
-    subscribe_id: String,
+    subscribe_id: Option<i64>,
     interval: i64,
-    rule_direct_ids: Vec<String>,
-    rule_proxy_ids: Vec<String>,
-    rule_reject_ids: Vec<String>,
+    rule_direct_ids: Vec<i64>,
+    rule_proxy_ids: Vec<i64>,
+    rule_reject_ids: Vec<i64>,
     include_name_contains: Vec<String>,
     exclude_name_contains: Vec<String>,
     form: ConfigForm,
@@ -53,9 +53,9 @@ impl ConfigDraft {
     /// 由实体裁剪出编辑所需的字段。
     pub fn of(config: &Config) -> Self {
         Self {
-            id: Some(config.id.clone()),
+            id: Some(config.id),
             name: config.name.clone(),
-            subscribe_id: config.subscribe_id.clone(),
+            subscribe_id: config.subscribe_id,
             interval: config.interval,
             rule_direct_ids: config.rule_direct_ids.clone(),
             rule_proxy_ids: config.rule_proxy_ids.clone(),
@@ -71,7 +71,7 @@ impl ConfigDraft {
         Self {
             id: None,
             name: String::new(),
-            subscribe_id: String::new(),
+            subscribe_id: None,
             interval: 0,
             rule_direct_ids: Vec::new(),
             rule_proxy_ids: Vec::new(),
@@ -139,7 +139,7 @@ pub fn open(
     let rules = data.map(|data| data.rules.as_slice()).unwrap_or_default();
     let subscribe = select_state(
         subscribe_delegate(subscribes),
-        &draft.subscribe_id,
+        draft.subscribe_id,
         window,
         cx,
     );
@@ -204,7 +204,7 @@ pub fn open(
                     .disabled(!can_save)
                     .on_click({
                         let page = page.clone();
-                        let id = id.clone();
+                        let id = id;
                         let name = name.clone();
                         let interval = interval.clone();
                         let include_names = include_names.clone();
@@ -218,7 +218,7 @@ pub fn open(
                             // 点击时再取值：闭包是 `Fn`，且此时才是用户最终确认的内容。
                             let state = form.read(cx);
                             let dto = ConfigUpsertDTO {
-                                id: id.clone(),
+                                id: id,
                                 name: name.read(cx).value().trim().to_string(),
                                 tun: state.tun,
                                 fake_ip: state.fake_ip,
@@ -226,8 +226,7 @@ pub fn open(
                                 subscribe_id: subscribe
                                     .read(cx)
                                     .selected_value()
-                                    .map(|value| value.to_string())
-                                    .unwrap_or_default(),
+                                    .map(|value| value.parse().unwrap_or_default()),
                                 geo_cn: state.geo_cn,
                                 rule_direct_ids: values(&direct, cx),
                                 rule_proxy_ids: values(&proxy, cx),
@@ -462,23 +461,21 @@ fn rule_field(label: &'static str, state: &Entity<ComboboxState<RuleDelegate>>) 
 /// 建立订阅下拉的状态，按 id 定位初始选中项。
 fn select_state(
     delegate: SubscribeDelegate,
-    selected: &str,
+    selected: Option<i64>,
     window: &mut Window,
     cx: &mut App,
 ) -> Entity<SelectState<SubscribeDelegate>> {
-    let index = (!selected.is_empty())
-        .then(|| delegate.position(&SharedString::from(selected.to_string())))
-        .flatten();
+    let index = selected.and_then(|selected| delegate.position(&id_value(selected)));
     cx.new(|cx| SelectState::new(delegate, index, window, cx).searchable(true))
 }
 
 /// 读取多选下拉的已选值。
-fn values(state: &Entity<ComboboxState<RuleDelegate>>, cx: &App) -> Vec<String> {
+fn values(state: &Entity<ComboboxState<RuleDelegate>>, cx: &App) -> Vec<i64> {
     state
         .read(cx)
         .selected_values()
         .into_iter()
-        .map(|value| value.to_string())
+        .map(|value| value.parse().unwrap_or_default())
         .collect()
 }
 
@@ -502,14 +499,14 @@ fn split(value: &str) -> Vec<String> {
 /// 删除不可撤销，因此用 `AlertDialog` 点明对象与后果，危险样式只放在删除按钮上。
 pub fn confirm_delete(
     page: WeakEntity<ConfigPage>,
-    id: String,
+    id: i64,
     name: String,
     window: &mut Window,
     cx: &mut App,
 ) {
     window.open_alert_dialog(cx, move |alert, _, _| {
         let page = page.clone();
-        let id = id.clone();
+        let id = id;
         alert
             .confirm()
             .title(format!("删除「{name}」？"))
@@ -518,8 +515,7 @@ pub fn confirm_delete(
             .ok_variant(ButtonVariant::Danger)
             .cancel_text("取消")
             .on_ok(move |_, window, cx| {
-                page.update(cx, |page, cx| page.remove(id.clone(), window, cx))
-                    .ok();
+                page.update(cx, |page, cx| page.remove(id, window, cx)).ok();
                 true
             })
     });

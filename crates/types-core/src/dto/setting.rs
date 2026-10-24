@@ -77,7 +77,7 @@ pub struct SettingRun {
     /// 启动时是否自动运行选中配置
     pub auto: bool,
     /// 选中的配置 id
-    pub selected: Option<String>,
+    pub selected: Option<i64>,
 }
 
 /// 应用设置聚合。

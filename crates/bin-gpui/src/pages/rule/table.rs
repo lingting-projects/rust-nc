@@ -57,7 +57,7 @@ pub fn sync(
     table: &Entity<TableState<RuleTable>>,
     items: Rc<Vec<Rule>>,
     rows: Rc<Vec<usize>>,
-    pending: Rc<HashSet<String>>,
+    pending: Rc<HashSet<i64>>,
     rem_size: Pixels,
     cx: &mut App,
 ) {
@@ -121,7 +121,7 @@ pub struct RuleTable {
     items: Rc<Vec<Rule>>,
     rows: Rc<Vec<usize>>,
     /// 正在刷新中的规则 id，来自同步调度器
-    pending: Rc<HashSet<String>>,
+    pending: Rc<HashSet<i64>>,
     rem_size: Pixels,
     page: WeakEntity<RulePage>,
 }
@@ -146,7 +146,7 @@ impl RuleTable {
     }
 
     /// 更新刷新中的规则集合，返回是否发生了变化。
-    fn set_pending(&mut self, pending: Rc<HashSet<String>>) -> bool {
+    fn set_pending(&mut self, pending: Rc<HashSet<i64>>) -> bool {
         let changed = !Rc::ptr_eq(&self.pending, &pending);
         self.pending = pending;
         changed
@@ -190,7 +190,7 @@ impl RuleTable {
     /// 三个都是图标按钮，用 tooltip 说明含义，并以 `accessibility_label` 给出可读名称。
     fn action(&self, item: &Rule, cx: &App) -> AnyElement {
         let page = self.page.clone();
-        let id = item.id.clone();
+        let id = item.id;
         let name = item.name.clone();
         // 按钮标识跟随规则 id：过滤后行号会变，用行号会串掉按钮的内部状态。
         let sync_id: ElementId = format!("rule-sync:{}", item.id).into();
@@ -208,9 +208,8 @@ impl RuleTable {
                     .accessibility_label("同步")
                     .on_click({
                         let page = page.clone();
-                        let id = id.clone();
                         move |_, window, cx| {
-                            page.update(cx, |page, cx| page.sync_one(&id, window, cx))
+                            page.update(cx, |page, cx| page.sync_one(id, window, cx))
                                 .ok();
                         }
                     }),
@@ -224,22 +223,15 @@ impl RuleTable {
                     .accessibility_label("编辑")
                     .on_click({
                         let page = page.clone();
-                        let id = id.clone();
                         move |_, window, cx| {
-                            page.update(cx, |page, cx| page.edit(&id, window, cx)).ok();
+                            page.update(cx, |page, cx| page.edit(id, window, cx)).ok();
                         }
                     }),
             )
             .child(
                 delete_button(delete_id, IconName::Trash, "删除", cx).on_click(
                     move |_, window, cx| {
-                        super::dialog::confirm_delete(
-                            page.clone(),
-                            id.clone(),
-                            name.clone(),
-                            window,
-                            cx,
-                        );
+                        super::dialog::confirm_delete(page.clone(), id, name.clone(), window, cx);
                     },
                 ),
             )

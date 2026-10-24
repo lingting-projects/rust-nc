@@ -6,7 +6,7 @@ use types_core::entity::rule::Rule;
 use super::mapping;
 
 /// 表名。
-const TABLE: &str = "tbl_rule";
+const TABLE: &str = "tbl2_rule";
 
 /// 列表查询字段，远端规则不回传已保存的完整内容。
 const LIST_FIELDS: &str = "`id`,`name`,`url`,\
@@ -26,14 +26,14 @@ pub(crate) async fn all(pool: &DbPool) -> Result<Vec<Rule>> {
 }
 
 /// 查询全部规则 id。
-pub(crate) async fn all_id(pool: &DbPool) -> Result<Vec<String>> {
+pub(crate) async fn all_id(pool: &DbPool) -> Result<Vec<i64>> {
     let sql = format!("select `id` from {TABLE}");
     let rows = sqlx::query(&sql).fetch_all(pool).await?;
-    rows.iter().map(|row| mapping::string(row, "id")).collect()
+    rows.iter().map(|row| mapping::id(row, "id")).collect()
 }
 
 /// 按 id 查询规则。
-pub(crate) async fn find(pool: &DbPool, id: &str) -> Result<Option<Rule>> {
+pub(crate) async fn find(pool: &DbPool, id: i64) -> Result<Option<Rule>> {
     let sql = format!("select {LIST_FIELDS} from {TABLE} where `id` = ? limit 1");
     let row = sqlx::query(&sql).bind(id).fetch_optional(pool).await?;
     row.as_ref().map(from_row).transpose()
@@ -47,7 +47,7 @@ pub(crate) async fn all_refresh(pool: &DbPool) -> Result<Vec<RuleRefreshDTO>> {
 }
 
 /// 按 id 查询规则的刷新字段。
-pub(crate) async fn find_refresh(pool: &DbPool, id: &str) -> Result<Option<RuleRefreshDTO>> {
+pub(crate) async fn find_refresh(pool: &DbPool, id: i64) -> Result<Option<RuleRefreshDTO>> {
     let sql = format!("select {REFRESH_FIELDS} from {TABLE} where `id` = ? limit 1");
     let row = sqlx::query(&sql).bind(id).fetch_optional(pool).await?;
     row.as_ref().map(from_refresh_row).transpose()
@@ -72,7 +72,7 @@ pub(crate) async fn insert(pool: &DbPool, entity: &Rule) -> Result<()> {
          values (?,?,?,?,?,?,?,?,?,?,?,?)"
     );
     sqlx::query(&sql)
-        .bind(&entity.id)
+        .bind(entity.id)
         .bind(&entity.name)
         .bind(&entity.url)
         .bind(&entity.content)
@@ -92,7 +92,7 @@ pub(crate) async fn insert(pool: &DbPool, entity: &Rule) -> Result<()> {
 /// 更新规则的名称、地址、内容、间隔与更新时间。
 pub(crate) async fn update(
     pool: &DbPool,
-    id: &str,
+    id: i64,
     name: &str,
     url: &str,
     content: &str,
@@ -116,7 +116,7 @@ pub(crate) async fn update(
 }
 
 /// 仅更新刷新时间，用于内容未变更的场景。
-pub(crate) async fn update_refresh_time(pool: &DbPool, id: &str, millis: i64) -> Result<()> {
+pub(crate) async fn update_refresh_time(pool: &DbPool, id: i64, millis: i64) -> Result<()> {
     let sql = format!("update {TABLE} set `refresh_time` = ? where `id` = ?");
     sqlx::query(&sql)
         .bind(millis)
@@ -130,7 +130,7 @@ pub(crate) async fn update_refresh_time(pool: &DbPool, id: &str, millis: i64) ->
 #[allow(clippy::too_many_arguments)]
 pub(crate) async fn update_refresh(
     pool: &DbPool,
-    id: &str,
+    id: i64,
     content: Option<&str>,
     refresh_time: i64,
     count: u64,
@@ -165,7 +165,7 @@ pub(crate) async fn update_refresh(
 }
 
 /// 按 id 删除规则。
-pub(crate) async fn delete(pool: &DbPool, id: &str) -> Result<u64> {
+pub(crate) async fn delete(pool: &DbPool, id: i64) -> Result<u64> {
     let sql = format!("delete from {TABLE} where `id` = ?");
     let result = sqlx::query(&sql).bind(id).execute(pool).await?;
     Ok(result.rows_affected())
@@ -173,7 +173,7 @@ pub(crate) async fn delete(pool: &DbPool, id: &str) -> Result<u64> {
 
 fn from_row(row: &DbRow) -> Result<Rule> {
     Ok(Rule {
-        id: mapping::string(row, "id")?,
+        id: mapping::id(row, "id")?,
         name: mapping::string(row, "name")?,
         url: mapping::string(row, "url")?,
         content: mapping::string(row, "content")?,
@@ -190,7 +190,7 @@ fn from_row(row: &DbRow) -> Result<Rule> {
 
 fn from_refresh_row(row: &DbRow) -> Result<RuleRefreshDTO> {
     Ok(RuleRefreshDTO {
-        id: mapping::string(row, "id")?,
+        id: mapping::id(row, "id")?,
         name: mapping::string(row, "name")?,
         url: mapping::string(row, "url")?,
         content: mapping::string(row, "content")?,

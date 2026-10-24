@@ -58,7 +58,7 @@ pub struct Kernel {
     /// 全局是否有启停操作在进行，可能来自托盘或启动时的自动运行。
     pub acting: bool,
     /// 正在运行的配置 id，未运行时为 `None`。
-    pub config_id: Option<String>,
+    pub config_id: Option<i64>,
     /// 最近一次异常的原因。
     pub reason: Option<String>,
 }
@@ -97,7 +97,7 @@ pub struct Console {
     /// 配置下拉框的状态。
     select: Entity<SelectState<SearchableVec<ConfigOption>>>,
     /// 下拉框中选中的配置 id，未选中时为 `None`。
-    selected: Option<String>,
+    selected: Option<i64>,
     /// 是否正在刷新配置列表。
     refreshing: bool,
     /// 监控控制栏中被选中的分区，默认全部选中。
@@ -237,28 +237,26 @@ impl Console {
                         // 刷新时保留仍然有效的当前选择；否则用上次使用的配置，再退回第一个。
                         let current = console
                             .selected
-                            .clone()
-                            .filter(|id| data.configs.iter().any(|config| &config.id == id));
-                        let fallback = data.configs.first().map(|config| config.id.clone());
+                            .filter(|id| data.configs.iter().any(|config| config.id == *id));
+                        let fallback = data.configs.first().map(|config| config.id);
                         console.selected = current
                             .or_else(|| {
                                 data.last_used
-                                    .clone()
-                                    .filter(|id| data.configs.iter().any(|config| &config.id == id))
+                                    .filter(|id| data.configs.iter().any(|config| config.id == *id))
                             })
                             .or(fallback);
 
                         let options = data
                             .configs
                             .iter()
-                            .map(|config| ConfigOption::new(config.id.clone(), config.name.clone()))
+                            .map(|config| ConfigOption::new(config.id, config.name.clone()))
                             .collect::<Vec<_>>();
-                        let selected = console.selected.clone();
-                        toolbar::replace(&console.select, options, selected.as_deref(), window, cx);
+                        let selected = console.selected;
+                        toolbar::replace(&console.select, options, selected, window, cx);
 
                         // 预选出来的配置同样要落库，否则托盘菜单一直不知道能启动哪份配置。
-                        if let Some(id) = console.selected.clone()
-                            && data.last_used.as_deref() != Some(id.as_str())
+                        if let Some(id) = console.selected
+                            && data.last_used != Some(id)
                         {
                             console.remember(id, cx);
                         }
@@ -297,7 +295,7 @@ impl Console {
         self.kernel.loading = true;
         cx.notify();
 
-        let id = self.selected.clone().unwrap_or_default();
+        let id = self.selected;
         let loader = services.clone();
         let runner = services.clone();
         cx.spawn(async move |this, cx| {
@@ -305,7 +303,10 @@ impl Console {
                 if running {
                     runner.stop_kernel().await
                 } else {
-                    runner.start_kernel(&id).await
+                    match id {
+                        Some(id) => runner.start_kernel(id).await,
+                        None => Ok(()),
+                    }
                 }
             });
 
@@ -334,7 +335,7 @@ impl Console {
     ///
     /// 下次启动用它预选配置，托盘菜单也用它作为「启动内核」的目标。
     /// 写库失败只记录日志：选择本身已经在界面上生效，不影响本次使用。
-    pub fn remember(&self, id: String, cx: &mut Context<Self>) {
+    pub fn remember(&self, id: i64, cx: &mut Context<Self>) {
         let Some(AppServices::Ready(services)) = services::get(cx) else {
             return;
         };
@@ -342,7 +343,7 @@ impl Console {
 
         cx.spawn(async move |_, _| {
             let runner = services.clone();
-            let task = services.spawn(async move { runner.select_config(&id).await });
+            let task = services.spawn(async move { runner.select_config(id).await });
             if let Ok(Err(error)) = task.await {
                 log::warn!("[控制台] 记录选中配置失败: {error:#}");
             }
@@ -386,8 +387,8 @@ impl Console {
         let LoadState::Ready(data) = &self.load else {
             return None;
         };
-        let id = self.selected.as_ref()?;
-        data.configs.iter().find(|config| &config.id == id)
+        let id = self.selected?;
+        data.configs.iter().find(|config| config.id == id)
     }
 
     /// 渲染监控控制栏：一组可独立开关的分区卡片。

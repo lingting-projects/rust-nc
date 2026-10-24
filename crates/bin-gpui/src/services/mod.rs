@@ -24,7 +24,7 @@ pub struct ConsoleData {
     pub configs: Vec<Config>,
     pub subscribes: Vec<Subscribe>,
     /// 上次使用的配置 id，取自 `setting:run:selected`。
-    pub last_used: Option<String>,
+    pub last_used: Option<i64>,
 }
 
 /// 数据层入口：持有 tokio 运行时与数据库上下文，页面通过它读取配置与订阅。
@@ -77,7 +77,7 @@ impl Services {
     }
 
     /// 记录选中（并在用）的配置 id，供下次启动与托盘菜单使用。
-    pub async fn select_config(self: &Arc<Self>, id: &str) -> Result<()> {
+    pub async fn select_config(self: &Arc<Self>, id: i64) -> Result<()> {
         SettingManager::new(self.context()).select(id).await
     }
 }
@@ -144,7 +144,7 @@ pub fn auto_run(services: &Arc<Services>) {
     let runner = services.clone();
     // 任务句柄丢弃即分离，启动照常进行到底，不需要界面任务来驱动
     services.spawn(async move {
-        if let Err(error) = runner.start_kernel(&id).await {
+        if let Err(error) = runner.start_kernel(id).await {
             log::error!("[启动] 自动运行选中配置失败: {error:#}");
         }
     });

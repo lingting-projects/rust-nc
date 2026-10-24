@@ -9,32 +9,32 @@ pub fn rule_root() -> Result<PathBuf> {
 }
 
 /// 规则文件目录: `{rule}/{id}`。
-pub fn rule_dir(id: &str) -> Result<PathBuf> {
-    Ok(rule_root()?.join(id))
+pub fn rule_dir(id: i64) -> Result<PathBuf> {
+    Ok(rule_root()?.join(id.to_string()))
 }
 
 /// 规则临时目录: `{rule_temp}/{id}`。
-pub fn rule_temp_dir(id: &str) -> Result<PathBuf> {
-    Ok(directorys()?.rule_temp.join(id))
+pub fn rule_temp_dir(id: i64) -> Result<PathBuf> {
+    Ok(directorys()?.rule_temp.join(id.to_string()))
 }
 
 /// 规则集文件: `{rule}/{id}/{name}.{ext}`。
-pub fn rule_file(id: &str, name: &str, ext: &str) -> Result<PathBuf> {
+pub fn rule_file(id: i64, name: &str, ext: &str) -> Result<PathBuf> {
     Ok(rule_dir(id)?.join(format!("{name}.{ext}")))
 }
 
 /// 配置目录: `{config}/{id}`。
-pub fn config_dir(id: &str) -> Result<PathBuf> {
-    Ok(directorys()?.config.join(id))
+pub fn config_dir(id: i64) -> Result<PathBuf> {
+    Ok(directorys()?.config.join(id.to_string()))
 }
 
 /// 配置临时目录: `{config_temp}/{id}`。
-pub fn config_temp_dir(id: &str) -> Result<PathBuf> {
-    Ok(directorys()?.config_temp.join(id))
+pub fn config_temp_dir(id: i64) -> Result<PathBuf> {
+    Ok(directorys()?.config_temp.join(id.to_string()))
 }
 
 /// 配置的 sing-box 配置文件: `{config}/{id}/config.json`。
-pub fn sing_box_json(id: &str) -> Result<PathBuf> {
+pub fn sing_box_json(id: i64) -> Result<PathBuf> {
     Ok(config_dir(id)?.join("config.json"))
 }
 
@@ -49,13 +49,13 @@ pub fn sing_box_log() -> Result<PathBuf> {
 }
 
 /// 删除规则文件目录, 连同临时目录一并清理。
-pub fn remove_rule(id: &str) -> Result<()> {
+pub fn remove_rule(id: i64) -> Result<()> {
     remove_dir(&rule_dir(id)?)?;
     remove_dir(&rule_temp_dir(id)?)
 }
 
 /// 删除配置文件目录, 连同临时目录一并清理。
-pub fn remove_config(id: &str) -> Result<()> {
+pub fn remove_config(id: i64) -> Result<()> {
     remove_dir(&config_dir(id)?)?;
     remove_dir(&config_temp_dir(id)?)
 }
@@ -99,7 +99,7 @@ pub fn temp_path(temp_dir: &Path) -> Result<PathBuf> {
 }
 
 /// 删除规则临时目录, 不存在时视为成功。
-pub fn remove_rule_temp(id: &str) -> Result<()> {
+pub fn remove_rule_temp(id: i64) -> Result<()> {
     remove_dir(&rule_temp_dir(id)?)
 }
 

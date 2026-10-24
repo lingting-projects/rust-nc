@@ -25,12 +25,12 @@ impl RuleService {
     }
 
     /// 查询全部规则 id。
-    pub async fn list_ids(&self) -> Result<Vec<String>> {
+    pub async fn list_ids(&self) -> Result<Vec<i64>> {
         repository::all_id(self.pool()).await
     }
 
     /// 按 id 查询规则。
-    pub async fn find(&self, id: &str) -> Result<Option<Rule>> {
+    pub async fn find(&self, id: i64) -> Result<Option<Rule>> {
         repository::find(self.pool(), id).await
     }
 
@@ -40,7 +40,7 @@ impl RuleService {
     }
 
     /// 按 id 查询规则的刷新字段。
-    pub async fn find_refresh(&self, id: &str) -> Result<Option<RuleRefreshDTO>> {
+    pub async fn find_refresh(&self, id: i64) -> Result<Option<RuleRefreshDTO>> {
         repository::find_refresh(self.pool(), id).await
     }
 
@@ -52,11 +52,11 @@ impl RuleService {
     /// 新增或修改规则，返回规则 id。
     ///
     /// 新增时补全 id、创建时间与刷新时间；修改时保留创建时间与刷新时间。
-    pub async fn upsert(&self, dto: RuleUpsertDTO, millis: i64) -> Result<String> {
-        let Some(id) = existing_id(&dto) else {
-            let id = next_id()?.to_string();
+    pub async fn upsert(&self, dto: RuleUpsertDTO, millis: i64) -> Result<i64> {
+        let Some(id) = dto.id else {
+            let id = next_id()?;
             let entity = Rule {
-                id: id.clone(),
+                id,
                 name: dto.name,
                 url: dto.url,
                 content: dto.content.unwrap_or_default(),
@@ -73,7 +73,7 @@ impl RuleService {
             return Ok(id);
         };
 
-        let current = repository::find(self.pool(), &id).await?;
+        let current = repository::find(self.pool(), id).await?;
         let content = dto.content.unwrap_or_else(|| {
             current
                 .as_ref()
@@ -82,7 +82,7 @@ impl RuleService {
         });
         repository::update(
             self.pool(),
-            &id,
+            id,
             &dto.name,
             &dto.url,
             &content,
@@ -94,7 +94,7 @@ impl RuleService {
     }
 
     /// 仅更新刷新时间。
-    pub async fn touch_refresh(&self, id: &str, millis: i64) -> Result<()> {
+    pub async fn touch_refresh(&self, id: i64, millis: i64) -> Result<()> {
         repository::update_refresh_time(self.pool(), id, millis).await
     }
 
@@ -102,7 +102,7 @@ impl RuleService {
     #[allow(clippy::too_many_arguments)]
     pub async fn save_refresh(
         &self,
-        id: &str,
+        id: i64,
         content: Option<&str>,
         refresh_time: i64,
         count: u64,
@@ -124,19 +124,11 @@ impl RuleService {
     }
 
     /// 按 id 删除规则，返回删除行数。
-    pub async fn delete(&self, id: &str) -> Result<u64> {
+    pub async fn delete(&self, id: i64) -> Result<u64> {
         repository::delete(self.pool(), id).await
     }
 
     fn pool(&self) -> &DbPool {
         self.context.pool()
-    }
-}
-
-/// 取出入参中的有效 id，`None` 与空串都视为新增。
-fn existing_id(dto: &RuleUpsertDTO) -> Option<String> {
-    match dto.id.as_ref() {
-        Some(id) if !id.is_empty() => Some(id.clone()),
-        _ => None,
     }
 }

@@ -129,7 +129,7 @@ impl SubscribePage {
     }
 
     /// 打开编辑订阅的弹窗。
-    pub fn edit(&mut self, id: &str, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn edit(&mut self, id: i64, window: &mut Window, cx: &mut Context<Self>) {
         let draft = self
             .subscribes()
             .and_then(|items| items.iter().find(|item| item.id == id))
@@ -152,7 +152,7 @@ impl SubscribePage {
         cx.notify();
 
         // 无 id 视为新增，两者在业务层是不同流程：新增总会触发同步，修改只在地址变更后触发
-        let create = dto.id.as_deref().is_none_or(|id| id.is_empty());
+        let create = dto.id.is_none();
         let loader = services.clone();
         let runner = services.clone();
         cx.spawn_in(window, async move |this, cx| {
@@ -187,7 +187,7 @@ impl SubscribePage {
     }
 
     /// 删除一条订阅，调用方负责先取得确认。
-    pub fn remove(&mut self, id: String, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn remove(&mut self, id: i64, window: &mut Window, cx: &mut Context<Self>) {
         let Some(services) = self.ready_services(cx) else {
             return;
         };
@@ -196,7 +196,7 @@ impl SubscribePage {
         let runner = services.clone();
         cx.spawn_in(window, async move |this, cx| {
             let result = loader
-                .spawn(async move { runner.delete_subscribe(&id).await })
+                .spawn(async move { runner.delete_subscribe(id).await })
                 .await;
 
             this.update_in(cx, |page, window, cx| match result {
@@ -250,7 +250,7 @@ impl SubscribePage {
     }
 
     /// 同步一条订阅，等待该订阅同步结束后刷新列表。
-    pub fn sync_one(&mut self, id: &str, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn sync_one(&mut self, id: i64, window: &mut Window, cx: &mut Context<Self>) {
         let Some(services) = self.ready_services(cx) else {
             return;
         };
@@ -258,12 +258,11 @@ impl SubscribePage {
         self.syncing = true;
         cx.notify();
 
-        let id = id.to_string();
         let loader = services.clone();
         let runner = services.clone();
         cx.spawn_in(window, async move |this, cx| {
             let result = loader
-                .spawn(async move { runner.sync_subscribe(Some(&id)).await })
+                .spawn(async move { runner.sync_subscribe(Some(id)).await })
                 .await;
 
             this.update_in(cx, |page, window, cx| {

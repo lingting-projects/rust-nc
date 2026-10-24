@@ -158,9 +158,9 @@ impl SettingManager {
     }
 
     /// 记录选中的配置 id。
-    pub async fn select(&self, id: &str) -> Result<()> {
+    pub async fn select(&self, id: i64) -> Result<()> {
         self.app_config
-            .set(&AppConfigKey::SettingRunSelected, id)
+            .set(&AppConfigKey::SettingRunSelected, &id.to_string())
             .await?;
         SettingsHolder::wake_and_wait().await;
         Ok(())

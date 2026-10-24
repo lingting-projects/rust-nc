@@ -6,7 +6,7 @@ use types_core::entity::setting::AppConfig;
 use super::mapping;
 
 /// 表名。
-const TABLE: &str = "app_config";
+const TABLE: &str = "tbl2_app_config";
 
 /// 按键查询单条配置。
 pub(crate) async fn find(pool: &DbPool, key: &str) -> Result<Option<AppConfig>> {

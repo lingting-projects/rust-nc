@@ -40,24 +40,24 @@ impl SubscribeSync {
     /// 推送单个 id, 返回是否成功入队。
     ///
     /// 已在运行或已在队列中的 id 不会重复推入。
-    pub fn push(&self, id: &str) -> bool {
+    pub fn push(&self, id: i64) -> bool {
         self.scheduler.push(id)
     }
 
     /// 批量推送 id, 返回成功入队的数量。
-    pub fn push_all(&self, ids: impl IntoIterator<Item = String>) -> usize {
+    pub fn push_all(&self, ids: impl IntoIterator<Item = i64>) -> usize {
         self.scheduler.push_all(ids)
     }
 
     /// 正在运行或排队中的同步任务 id。
     ///
     /// 界面据此判断「刷新中」，只读内存状态，不触发 IO。
-    pub fn pending(&self) -> Vec<String> {
+    pub fn pending(&self) -> Vec<i64> {
         self.scheduler.pending()
     }
 
     /// 等待指定 id 的同步任务结束, 没有对应任务时直接完成。
-    pub async fn wait(&self, id: &str) {
+    pub async fn wait(&self, id: i64) {
         self.scheduler.wait(id).await
     }
 }
@@ -68,15 +68,15 @@ struct SubscribeTask;
 impl SyncTask for SubscribeTask {
     const THREAD: &'static str = "subscribe-sync";
 
-    async fn run(context: Arc<DbContext>, id: String) {
-        if let Err(error) = sync(&context, &id).await {
+    async fn run(context: Arc<DbContext>, id: i64) {
+        if let Err(error) = sync(&context, id).await {
             error!("[订阅] [{}] 同步异常! {error:#}", id);
         }
     }
 }
 
 /// 同步流程: 拉取远程数据、提取节点、转换配置, 最后保存结果。
-async fn sync(context: &Arc<DbContext>, id: &str) -> Result<()> {
+async fn sync(context: &Arc<DbContext>, id: i64) -> Result<()> {
     let service = SubscribeService::new(context.clone());
     let Some(subscribe) = service.find_refresh(id).await? else {
         warn!("[订阅] [{}] 不存在, 结束同步", id);
@@ -144,7 +144,7 @@ async fn sync(context: &Arc<DbContext>, id: &str) -> Result<()> {
 ///
 /// 订阅同步出新节点后, 依赖它的配置需要重新生成配置文件;
 /// 配置若是内核正在运行的那一份, 由配置同步完成后通知内核重载。
-async fn push_configs(context: &Arc<DbContext>, id: &str, name: &str) -> Result<()> {
+async fn push_configs(context: &Arc<DbContext>, id: i64, name: &str) -> Result<()> {
     let count = ConfigSync::instance()
         .push_by_subscribe(context, id)
         .await?;

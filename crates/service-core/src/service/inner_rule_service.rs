@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::Result;
+use lib_core::next_id;
 use lib_db::{DbContext, DbPool};
 use types_core::entity::inner_rule::InnerRule;
 
@@ -23,22 +24,24 @@ impl InnerRuleService {
     }
 
     /// 按 id 查询内置规则。
-    pub async fn find(&self, id: &str) -> Result<Option<InnerRule>> {
+    pub async fn find(&self, id: i64) -> Result<Option<InnerRule>> {
         repository::find(self.pool(), id).await
     }
 
-    /// 登记一条内置规则，已存在时保留已就绪状态。
-    pub async fn register(&self, id: &str, url: &str) -> Result<()> {
-        repository::insert_or_update(self.pool(), id, url).await
+    /// 按名称登记一条内置规则，已存在时保留已就绪状态。
+    ///
+    /// 主键按登记顺序分配，名称是幂等键，重复登记只更新地址与就绪标记。
+    pub async fn register(&self, name: &str, url: &str) -> Result<()> {
+        repository::insert_or_update(self.pool(), next_id()?, name, url).await
     }
 
     /// 标记为已就绪，并记录本次下载的 etag。
-    pub async fn ready(&self, id: &str, etag: &str) -> Result<()> {
+    pub async fn ready(&self, id: i64, etag: &str) -> Result<()> {
         repository::update_ready(self.pool(), id, etag).await
     }
 
     /// 标记为未就绪，下次启动前会重新下载。
-    pub async fn not_ready(&self, id: &str) -> Result<()> {
+    pub async fn not_ready(&self, id: i64) -> Result<()> {
         repository::update_not_ready(self.pool(), id).await
     }
 

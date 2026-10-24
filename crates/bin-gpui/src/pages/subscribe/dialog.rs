@@ -26,7 +26,7 @@ const DIALOG_WIDTH: Rems = rems(28.);
 /// 实体本身不实现 `Clone`，弹窗又需要在页面可变借用之外持有这些值，
 /// 因此这里只取出编辑所需的几个字段。
 pub struct SubscribeDraft {
-    id: Option<String>,
+    id: Option<i64>,
     name: String,
     url: String,
     interval: i64,
@@ -36,7 +36,7 @@ impl SubscribeDraft {
     /// 由实体裁剪出编辑所需的字段。
     pub fn of(subscribe: &Subscribe) -> Self {
         Self {
-            id: Some(subscribe.id.clone()),
+            id: Some(subscribe.id),
             name: subscribe.name.clone(),
             url: subscribe.url.clone(),
             interval: subscribe.interval,
@@ -126,14 +126,14 @@ pub fn open(
                     .disabled(!can_save)
                     .on_click({
                         let page = page.clone();
-                        let id = id.clone();
+                        let id = id;
                         let name = name.clone();
                         let url = url.clone();
                         let interval = interval.clone();
                         move |_, window, cx| {
                             // 点击时再取值：闭包是 `Fn`，且此时才是用户最终确认的内容。
                             let dto = SubscribeUpsertDTO {
-                                id: id.clone(),
+                                id: id,
                                 name: name_value.clone(),
                                 url: url_value.clone(),
                                 content: None,
@@ -201,14 +201,14 @@ fn field(label: &'static str, state: &Entity<InputState>, hint: Option<AnyElemen
 /// 删除不可撤销，因此用 `AlertDialog` 点明对象与后果，危险样式只放在删除按钮上。
 pub fn confirm_delete(
     page: WeakEntity<SubscribePage>,
-    id: String,
+    id: i64,
     name: String,
     window: &mut Window,
     cx: &mut App,
 ) {
     window.open_alert_dialog(cx, move |alert, _, _| {
         let page = page.clone();
-        let id = id.clone();
+        let id = id;
         alert
             .confirm()
             .title(format!("删除「{name}」？"))
@@ -217,8 +217,7 @@ pub fn confirm_delete(
             .ok_variant(ButtonVariant::Danger)
             .cancel_text("取消")
             .on_ok(move |_, window, cx| {
-                page.update(cx, |page, cx| page.remove(id.clone(), window, cx))
-                    .ok();
+                page.update(cx, |page, cx| page.remove(id, window, cx)).ok();
                 true
             })
     });
