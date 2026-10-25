@@ -24,6 +24,9 @@ done
 # 工作目录到 cloudflare
 cd crates/bin-cloudflare
 
+# 不知道为什么 用户令牌一直提示无权限, 改成账号令牌
+export CLOUDFLARE_API_TOKEN="$CLOUDFLARE_ACCOUNT_TOKEN"
+
 if [ $_publish = true ]; then
     # 替换配置
     sed -i "s/0.0.0/$VERSION/g" package.json
@@ -33,4 +36,4 @@ if [ $_publish = true ]; then
     exit 0
 fi
 
-npx wrangler dev
+pnpm wrangler dev
