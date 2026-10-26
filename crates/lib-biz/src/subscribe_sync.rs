@@ -10,6 +10,7 @@ use log::{debug, error, info, warn};
 use service_core::service::subscribe_service::SubscribeService;
 use types_core::dto::subscribe::SubscribeRefreshDTO;
 use types_core::entity::subscribe::SubscribeSource;
+use types_core::event::SubscribeChanged;
 
 use crate::config_sync::ConfigSync;
 use crate::scheduler::{Scheduler, SyncTask};
@@ -72,6 +73,16 @@ impl SyncTask for SubscribeTask {
         if let Err(error) = sync(&context, id).await {
             error!("[订阅] [{}] 同步异常! {error:#}", id);
         }
+    }
+
+    fn started() {
+        // 定时与依赖推送的任务直接入队, 页面靠这个事件把「刷新中」显示出来
+        lib_core::bus::notify::<SubscribeChanged>();
+    }
+
+    fn finished() {
+        // 刷新时间与「刷新中」都由同步任务改写, 结束即通知页面重读
+        lib_core::bus::notify::<SubscribeChanged>();
     }
 }
 

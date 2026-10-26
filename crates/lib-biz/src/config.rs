@@ -6,6 +6,7 @@ use lib_db::DbContext;
 use log::{debug, warn};
 use service_core::service::config_service::ConfigService;
 use types_core::dto::config::ConfigUpsertDTO;
+use types_core::event::ConfigChanged;
 
 use crate::config_sync::ConfigSync;
 use crate::file;
@@ -42,6 +43,7 @@ impl ConfigBiz {
     /// 新增配置，写库后触发一次同步。
     pub async fn create(&self, dto: ConfigUpsertDTO) -> Result<i64> {
         let id = self.service().create(dto, current_millis()?).await?;
+        self.changed();
         self.push(id);
         Ok(id)
     }
@@ -49,6 +51,7 @@ impl ConfigBiz {
     /// 修改配置，写库后触发一次同步。
     pub async fn edit(&self, dto: ConfigUpsertDTO) -> Result<i64> {
         let id = self.service().edit(dto, current_millis()?).await?;
+        self.changed();
         self.push(id);
         Ok(id)
     }
@@ -56,6 +59,7 @@ impl ConfigBiz {
     /// 删除配置，返回删除行数，并清理该配置的文件目录。
     pub async fn delete(&self, id: i64) -> Result<u64> {
         let count = self.service().delete(id).await?;
+        self.changed();
         if let Err(error) = file::remove_config(id) {
             warn!("[配置] [{}] 清理配置文件失败: {error:#}", id);
         }
@@ -67,6 +71,11 @@ impl ConfigBiz {
         if !ConfigSync::instance().push(id) {
             debug!("[配置] [{}] 未推入同步队列", id);
         }
+    }
+
+    /// 通知配置数据已变更，页面据此重读列表。
+    fn changed(&self) {
+        lib_core::bus::notify::<ConfigChanged>();
     }
 
     fn service(&self) -> ConfigService {

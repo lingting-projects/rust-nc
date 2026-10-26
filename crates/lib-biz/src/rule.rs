@@ -6,6 +6,7 @@ use lib_db::DbContext;
 use log::{debug, warn};
 use service_core::service::rule_service::RuleService;
 use types_core::dto::rule::RuleUpsertDTO;
+use types_core::event::RuleChanged;
 
 use crate::file;
 use crate::rule_sync::RuleSync;
@@ -40,6 +41,7 @@ impl RuleBiz {
     /// 新增规则，写库后触发一次同步。
     pub async fn create(&self, dto: RuleUpsertDTO) -> Result<i64> {
         let id = self.service().upsert(dto, current_millis()?).await?;
+        self.changed();
         self.push(id);
         Ok(id)
     }
@@ -62,6 +64,7 @@ impl RuleBiz {
 
         let dto = RuleUpsertDTO { content, ..dto };
         let id = service.upsert(dto, current_millis()?).await?;
+        self.changed();
         if changed {
             self.push(id);
         }
@@ -71,6 +74,7 @@ impl RuleBiz {
     /// 删除规则，返回删除行数，并清理该规则的规则文件目录。
     pub async fn delete(&self, id: i64) -> Result<u64> {
         let count = self.service().delete(id).await?;
+        self.changed();
         if let Err(error) = file::remove_rule(id) {
             warn!("[规则] [{}] 清理规则文件失败: {error:#}", id);
         }
@@ -82,6 +86,11 @@ impl RuleBiz {
         if !RuleSync::instance().push(id) {
             debug!("[规则] [{}] 未推入同步队列", id);
         }
+    }
+
+    /// 通知规则数据已变更，页面据此重读列表。
+    fn changed(&self) {
+        lib_core::bus::notify::<RuleChanged>();
     }
 
     fn service(&self) -> RuleService {

@@ -12,16 +12,17 @@ use gpui_kit::component::notification::Notification;
 use gpui_kit::component::table::TableState;
 use gpui_kit::*;
 
+use lingting_gpui_kit::BusContextExt as _;
 use lingting_gpui_kit::card::Card;
 
 use crate::services::{self, AppServices};
-use crate::utils::refresh::{Refresher, TICK};
-use crate::utils::window::window_state;
+use crate::utils::refresh::Refresher;
 use table::ConfigTable;
 use types_core::dto::config::ConfigUpsertDTO;
 use types_core::entity::config::Config;
 use types_core::entity::rule::Rule;
 use types_core::entity::subscribe::Subscribe;
+use types_core::event::ConfigChanged;
 
 /// 页面内各卡片的内边距，搜索栏与表格区域共用，保证留白一致。
 pub(crate) const PADDING: Rems = rems(1.);
@@ -59,10 +60,10 @@ pub struct ConfigPage {
     syncing: bool,
     /// 是否正在提交写操作，避免重复提交。
     submitting: bool,
-    /// 刷新中状态与轮询节奏。
+    /// 刷新中状态，由数据更新事件驱动刷新。
     refresh: Refresher,
-    /// 轮询任务，只在轮询期间存在。
-    _ticker: Option<Task<()>>,
+    /// 数据更新事件的订阅，页面存活期间一直保留。
+    _changed_subscription: Subscription,
 }
 
 impl ConfigPage {
@@ -71,6 +72,11 @@ impl ConfigPage {
         let query = toolbar::create_state(window, cx);
         let query_subscription = toolbar::subscribe(&query, cx);
         let table = table::create(window, cx);
+        // 先订阅再加载：二者之间到达的通知不会漏
+        let changed_subscription = cx.on_global_bus_notify::<ConfigChanged>(|page, cx| {
+            page.refresh_pending(cx);
+            page.load(cx);
+        });
 
         let mut page = Self {
             load: LoadState::Loading,
@@ -81,14 +87,22 @@ impl ConfigPage {
             syncing: false,
             submitting: false,
             refresh: Refresher::new(),
-            _ticker: None,
+            _changed_subscription: changed_subscription,
         };
         page.reload(cx);
         page
     }
-
-    /// 重新读取配置列表与表单需要的订阅、规则。
+    /// 重新读取配置列表与表单需要的订阅、规则，读取期间显示加载占位。
     pub fn reload(&mut self, cx: &mut Context<Self>) {
+        self.load = LoadState::Loading;
+        cx.notify();
+        self.load(cx);
+    }
+
+    /// 读取配置列表与表单需要的订阅、规则。
+    ///
+    /// 事件驱动的刷新走这里：不清空已有数据，避免后台同步结束时列表闪一下占位。
+    fn load(&mut self, cx: &mut Context<Self>) {
         let services = match services::get(cx) {
             Some(AppServices::Ready(services)) => services.clone(),
             Some(AppServices::Failed(reason)) => {
@@ -100,9 +114,6 @@ impl ConfigPage {
                 return;
             }
         };
-
-        self.load = LoadState::Loading;
-        cx.notify();
 
         let loader = services.clone();
         let runner = services.clone();
@@ -123,8 +134,9 @@ impl ConfigPage {
                     })),
                     Err(reason) => LoadState::Failed(reason.into()),
                 };
-                // 首次进入或手动查询时列表可能已在后台刷新，状态要跟着调度器走
+                // 列表里的刷新时间与「刷新中」都取自调度器，读完一起更新
                 page.refresh_pending(cx);
+                cx.notify();
             })
             .ok();
         })
@@ -187,7 +199,6 @@ impl ConfigPage {
                 match result {
                     Ok(Ok(_)) => {
                         window.close_dialog(cx);
-                        page.reload(cx);
                     }
                     Ok(Err(error)) => {
                         page.failed(window, cx, format!("保存配置失败: {error:#}"));
@@ -216,7 +227,7 @@ impl ConfigPage {
                 .await;
 
             this.update_in(cx, |page, window, cx| match result {
-                Ok(Ok(())) => page.reload(cx),
+                Ok(Ok(())) => {}
                 Ok(Err(error)) => page.failed(window, cx, format!("删除配置失败: {error:#}")),
                 Err(error) => page.failed(window, cx, format!("删除任务异常: {error}")),
             })
@@ -289,7 +300,8 @@ impl ConfigPage {
             this.update_in(cx, |page, window, cx| {
                 page.syncing = false;
                 match result {
-                    Ok(Ok(_)) => page.reload(cx),
+                    // 同步结束由数据更新事件驱动刷新，这里只处理失败提示
+                    Ok(Ok(_)) => {}
                     Ok(Err(error)) => page.failed(window, cx, format!("同步配置失败: {error:#}")),
                     Err(error) => page.failed(window, cx, format!("同步任务异常: {error}")),
                 }
@@ -330,10 +342,10 @@ impl ConfigPage {
     pub fn is_submitting(&self) -> bool {
         self.submitting
     }
-    /// 同步刷新中状态，并在需要时开始轮询。
+    /// 同步刷新中状态。
     ///
     /// 同步只推送任务，真正的校验与落盘在后台进行，因此表格的「刷新中」只能问调度器。
-    /// 每次调用都会把轮询至少再维持一段时间，避免任务刚入队时状态一闪而过。
+    /// 同步任务结束时会发布数据更新事件，页面收到后重问一次，不需要定时轮询。
     pub fn refresh_pending(&mut self, cx: &mut Context<Self>) {
         let Some(services) = self.ready_services(cx) else {
             return;
@@ -342,44 +354,6 @@ impl ConfigPage {
         if self.refresh.update(services.config_pending()) {
             cx.notify();
         }
-        self.poll(cx);
-    }
-
-    /// 按固定间隔重查刷新状态，直到没有数据在刷新且过了最短持续时间。
-    ///
-    /// 同一时刻只存在一个轮询任务；结束时会清掉句柄与轮询标记，
-    /// 下一次同步再重新派生。
-    fn poll(&mut self, cx: &mut Context<Self>) {
-        if !self.refresh.begin() {
-            return;
-        }
-        // 旧任务已结束，替换成新的；旧任务结束时不会再动这个句柄
-        self._ticker = None;
-        self._ticker = Some(cx.spawn(async move |this, cx| {
-            loop {
-                window_state().tick(cx, TICK).await;
-
-                let alive = this
-                    .update(cx, |page, cx| {
-                        let Some(services) = page.ready_services(cx) else {
-                            return false;
-                        };
-                        if page.refresh.tick(services.config_pending()) {
-                            cx.notify();
-                        }
-                        let alive = page.refresh.alive();
-                        if !alive {
-                            page.refresh.stop();
-                        }
-                        alive
-                    })
-                    .unwrap_or(false);
-                if !alive {
-                    // 句柄留到下一次轮询时被替换，避免任务在这里丢掉自己
-                    return;
-                }
-            }
-        }));
     }
 
     /// 写操作失败时的一处反馈：通知 + 让依赖它的按钮退出加载态。

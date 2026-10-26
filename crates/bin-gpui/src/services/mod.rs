@@ -1,8 +1,10 @@
+mod bus;
 mod config;
 mod kernel;
 mod rule;
 mod subscribe;
 
+pub use bus::init as init_bus;
 pub use kernel::{GroupInfo, GroupNode, KernelData, kernel_data};
 
 use std::sync::Arc;

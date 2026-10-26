@@ -1,3 +1,4 @@
+pub mod bus;
 pub mod constants;
 pub mod data_size;
 mod directory;

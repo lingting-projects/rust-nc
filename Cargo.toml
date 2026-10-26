@@ -41,21 +41,19 @@ service-core = { path = "crates/service-core" }
 bin-tests = { path = "crates/bin-tests" }
 types-core = { path = "crates/types-core" }
 
-framework-core = { version = "26.8.151" }
-framework-datetime = { version = "26.8.151" }
-framework-startup = { version = "26.8.151" }
-framework-system = { version = "26.8.151" }
-framework-region = { version = "26.8.151" }
-framework-proc-auto = { version = "26.8.151" }
-framework-proc-core = { version = "26.8.151" }
-framework-proc-ts = { version = "26.8.151" }
-framework-proc-web = { version = "26.8.151" }
-framework-web = { version = "26.8.151" }
-framework-web-axum = { version = "26.8.151" }
-framework-timer = { version = "26.8.151" }
-framework-proc-timer = { version = "26.8.151" }
+framework-bus = { path = "../../lingting-rust-framework/framework-bus" }
+framework-core = { path = "../../lingting-rust-framework/framework-core" }
+framework-datetime = { path = "../../lingting-rust-framework/framework-datetime" }
+framework-startup = { path = "../../lingting-rust-framework/framework-startup" }
+framework-system = { path = "../../lingting-rust-framework/framework-system" }
+framework-region = { path = "../../lingting-rust-framework/framework-region" }
+framework-proc-auto = { path = "../../lingting-rust-framework/framework-proc-auto" }
+framework-proc-core = { path = "../../lingting-rust-framework/framework-proc-core" }
+framework-proc-ts = { path = "../../lingting-rust-framework/framework-proc-ts" }
+framework-timer = { path = "../../lingting-rust-framework/framework-timer" }
+framework-proc-timer = { path = "../../lingting-rust-framework/framework-proc-timer" }
 
-lingting-gpui-kit = { version = "26.10.1" }
+lingting-gpui-kit = { path = "../../lingting-gpui-kit/lingting-gpui-kit" }
 
 simple_logger = "5.0"
 time = "0.3"

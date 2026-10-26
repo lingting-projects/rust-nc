@@ -133,7 +133,7 @@ pub fn open(
                         move |_, window, cx| {
                             // 点击时再取值：闭包是 `Fn`，且此时才是用户最终确认的内容。
                             let dto = SubscribeUpsertDTO {
-                                id: id,
+                                id,
                                 name: name_value.clone(),
                                 url: url_value.clone(),
                                 content: None,

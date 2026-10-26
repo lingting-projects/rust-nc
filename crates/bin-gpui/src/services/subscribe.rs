@@ -33,8 +33,10 @@ impl Services {
     }
 
     /// 删除一条订阅。
+    ///
+    /// 走业务层以便删除后发布数据更新事件，页面据此刷新。
     pub async fn delete_subscribe(&self, id: i64) -> Result<()> {
-        SubscribeService::new(self.context()).delete(id).await?;
+        SubscribeBiz::new(self.context()).delete(id).await?;
         Ok(())
     }
 }

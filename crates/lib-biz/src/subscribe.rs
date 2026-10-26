@@ -6,6 +6,7 @@ use lib_db::DbContext;
 use log::debug;
 use service_core::service::subscribe_service::SubscribeService;
 use types_core::dto::subscribe::SubscribeUpsertDTO;
+use types_core::event::SubscribeChanged;
 
 use crate::subscribe_sync::SubscribeSync;
 
@@ -39,6 +40,7 @@ impl SubscribeBiz {
     /// 新增订阅，写库后触发一次同步。
     pub async fn create(&self, dto: SubscribeUpsertDTO) -> Result<i64> {
         let id = self.service().upsert(dto, current_millis()?).await?;
+        self.changed();
         self.push(id);
         Ok(id)
     }
@@ -61,10 +63,18 @@ impl SubscribeBiz {
             ..dto
         };
         let id = service.upsert(dto, current_millis()?).await?;
+        self.changed();
         if changed {
             self.push(id);
         }
         Ok(id)
+    }
+
+    /// 删除订阅，返回删除行数。
+    pub async fn delete(&self, id: i64) -> Result<u64> {
+        let count = self.service().delete(id).await?;
+        self.changed();
+        Ok(count)
     }
 
     /// 触发同步但不等待结果；写库结果不受同步推送影响。
@@ -72,6 +82,11 @@ impl SubscribeBiz {
         if !SubscribeSync::instance().push(id) {
             debug!("[订阅] [{}] 未推入同步队列", id);
         }
+    }
+
+    /// 通知订阅数据已变更，页面据此重读列表。
+    fn changed(&self) {
+        lib_core::bus::notify::<SubscribeChanged>();
     }
 
     fn service(&self) -> SubscribeService {

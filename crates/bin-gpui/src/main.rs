@@ -76,6 +76,8 @@ fn main() {
     application().with_assets(AppAssets::new()).run(|cx| {
         init(cx);
         services::init(cx);
+        // 总线必须在页面创建之前装好：页面在构造时订阅数据更新事件。
+        services::init_bus(cx);
         // 内核不依赖界面：数据层就绪后立即按设置自动运行，不等窗口创建。
         if let Some(services) = services::ready(cx) {
             services::auto_run(&services);

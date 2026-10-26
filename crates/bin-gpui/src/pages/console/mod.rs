@@ -13,12 +13,14 @@ use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
 
 use lib_biz::kernel::Status;
+use lingting_gpui_kit::BusContextExt as _;
 use lingting_gpui_kit::card::{ItemCard, ItemCardSelectedStyle};
 
 use crate::services::{self, AppServices, ConsoleData, KernelData};
 use crate::utils::window::window_state;
 use monitor::Monitor;
 use toolbar::ConfigOption;
+use types_core::event::{ConfigChanged, SubscribeChanged};
 
 /// 各区域卡片的内边距。
 ///
@@ -111,6 +113,8 @@ pub struct Console {
     _ticker: Task<()>,
     /// 下拉框的选择事件订阅，页面存活期间一直保留。
     _select_subscription: Subscription,
+    /// 配置与订阅数据更新事件的订阅，页面存活期间一直保留。
+    _changed_subscriptions: Vec<Subscription>,
 }
 impl Console {
     /// 创建页面并立即发起首次加载。
@@ -186,6 +190,16 @@ impl Console {
 
         let select = toolbar::create_state(window, cx);
         let select_subscription = toolbar::subscribe(&select, cx);
+        let window_handle = window.window_handle();
+        // 配置或订阅变化都会影响本页：配置列表、预览栏与下拉框都取自这两份数据。
+        // 先订阅再加载，二者之间到达的通知不会漏。
+        let config_subscription = cx.on_global_bus_notify::<ConfigChanged>(move |console, cx| {
+            console.refresh(window_handle, cx);
+        });
+        let subscribe_subscription =
+            cx.on_global_bus_notify::<SubscribeChanged>(move |console, cx| {
+                console.refresh(window_handle, cx);
+            });
 
         let mut console = Self {
             load: LoadState::Loading,
@@ -200,13 +214,23 @@ impl Console {
             monitor,
             _ticker: ticker,
             _select_subscription: select_subscription,
+            _changed_subscriptions: vec![config_subscription, subscribe_subscription],
         };
         console.reload(window, cx);
         console
     }
 
-    /// 重新读取配置与订阅。
+    /// 手动刷新：刷新按钮进入加载态，读取结束后退出。
     pub fn reload(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.refreshing = true;
+        cx.notify();
+        self.refresh(window.window_handle(), cx);
+    }
+
+    /// 读取配置与订阅。
+    ///
+    /// 事件驱动的刷新走这里：不动刷新按钮的加载态，避免后台数据变化让按钮闪一下。
+    fn refresh(&mut self, window: AnyWindowHandle, cx: &mut Context<Self>) {
         let services = match services::get(cx) {
             Some(AppServices::Ready(services)) => services.clone(),
             Some(AppServices::Failed(reason)) => {
@@ -219,12 +243,9 @@ impl Console {
             }
         };
 
-        self.refreshing = true;
-        cx.notify();
-
         let loader = services.clone();
         let runner = services.clone();
-        cx.spawn_in(window, async move |this, cx| {
+        cx.spawn(async move |this, cx| {
             let data = loader.spawn(async move { runner.console_data().await });
 
             let result = match data.await {
@@ -232,46 +253,58 @@ impl Console {
                 Ok(Err(error)) => Err(format!("{error:#}")),
                 Err(error) => Err(format!("读取任务异常: {error}")),
             };
-            this.update_in(cx, |console, window, cx| {
-                console.refreshing = false;
-                console.load = match result {
-                    Ok(data) => {
-                        // 刷新时保留仍然有效的当前选择；否则用上次使用的配置，再退回第一个。
-                        let current = console
-                            .selected
-                            .filter(|id| data.configs.iter().any(|config| config.id == *id));
-                        let fallback = data.configs.first().map(|config| config.id);
-                        console.selected = current
-                            .or_else(|| {
-                                data.last_used
-                                    .filter(|id| data.configs.iter().any(|config| config.id == *id))
-                            })
-                            .or(fallback);
-
-                        let options = data
-                            .configs
-                            .iter()
-                            .map(|config| ConfigOption::new(config.id, config.name.clone()))
-                            .collect::<Vec<_>>();
-                        let selected = console.selected;
-                        toolbar::replace(&console.select, options, selected, window, cx);
-
-                        // 预选出来的配置同样要落库，否则托盘菜单一直不知道能启动哪份配置。
-                        if let Some(id) = console.selected
-                            && data.last_used != Some(id)
-                        {
-                            console.remember(id, cx);
-                        }
-
-                        LoadState::Ready(data)
-                    }
-                    Err(reason) => LoadState::Failed(reason.into()),
-                };
-                cx.notify();
-            })
-            .ok();
+            // 下拉框换选项需要窗口，而回调只拿到页面状态，因此回到窗口里执行
+            window
+                .update(cx, |_, window, cx| {
+                    this.update(cx, |console, cx| console.apply(result, window, cx))
+                })
+                .ok();
         })
         .detach();
+    }
+
+    /// 把一次读取结果应用到页面状态。
+    fn apply(
+        &mut self,
+        result: Result<ConsoleData, String>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.refreshing = false;
+        self.load = match result {
+            Ok(data) => {
+                // 刷新时保留仍然有效的当前选择；否则用上次使用的配置，再退回第一个。
+                let current = self
+                    .selected
+                    .filter(|id| data.configs.iter().any(|config| config.id == *id));
+                let fallback = data.configs.first().map(|config| config.id);
+                self.selected = current
+                    .or_else(|| {
+                        data.last_used
+                            .filter(|id| data.configs.iter().any(|config| config.id == *id))
+                    })
+                    .or(fallback);
+
+                let options = data
+                    .configs
+                    .iter()
+                    .map(|config| ConfigOption::new(config.id, config.name.clone()))
+                    .collect::<Vec<_>>();
+                let selected = self.selected;
+                toolbar::replace(&self.select, options, selected, window, cx);
+
+                // 预选出来的配置同样要落库，否则托盘菜单一直不知道能启动哪份配置。
+                if let Some(id) = self.selected
+                    && data.last_used != Some(id)
+                {
+                    self.remember(id, cx);
+                }
+
+                LoadState::Ready(data)
+            }
+            Err(reason) => LoadState::Failed(reason.into()),
+        };
+        cx.notify();
     }
 
     /// 启停内核。

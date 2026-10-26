@@ -2340,10 +2340,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "framework-bus"
+version = "26.8.151"
+dependencies = [
+ "log",
+ "tokio",
+]
+
+[[package]]
 name = "framework-core"
 version = "26.8.151"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6a41116e1cda7649a4c5b3587cb4c310947d9082a0f18e05015eba426e7a8354"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2369,8 +2375,6 @@ dependencies = [
 [[package]]
 name = "framework-datetime"
 version = "26.8.151"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "16c183384bded43c88fa12305b0f8e2ffcedd41c44dbfffaa517e6d9938d2d13"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -2382,8 +2386,6 @@ dependencies = [
 [[package]]
 name = "framework-proc-auto"
 version = "26.8.151"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b38e56542e123a7095d7ebbbd5b1d5cabecec9d4715ca84c82e016b631fc9b58"
 dependencies = [
  "framework-proc-core",
  "proc-macro2",
@@ -2394,8 +2396,6 @@ dependencies = [
 [[package]]
 name = "framework-proc-core"
 version = "26.8.151"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a62bf4e6d09e072aac9a5d2bb678ed7bf3d8b3edf86b0993aaa69aa2abd3f11c"
 dependencies = [
  "serde",
  "serde_json",
@@ -2407,8 +2407,6 @@ dependencies = [
 [[package]]
 name = "framework-proc-timer"
 version = "26.8.151"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "734790aa072062d0fba2c0016ec161aff0873570649e25ad70e0734d08d04934"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2418,8 +2416,6 @@ dependencies = [
 [[package]]
 name = "framework-proc-ts"
 version = "26.8.151"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9fe57f8521cf9233823645306ebee7d1e30c7498832be8dda60391e4fc7bd7c1"
 dependencies = [
  "framework-proc-core",
  "proc-macro2",
@@ -2430,8 +2426,6 @@ dependencies = [
 [[package]]
 name = "framework-region"
 version = "26.8.151"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5dd03de3b79a3bdafafb2047b132abc76dd7f05a06fda8c2672f56b0c4bfa4a7"
 dependencies = [
  "serde",
  "serde_json",
@@ -2440,8 +2434,6 @@ dependencies = [
 [[package]]
 name = "framework-startup"
 version = "26.8.151"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ed7555f01d1790b243b8d045450cdcd8567165e5039198db015d608c1eaae7c4"
 dependencies = [
  "anyhow",
  "framework-system",
@@ -2451,8 +2443,6 @@ dependencies = [
 [[package]]
 name = "framework-system"
 version = "26.8.151"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3d4316c50b2c8831612ffd5a609abf305bdc8927114ac59a84f0e26f3eb9b0c8"
 dependencies = [
  "anyhow",
  "libc",
@@ -2462,8 +2452,6 @@ dependencies = [
 [[package]]
 name = "framework-timer"
 version = "26.8.151"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2532ee0f822860f865baf882ae98af850b1d3f72bb76a32b6c284b26fe741c6a"
 dependencies = [
  "anyhow",
  "framework-core",
@@ -4896,6 +4884,7 @@ dependencies = [
  "arc-swap",
  "chrono",
  "flate2",
+ "framework-bus",
  "framework-core",
  "framework-datetime",
  "regex",
@@ -5101,10 +5090,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d4a5ff6bcca6c4867b1c4fd4ef63e4db7436ef363e0ad7531d1558856bae64f4"
 
 [[package]]
+name = "lingting-gpui-bus"
+version = "26.10.1"
+dependencies = [
+ "framework-bus",
+ "gpui-kit",
+]
+
+[[package]]
 name = "lingting-gpui-components"
 version = "26.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fe075c67f0b0a424cba5f099f4930dc1c07d51f045e06771d07d995a376e85a9"
 dependencies = [
  "framework-region",
  "gpui-kit",
@@ -5116,8 +5111,6 @@ dependencies = [
 [[package]]
 name = "lingting-gpui-core"
 version = "26.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b33901cc6f931adc83bade03764258bd27a972315288f05be0a83eee70f7a4c0"
 dependencies = [
  "gpui-kit",
 ]
@@ -5125,11 +5118,10 @@ dependencies = [
 [[package]]
 name = "lingting-gpui-kit"
 version = "26.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "035191faf1166fe19a32e9b1d9c4d40254571a08b268231f22ac23b9be3684f0"
 dependencies = [
  "embed-resource",
  "gpui-kit",
+ "lingting-gpui-bus",
  "lingting-gpui-components",
  "lingting-gpui-core",
  "lingting-gpui-layout",
@@ -5140,8 +5132,6 @@ dependencies = [
 [[package]]
 name = "lingting-gpui-layout"
 version = "26.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e649c8c8b3fce961c5a5e3057d07b6353bc5fea6f8550c1e05de6897c6aef4d9"
 dependencies = [
  "gpui-kit",
  "lingting-gpui-components",
@@ -5152,8 +5142,6 @@ dependencies = [
 [[package]]
 name = "lingting-gpui-nav"
 version = "26.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9342154e80164aca7950844179a81d313f6b7d39c684210cdc30bfb8246e0548"
 dependencies = [
  "gpui-kit",
  "lingting-gpui-core",

@@ -8,6 +8,7 @@ description.workspace = true
 license.workspace = true
 
 [dependencies]
+framework-bus.workspace = true
 framework-core.workspace = true
 framework-datetime.workspace = true
 anyhow.workspace = true

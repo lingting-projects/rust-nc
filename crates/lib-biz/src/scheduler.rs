@@ -18,6 +18,18 @@ pub(crate) trait SyncTask: Send + Sync + 'static {
 
     /// 同步单个 id, 失败原因由实现自行记录日志。
     fn run(context: Arc<DbContext>, id: i64) -> impl Future<Output = ()> + Send;
+
+    /// 单个 id 开始同步前的通知。
+    ///
+    /// 定时任务与依赖推送都会直接入队, 界面靠它把「刷新中」显示出来;
+    /// 默认不通知, 不需要界面跟进的任务无需实现。
+    fn started() {}
+
+    /// 单个 id 同步结束(含失败与 panic)后的通知。
+    ///
+    /// 界面靠它知道「刷新中」已经结束, 因此不必按固定间隔轮询调度器;
+    /// 默认不通知, 不需要界面跟进的任务无需实现。
+    fn finished() {}
 }
 
 /// 按并行上限执行同步任务的调度器。
@@ -147,21 +159,28 @@ fn dispatch<T: SyncTask>(state: Arc<State>) {
 
         let worker = state.clone();
         runtime.spawn(async move {
+            // 任务已进入运行集合, 此时通知界面它已经「刷新中」
+            T::started();
             // 运行状态由守卫清理：任务 panic 时后面的代码不会执行，
             // 若不用守卫，该 id 会永久留在运行集合里，后续推送全部被拒绝。
-            let task = RunningGuard { state: worker, id };
+            let task = RunningGuard::<T> {
+                state: worker,
+                id,
+                marker: std::marker::PhantomData,
+            };
             T::run(context, task.id).await;
         });
     }
 }
 
 /// 运行状态守卫：任务结束或 panic 时都会把 id 从运行集合中移除并发出完成信号。
-struct RunningGuard {
+struct RunningGuard<T: SyncTask> {
     state: Arc<State>,
     id: i64,
+    marker: std::marker::PhantomData<T>,
 }
 
-impl Drop for RunningGuard {
+impl<T: SyncTask> Drop for RunningGuard<T> {
     fn drop(&mut self) {
         let slot = self.state.lock().running.remove(&self.id);
         if let Some(slot) = slot {
@@ -169,6 +188,8 @@ impl Drop for RunningGuard {
         }
         // 运行数量减少, 唤醒主线程补齐任务
         self.state.wake.notify_all();
+        // 界面据此结束「刷新中」, 不再需要按固定间隔轮询调度器
+        T::finished();
     }
 }
 

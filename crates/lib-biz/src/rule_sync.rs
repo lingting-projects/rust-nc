@@ -7,6 +7,7 @@ use lib_fetch::FetchClient;
 use log::{debug, error, info, warn};
 use service_core::service::rule_service::RuleService;
 use types_core::dto::rule::RuleRefreshDTO;
+use types_core::event::RuleChanged;
 
 use crate::config_sync::ConfigSync;
 use crate::rule_file;
@@ -69,6 +70,16 @@ impl SyncTask for RuleTask {
         if let Err(error) = sync(&context, id).await {
             error!("[规则] [{}] 同步异常! {error:#}", id);
         }
+    }
+
+    fn started() {
+        // 定时与依赖推送的任务直接入队, 页面靠这个事件把「刷新中」显示出来
+        lib_core::bus::notify::<RuleChanged>();
+    }
+
+    fn finished() {
+        // 刷新时间与「刷新中」都由同步任务改写, 结束即通知页面重读
+        lib_core::bus::notify::<RuleChanged>();
     }
 }
 

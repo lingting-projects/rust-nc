@@ -198,7 +198,7 @@ pub fn open(
                             // 点击时再取值：闭包是 `Fn`，且此时才是用户最终确认的内容。
                             let state = form.read(cx);
                             let dto = ConfigUpsertDTO {
-                                id: id,
+                                id,
                                 name: name.read(cx).value().trim().to_string(),
                                 tun: state.tun,
                                 fake_ip: state.fake_ip,
