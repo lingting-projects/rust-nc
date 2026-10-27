@@ -34,21 +34,23 @@ pub(crate) async fn find(pool: &DbPool, id: i64) -> Result<Option<InnerRule>> {
 /// 按名称登记内置规则，已存在时保留 `etag` 与 `ready`。
 ///
 /// 地址变化说明本地文件不再对应当前内容，此时把 `ready` 重置为 0。
-pub(crate) async fn insert_or_update(pool: &DbPool, id: i64, name: &str, url: &str) -> Result<()> {
+/// 返回该名称实际对应的内置规则 id: 首次登记时是传入的 `id`, 已存在时沿用原有 id。
+pub(crate) async fn insert_or_update(pool: &DbPool, id: i64, name: &str, url: &str) -> Result<i64> {
     let sql = format!(
         "insert into {TABLE} (`id`,`name`,`url`,`etag`,`ready`) values (?,?,?,'',0) \
          on conflict(`name`) do update set \
          `ready` = case when `url` = excluded.`url` then `ready` else 0 end, \
          `etag` = case when `url` = excluded.`url` then `etag` else '' end, \
-         `url` = excluded.`url`"
+         `url` = excluded.`url` \
+         returning `id`"
     );
-    sqlx::query(&sql)
+    let row = sqlx::query(&sql)
         .bind(id)
         .bind(name)
         .bind(url)
-        .execute(pool)
+        .fetch_one(pool)
         .await?;
-    Ok(())
+    mapping::id(&row, "id")
 }
 
 /// 标记为已就绪，并记录本次下载的 etag。

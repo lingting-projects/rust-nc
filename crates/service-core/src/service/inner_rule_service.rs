@@ -43,10 +43,10 @@ impl InnerRuleService {
     /// 按名称登记一条内置规则，已存在时保留已就绪状态。
     ///
     /// 主键按登记顺序分配，名称是幂等键，重复登记只更新地址与就绪标记。
+    /// 返回数据库里该名称实际对应的 id，重复登记时沿用首次分配的 id。
     pub async fn register(&self, name: &str, url: &str) -> Result<i64> {
         let id = next_id()?;
-        repository::insert_or_update(self.pool(), id, name, url).await?;
-        Ok(id)
+        repository::insert_or_update(self.pool(), id, name, url).await
     }
 
     /// 快捷登记全部内置规则, 返回全部规则 id。
