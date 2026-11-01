@@ -2,8 +2,8 @@ mod delay;
 mod groups;
 mod nodes;
 
-use std::collections::HashSet;
-use std::time::Duration;
+use std::collections::{HashMap, HashSet};
+use std::time::{Duration, Instant};
 
 use gpui_kit::base::{StyledExt as _, h_flex, v_flex};
 use gpui_kit::component::WindowExt as _;
@@ -24,6 +24,20 @@ pub(crate) const PADDING: Rems = rems(1.);
 /// 自动刷新间隔。测速结果由内核异步推送，界面按固定间隔重新读取分组即可跟上。
 /// 窗口隐藏时轮询挂起，恢复可见后立即刷新一次。
 const REFRESH_INTERVAL: Duration = Duration::from_secs(1);
+
+/// 单节点测速的最长等待时间。
+///
+/// 测速结果靠延迟变化判断，重新测出同一个延迟时看不出变化，
+/// 因此再加一个上限，超时后一律退出加载态。
+const NODE_TEST_TIMEOUT: Duration = Duration::from_secs(10);
+
+/// 一个正在测速的节点。
+struct NodeTest {
+    /// 入队时的延迟，延迟一变就说明本次测速已有结果。
+    delay: i32,
+    /// 入队时间，用于兜底退出加载态。
+    start: Instant,
+}
 
 /// 页面的加载状态：读取中、已就绪或失败原因。
 pub enum LoadState {
@@ -54,6 +68,8 @@ pub struct NodePage {
     refreshing: bool,
     /// 正在测速的分组标签，按钮据此保持加载态。
     testing: HashSet<String>,
+    /// 正在测速的节点，键为节点标签。
+    node_testing: HashMap<String, NodeTest>,
     /// 按间隔重新读取分组、同步内核状态的任务，页面存活期间一直保留；窗口隐藏时挂起。
     _ticker: Task<()>,
 }
@@ -77,6 +93,7 @@ impl NodePage {
             _node_subscription: node_subscription,
             refreshing: false,
             testing: HashSet::new(),
+            node_testing: HashMap::new(),
             _ticker: cx.spawn(async move |this, cx| {
                 loop {
                     window_state().tick(cx, REFRESH_INTERVAL).await;
@@ -198,7 +215,23 @@ impl NodePage {
             _ => testing.clear(),
         }
 
-        changed
+        // 节点测速完成的判据：延迟与入队时不同，或等待已超时。
+        // 重新测出同一个延迟时看不出变化，超时在这里兜底。
+        let pending = self.node_testing.len();
+        let testing = &mut self.node_testing;
+        match &self.load {
+            LoadState::Ready(groups) => testing.retain(|tag, test| {
+                groups.iter().flat_map(|group| &group.items).any(|item| {
+                    &item.tag == tag
+                        && item.delay == test.delay
+                        && test.start.elapsed() < NODE_TEST_TIMEOUT
+                })
+            }),
+            _ => testing.clear(),
+        }
+
+        // 超时退出加载态时数据本身可能没有变化，这里补上是否需要重绘。
+        changed || self.node_testing.len() != pending
     }
 
     /// 读取失败：首次加载失败才替换内容，已有数据时只提示。
@@ -281,6 +314,37 @@ impl NodePage {
         }
     }
 
+    /// 对单个节点测速。
+    ///
+    /// 与整组测速共用同一个队列，只推送这一个节点；结果同样由自动刷新同步。
+    pub fn test_node(&mut self, tag: &str, cx: &mut Context<Self>) {
+        let Some(services) = services::ready(cx) else {
+            return;
+        };
+        // 入队时的延迟要记下来：自动刷新看到延迟变化，就说明本次测速有了结果。
+        let Some(delay) = self
+            .nodes()
+            .and_then(|nodes| nodes.iter().find(|node| node.tag == tag))
+            .map(|node| node.delay)
+        else {
+            return;
+        };
+
+        match services.kernel_url_test(tag) {
+            Ok(_) => {
+                self.node_testing.insert(
+                    tag.to_string(),
+                    NodeTest {
+                        delay,
+                        start: Instant::now(),
+                    },
+                );
+                cx.notify();
+            }
+            Err(error) => self.notify_error(format!("测速失败: {error:#}"), cx),
+        }
+    }
+
     /// 分组列表，未就绪时为 `None`。
     pub fn groups(&self) -> Option<&[GroupInfo]> {
         match &self.load {
@@ -353,6 +417,11 @@ impl NodePage {
     /// 正在测速的分组快照，供列表行判断按钮的加载态。
     pub fn testing_snapshot(&self) -> HashSet<String> {
         self.testing.clone()
+    }
+
+    /// 正在测速的节点快照，供节点行判断按钮的加载态。
+    pub fn testing_nodes(&self) -> HashSet<String> {
+        self.node_testing.keys().cloned().collect()
     }
 
     /// 更新分组搜索关键字。

@@ -1,7 +1,12 @@
+use std::collections::HashSet;
 use std::rc::Rc;
 
+use gpui_kit::assets::IconName;
 use gpui_kit::base::{StyledExt as _, h_flex, v_flex};
 use gpui_kit::component::ActiveTheme as _;
+use gpui_kit::component::Sizable as _;
+use gpui_kit::component::button::Button;
+use gpui_kit::component::button::ButtonVariants as _;
 use gpui_kit::component::input::{Input, InputEvent, InputState};
 use gpui_kit::*;
 
@@ -25,6 +30,8 @@ pub fn render(page: &NodePage, cx: &mut Context<NodePage>) -> AnyElement {
     let selected = page.current().map(str::to_string);
     // 只有手动选择分组才能切换节点，自动选择分组的节点行只读。
     let switchable = page.switchable();
+    // 测速中的节点在这里先取快照：行渲染时页面实体正被渲染，不能再回读。
+    let testing = page.testing_nodes();
 
     let list = VirtualCard::new("node-items")
         .with_ghost()
@@ -33,7 +40,9 @@ pub fn render(page: &NodePage, cx: &mut Context<NodePage>) -> AnyElement {
         .filter(filter)
         .item_renderer(Rc::new({
             let entity = cx.entity();
-            move |node, _, cx| render_item(&entity, node, selected.as_deref(), switchable, cx)
+            move |node, _, cx| {
+                render_item(&entity, node, selected.as_deref(), switchable, &testing, cx)
+            }
         }))
         .empty(empty(page, cx))
         .into_any_element();
@@ -55,12 +64,13 @@ pub fn render(page: &NodePage, cx: &mut Context<NodePage>) -> AnyElement {
         .into_any_element()
 }
 
-/// 节点行的中间栏：节点名、类型与延迟。
+/// 节点行：中间是节点名、类型与延迟，尾部是该节点的测速按钮。
 fn render_item(
     entity: &Entity<NodePage>,
     node: &GroupNode,
     selected: Option<&str>,
     switchable: bool,
+    testing: &HashSet<String>,
     cx: &App,
 ) -> AnyElement {
     let theme = cx.theme();
@@ -79,10 +89,27 @@ fn render_item(
         )
         .child(Delay::of(node.delay).render(theme));
 
+    // 测速按钮每个节点都有：只测这一个节点，与分组行的整组测速互不影响。
+    let action = Button::new(format!("node-test:{}", node.tag))
+        .ghost()
+        .small()
+        .icon(IconName::Zap)
+        .loading(testing.contains(&node.tag))
+        .tooltip("测速")
+        .accessibility_label("测速")
+        .on_click({
+            let entity = entity.clone();
+            let tag = node.tag.clone();
+            move |_, _, cx| {
+                entity.update(cx, |page, cx| page.test_node(&tag, cx));
+            }
+        });
+
     let card = ItemCard::new(format!("node-item:{}", node.tag))
         .selected(is_selected)
         .hoverable(switchable)
-        .center(center);
+        .center(center)
+        .right(action);
 
     if !switchable {
         return card.into_any_element();
