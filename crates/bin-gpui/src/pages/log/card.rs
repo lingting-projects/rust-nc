@@ -89,16 +89,11 @@ pub fn render(page: &Entity<LogPage>, block: &LogBlock, cx: &App) -> AnyElement 
         .text_sm()
         .child(block.text.to_string());
 
+    // 每一块都可以点开详情：详情里能看到整块原文，块大小已在元信息行给出。
     let card = ItemCard::new(("log-block", block.start))
         // 卡片下半部分留白更多：元信息行保持紧凑，正文行拿掉多出来的高度，
         // 两行文字仍各自贴在自己那一块的上沿。
-        .with_center_split(top, v_flex().h_full().pb(PAD_BOTTOM).child(bottom))
-        // 只有块内还有未展示的内容时才可点击，避免弹出与卡片完全相同的窗口
-        .hoverable(block.expandable());
-
-    if !block.expandable() {
-        return card.into_any_element();
-    }
+        .with_center_split(top, v_flex().h_full().pb(PAD_BOTTOM).child(bottom));
 
     let entity = page.clone();
     let start = block.start;
