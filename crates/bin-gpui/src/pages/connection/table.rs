@@ -2,7 +2,7 @@ use std::rc::Rc;
 use std::sync::Arc;
 
 use gpui_kit::assets::IconName;
-use gpui_kit::base::{StyledExt as _, h_flex, v_flex};
+use gpui_kit::base::{StyledExt as _, h_flex};
 use gpui_kit::component::button::Button;
 use gpui_kit::component::button::ButtonVariants as _;
 use gpui_kit::component::table::{Column, DataTable, TableDelegate, TableState};
@@ -27,7 +27,8 @@ const PROCESS_WIDTH: Rems = rems(10.);
 const DESTINATION_WIDTH: Rems = rems(16.);
 const RULE_WIDTH: Rems = rems(10.);
 const CHAIN_WIDTH: Rems = rems(14.);
-const SPEED_WIDTH: Rems = rems(10.);
+/// 速度列上下行并排，两个数值加两个图标并列后排在一行，宽度比单列时更宽。
+const SPEED_WIDTH: Rems = rems(13.);
 const SOURCE_WIDTH: Rems = rems(12.);
 
 /// 列定义：键、表头文案、宽度。
@@ -289,14 +290,12 @@ fn cell(item: &ConnectionRecord, cx: &App, text: String) -> AnyElement {
         .into_any_element()
 }
 
-/// 速度列：下载在上、上传在下，各自按自适应单位展示。
+/// 速度列：下载与上传并排展示，各自按自适应单位显示。
 ///
-/// 两行固定排布，即使某一项为 0 也占着自己那一行：只有一个数值时，
-/// 看不出它到底是下载还是上传。行高与字距收在同一处，
-/// 两行叠起来不高于一行文本在行高里的占位，避免撑破表格行高。
+/// 两项都不隐藏：某一项为 0 也占着自己的位置，配合箭头图标才看得出哪个是上下行。
 fn speed(item: &ConnectionRecord, cx: &App) -> AnyElement {
-    v_flex()
-        .line_height(relative(1.))
+    h_flex()
+        .gap_2()
         .child(
             h_flex()
                 .gap_1()
