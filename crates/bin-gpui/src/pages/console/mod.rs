@@ -190,16 +190,15 @@ impl Console {
 
         let select = toolbar::create_state(window, cx);
         let select_subscription = toolbar::subscribe(&select, cx);
-        let window_handle = window.window_handle();
         // 配置或订阅变化都会影响本页：配置列表、预览栏与下拉框都取自这两份数据。
         // 先订阅再加载，二者之间到达的通知不会漏。
-        let config_subscription = cx.on_global_bus_notify::<ConfigChanged>(move |console, cx| {
-            console.refresh(window_handle, cx);
+        // 不缓存窗口句柄：窗口关闭后可能被销毁重建，缓存下来的句柄会失效。
+        let config_subscription = cx.on_global_bus_notify::<ConfigChanged>(|console, cx| {
+            console.refresh_current(cx);
         });
-        let subscribe_subscription =
-            cx.on_global_bus_notify::<SubscribeChanged>(move |console, cx| {
-                console.refresh(window_handle, cx);
-            });
+        let subscribe_subscription = cx.on_global_bus_notify::<SubscribeChanged>(|console, cx| {
+            console.refresh_current(cx);
+        });
 
         let mut console = Self {
             load: LoadState::Loading,
@@ -225,6 +224,15 @@ impl Console {
         self.refreshing = true;
         cx.notify();
         self.refresh(window.window_handle(), cx);
+    }
+
+    /// 用当前窗口刷新本页。
+    ///
+    /// 窗口句柄每次现取：窗口关闭后可以被销毁重建，建页时缓存下来的句柄会失效。
+    fn refresh_current(&mut self, cx: &mut Context<Self>) {
+        if let Some(window) = cx.windows().into_iter().next() {
+            self.refresh(window, cx);
+        }
     }
 
     /// 读取配置与订阅。

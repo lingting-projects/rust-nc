@@ -48,7 +48,7 @@ pub struct SettingSoftware {
     pub startup: bool,
     /// 是否最小化启动
     pub minimize: bool,
-    /// 关闭窗口时是否隐藏到托盘
+    /// 关闭窗口后是否留在托盘（窗口销毁，进程常驻）
     pub tray: bool,
     /// 当前软件版本, 取自本 crate 的 CARGO_PKG_VERSION
     pub version: String,

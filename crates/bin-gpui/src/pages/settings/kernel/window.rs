@@ -23,14 +23,14 @@ pub const TITLE: &str = "窗口行为";
 const UNSUPPORTED: &str = "当前平台不支持托盘";
 
 /// 关闭到托盘的说明。
-const TRAY_HINT: &str = "关闭窗口时隐藏到托盘，进程与内核继续运行，从托盘菜单退出";
+const TRAY_HINT: &str = "关闭窗口时销毁窗口，进程与内核继续运行，从托盘唤回窗口或退出";
 
 /// 最小化启动的说明。
 const MINIMIZE_HINT: &str = "启动时不显示主窗口，直接从托盘唤出";
 
 /// 窗口行为分区。
 pub struct WindowBehavior {
-    /// 关闭窗口时隐藏到托盘。
+    /// 关闭窗口后留在托盘（窗口销毁，进程常驻）。
     tray: bool,
     /// 启动时隐藏主窗口。
     minimize: bool,
@@ -125,7 +125,7 @@ impl Render for WindowBehavior {
                 Switch::new("setting-software-tray")
                     .checked(self.tray)
                     .disabled(disabled)
-                    .label("关闭时隐藏到托盘")
+                    .label("关闭时留在托盘")
                     .on_change(cx.listener(|behavior, checked, _, cx| {
                         behavior.change(Some(*checked), None, cx)
                     })),

@@ -68,11 +68,11 @@ impl Drop for Guard {
 /// 在界面线程上监听唤醒信号。
 ///
 /// 守卫随任务一起存活到进程退出，锁因此在整个运行期间不会被释放。
-pub fn listen(cx: &mut App, guard: Guard, window: AnyWindowHandle) {
+pub fn listen(cx: &mut App, guard: Guard) {
     cx.spawn(async move |cx| {
         let mut guard = guard;
         while guard.wake.recv().await.is_some() {
-            focus(cx, window);
+            focus(cx);
         }
 
         // 唤醒通道关闭后仍要持有锁，进程存活期间不允许另一个实例启动。
@@ -82,12 +82,11 @@ pub fn listen(cx: &mut App, guard: Guard, window: AnyWindowHandle) {
     .detach();
 }
 
-/// 把主窗口前置到用户面前。
+/// 把主窗口唤回到用户面前。
 ///
-/// 复用托盘模块的显示逻辑：窗口可能已经被「隐藏到托盘」收起，
-/// 只调 `activate_window` 不会让它重新出现。
-fn focus(cx: &mut AsyncApp, window: AnyWindowHandle) {
-    cx.update(|cx| crate::tray::show(cx, window));
+/// 窗口可能已经被关闭销毁，因此统一走按需重建的入口，不持有窗口句柄。
+fn focus(cx: &mut AsyncApp) {
+    cx.update(crate::main_window::show_or_open);
 }
 
 /// 把唤醒信号转交给界面线程。

@@ -1,7 +1,7 @@
 //! 主窗口状态。
 //!
 //! 页面的数据都来自内核推送或本地文件，只有窗口在用户眼前时才需要跟上；
-//! 隐藏到托盘后没有任何东西要展示，定时器与查询应当一起停下，
+//! 窗口不可见后没有任何东西要展示，定时器与查询应当一起停下，
 //! 否则进程会留在托盘里每秒唤醒一次、白跑一遍轮询。
 //!
 //! 状态用 [`ArcSwap`] 整体替换：读取不加锁也不分配，任何线程都能直接问；
@@ -23,7 +23,7 @@ static WINDOW: LazyLock<WindowState> = LazyLock::new(WindowState::new);
 /// 与 [`WindowState`] 分开：这里只放被替换的值，读取方拿到的永远是一份自洽的状态。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct InnerWindowState {
-    /// 窗口是否可见。隐藏到托盘后为 `false`
+    /// 窗口是否可见。窗口不可见（隐藏或已销毁）后为 `false`
     visible: bool,
 }
 

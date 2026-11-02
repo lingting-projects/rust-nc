@@ -2,6 +2,7 @@ mod assets;
 mod blocks;
 mod components;
 mod logging;
+mod main_window;
 mod pages;
 mod services;
 mod single;
@@ -9,35 +10,10 @@ mod theme;
 mod tray;
 mod utils;
 
-use gpui_kit::assets::IconName;
 use gpui_kit::*;
-use lingting_gpui_kit::WindowOptionsBuilder;
-use lingting_gpui_kit::desktop_sidebar_layout::{DesktopSidebarLayout, init_router};
-use lingting_gpui_kit::router::RouteDefinition;
 use service_core::holder::settings::SettingsHolder;
 
 use crate::assets::AppAssets;
-use crate::pages::{
-    ConfigPage, ConnectionPage, Console, LogPage, NodePage, RulePage, SettingsPage, SubscribePage,
-};
-
-/// 应用标题。
-const APP_TITLE: &str = "lingting network control";
-
-/// 应用图标，由 [`AppAssets`] 从磁盘 `assets/icons/` 读取。
-const APP_ICON: &str = "icons/256x256.png";
-
-/// 默认打开的页面。
-const DEFAULT_PATH: &str = "/console";
-
-/// 侧栏菜单项高度，随主题字号缩放。
-const MENU_HEIGHT: Rems = rems(2.5);
-
-/// 侧栏菜单项图标尺寸，随主题字号缩放。
-const MENU_ICON_SIZE: Rems = rems(1.125);
-
-/// 侧栏菜单项字号，随主题字号缩放。
-const MENU_TEXT_SIZE: Rems = rems(1.);
 
 fn main() {
     #[cfg(all(target_os = "windows", not(debug_assertions)))]
@@ -71,6 +47,7 @@ fn main() {
     };
 
     application().with_assets(AppAssets::new()).run(|cx| {
+        init_quit(cx);
         init(cx);
         services::init(cx);
         // 总线必须在页面创建之前装好：页面在构造时订阅数据更新事件。
@@ -81,80 +58,57 @@ fn main() {
         }
         theme::apply(cx);
 
-        let routes = routes();
-        init_router(cx, DEFAULT_PATH, &routes);
+        main_window::init(cx);
         // 「最小化启动」时窗口直接以隐藏状态创建：先显示再收起会闪一下。
         // 没有托盘的平台不能隐藏，否则没有入口再把窗口叫回来。
         let hidden = tray::SUPPORTED && SettingsHolder::software().minimize;
-        let (window, _) = open(cx, routes, hidden).expect("failed to open window");
-        // 窗口状态必须在页面创建之前就位：隐藏启动时页面会直接挂起轮询。
-        utils::window::window_state().set_visible(!hidden);
+        let window = main_window::open(cx, hidden).expect("failed to open window");
 
         // 托盘必须在主线程创建：它依赖当前线程的消息循环接收点击与菜单事件。
-        let tray_ready = tray::init(cx, window);
+        let tray_ready = tray::init(cx);
         // 托盘没建起来就没有唤回入口，隐藏的窗口必须显示出来，否则应用等于不见了。
         if hidden && !tray_ready {
             log::error!("[启动] 托盘不可用，取消最小化启动");
-            tray::show(cx, window);
+            main_window::show(cx, window);
         }
 
-        // 锁与窗口绑定：后续实例的唤醒信号由界面线程转成窗口前置。
-        single::listen(cx, guard, window);
+        // 锁与托盘一起存活：后续实例的唤醒信号由界面线程转成窗口唤回（窗口不在则重建）。
+        single::listen(cx, guard);
     });
 
     // 正常退出也主动落盘：日志线程在全局守卫里，进程结束时不一定来得及写完最后一批。
     logging::flush();
 }
 
-/// 路由表：既用于注册路由，也用于生成侧栏菜单。
-fn routes() -> Vec<RouteDefinition> {
-    vec![
-        RouteDefinition::new("/console", "控制台", |window, cx| {
-            Console::new(window, cx)
-        })
-        .icon(IconName::Gauge),
-        RouteDefinition::new("/node", "节点", NodePage::new).icon(IconName::Server),
-        RouteDefinition::new("/connection", "连接", ConnectionPage::new).icon(IconName::Link),
-        RouteDefinition::new("/logs", "日志", LogPage::new).icon(IconName::ScrollText),
-        RouteDefinition::new("/subscribe", "订阅", |window, cx| {
-            SubscribePage::new(window, cx)
-        })
-        .icon(IconName::Rss),
-        RouteDefinition::new("/rule", "规则", RulePage::new).icon(IconName::GitFork),
-        RouteDefinition::new("/config", "配置", ConfigPage::new).icon(IconName::FileCog),
-        RouteDefinition::new("/settings", "设置", SettingsPage::new).icon(IconName::Settings),
-    ]
-}
-
-/// 打开应用窗口。
+/// 退出策略与退出路径的日志。
 ///
-/// `hidden` 为真时窗口以隐藏状态创建，从不显示，因此不会闪一下；
-/// 之后由托盘入口把窗口叫回来。
-fn open(
-    cx: &mut App,
-    routes: Vec<RouteDefinition>,
-    hidden: bool,
-) -> Result<(AnyWindowHandle, Entity<DesktopSidebarLayout>)> {
-    // 窗口尺寸、居中与自绘标题栏所需的设置都取构建器的默认值。
-    let mut options = WindowOptionsBuilder::new().title(APP_TITLE).build();
-    // 构建器没有对应方法，这里直接改选项：为 `false` 时窗口创建时不调用
-    // `SetWindowPlacement`，只在内部记下初始位置，之后第一次显示才真正摆好。
-    options.show = !hidden;
-    open_window(options, cx, |_, cx| {
-        cx.new(|cx| {
-            DesktopSidebarLayout::new(cx)
-                .routes(routes)
-                .icon(|_, _| {
-                    img(APP_ICON)
-                        .size(px(22.))
-                        .rounded_sm()
-                        .flex_shrink_0()
-                        .into_any_element()
-                })
-                .title(APP_TITLE)
-                .menu_height(MENU_HEIGHT)
-                .menu_icon_size(MENU_ICON_SIZE)
-                .menu_text_size(MENU_TEXT_SIZE)
-        })
+/// 托盘常驻应用不能跟着窗口走：GPUI 默认「最后一个窗口关闭即退出整个应用」，
+/// 一旦窗口被系统销毁（显示配置变化、显示适配器移除等），进程会静默退出，
+/// 日志里不留任何痕迹，事后无法判断退出原因。因此改成只由 [`App::quit`] 退出，
+/// 并把退出路径写进日志。
+fn init_quit(cx: &mut App) {
+    cx.set_quit_mode(QuitMode::Explicit);
+
+    cx.on_window_closed(|cx, window_id| {
+        let remaining = cx.windows().len();
+        log::info!("[退出] 窗口已关闭: {window_id:?}, 剩余窗口数量: {remaining}");
+        // 窗口没了就没有东西要展示，页面轮询挂起到重新显示为止
+        utils::window::window_state().set_visible(false);
+        // 没有托盘就没有唤回入口：窗口关掉后必须退出，否则进程会变成一个看不见的残留
+        if remaining == 0 && !tray::ready(cx) {
+            log::info!("[退出] 没有托盘入口, 关闭窗口后退出");
+            cx.quit();
+        }
     })
+    .detach();
+
+    // 退出流程不可中断，日志必须在这里主动落盘：之后的写入不再有机会跑到磁盘。
+    cx.on_app_quit(|_| {
+        log::info!("[退出] 应用准备退出");
+        logging::flush();
+        async {}
+    })
+    .detach();
+
+    log::info!("[启动] 退出模式: 仅显式退出");
 }

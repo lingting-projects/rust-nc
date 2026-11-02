@@ -703,7 +703,6 @@ dependencies = [
  "lib-system",
  "lingting-gpui-kit",
  "log",
- "raw-window-handle",
  "rust-single",
  "service-core",
  "tokio",

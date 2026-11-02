@@ -7,17 +7,14 @@
 //! 与单进程唤醒的处理方式一致。
 
 #[cfg(target_os = "windows")]
-mod close;
+pub(crate) mod close;
 #[cfg(target_os = "windows")]
 mod kernel;
 #[cfg(target_os = "windows")]
 mod menu;
-mod window;
 
 #[cfg(target_os = "windows")]
-pub use self::imp::{init, refresh, refresh_kernel, show};
-
-use gpui_kit::AnyWindowHandle;
+pub use self::imp::{init, ready, refresh, refresh_kernel};
 
 /// 当前平台是否支持托盘。
 pub const SUPPORTED: bool = cfg!(target_os = "windows");
@@ -25,8 +22,8 @@ pub const SUPPORTED: bool = cfg!(target_os = "windows");
 /// 关闭窗口时的处理方式。
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum CloseAction {
-    /// 隐藏到托盘，进程常驻。
-    Hide,
+    /// 窗口随关闭销毁，进程与内核留在托盘。
+    Tray,
     /// 直接退出进程。
     Exit,
 }
@@ -37,7 +34,7 @@ pub enum CloseAction {
 pub fn close_action() -> CloseAction {
     #[cfg(target_os = "windows")]
     if service_core::holder::settings::SettingsHolder::software().tray {
-        return CloseAction::Hide;
+        return CloseAction::Tray;
     }
 
     CloseAction::Exit
@@ -46,10 +43,15 @@ pub fn close_action() -> CloseAction {
 /// 非 Windows 平台的空实现，调用点不需要平台判断。
 #[cfg(not(target_os = "windows"))]
 mod imp {
-    use gpui_kit::{AnyWindowHandle, App};
+    use gpui_kit::App;
 
     /// 当前平台没有托盘，返回「没有托盘入口」。
-    pub fn init(_: &mut App, _: AnyWindowHandle) -> bool {
+    pub fn init(_: &mut App) -> bool {
+        false
+    }
+
+    /// 当前平台没有托盘，没有唤回窗口的入口。
+    pub fn ready(_: &App) -> bool {
         false
     }
 
@@ -58,11 +60,6 @@ mod imp {
 
     /// 当前平台没有托盘，没有需要刷新的菜单。
     pub fn refresh(_: &mut App) {}
-
-    /// 当前平台没有托盘，显示窗口就是普通的窗口前置。
-    pub fn show(cx: &mut App, window: AnyWindowHandle) {
-        super::window::show(cx, window);
-    }
 }
 
 #[cfg(target_os = "windows")]
@@ -74,8 +71,8 @@ mod imp {
         Icon, MouseButton, MouseButtonState, TrayIcon, TrayIconBuilder, TrayIconEvent,
     };
 
+    use super::kernel;
     use super::menu::{Action, TrayMenu};
-    use super::{close, kernel, window};
     use crate::assets;
 
     /// 托盘图标文件，与窗口/任务栏图标同一份资源。
@@ -111,7 +108,7 @@ mod imp {
     ///
     /// 图标或菜单创建失败时只记录日志并返回 `false`：界面本身仍可用，只是没有托盘入口。
     /// 调用方据此决定能不能把主窗口收起来——没有托盘就没有入口再把窗口叫回来。
-    pub fn init(cx: &mut App, window: AnyWindowHandle) -> bool {
+    pub fn init(cx: &mut App) -> bool {
         let (events, receiver) = unbounded_channel::<Event>();
 
         let tray_events = events.clone();
@@ -154,11 +151,16 @@ mod imp {
             _events: events,
         });
 
-        // 关闭按钮的语义由设置决定，托盘存在时才需要拦截
-        close::install(cx, window);
-        listen(cx, window, receiver);
+        listen(cx, receiver);
         kernel::refresh(cx);
         true
+    }
+
+    /// 托盘是否可用。
+    ///
+    /// 没有托盘就没有唤回窗口的入口，窗口关闭后必须退出而不是留在后台。
+    pub fn ready(cx: &App) -> bool {
+        cx.try_global::<Tray>().is_some()
     }
 
     /// 按内核的当前状态刷新菜单项。
@@ -173,26 +175,25 @@ mod imp {
         }
     }
 
-    /// 显示并前置主窗口。
-    pub fn show(cx: &mut App, window: AnyWindowHandle) {
-        window::show(cx, window);
-    }
-
     /// 在界面线程上消费托盘事件。
-    fn listen(cx: &mut App, window: AnyWindowHandle, mut receiver: UnboundedReceiver<Event>) {
+    fn listen(cx: &mut App, mut receiver: UnboundedReceiver<Event>) {
         cx.spawn(async move |cx| {
             while let Some(event) = receiver.recv().await {
-                cx.update(|cx| handle(cx, window, event));
+                cx.update(|cx| handle(cx, event));
             }
         })
         .detach();
     }
 
     /// 处理一个托盘事件。
-    fn handle(cx: &mut App, window: AnyWindowHandle, event: Event) {
+    fn handle(cx: &mut App, event: Event) {
         match event {
-            Event::Activate | Event::Menu(Action::Show) => show(cx, window),
-            Event::Menu(Action::Quit) => cx.quit(),
+            // 窗口可能已经被销毁：唤回时按需重建
+            Event::Activate | Event::Menu(Action::Show) => crate::main_window::show_or_open(cx),
+            Event::Menu(Action::Quit) => {
+                log::info!("[退出] 托盘菜单触发退出");
+                cx.quit();
+            }
             Event::Menu(Action::ToggleKernel) => kernel::toggle(cx),
         }
     }

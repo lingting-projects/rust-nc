@@ -19,7 +19,7 @@ pub enum AppConfigKey {
     #[strum(serialize = "setting:software:minimize")]
     #[serde(rename = "setting:software:minimize")]
     SettingSoftwareMinimize,
-    /// 软件: 关闭窗口时是否隐藏到托盘
+    /// 软件: 关闭窗口后是否留在托盘（窗口销毁，进程常驻）
     #[strum(serialize = "setting:software:tray")]
     #[serde(rename = "setting:software:tray")]
     SettingSoftwareTray,
