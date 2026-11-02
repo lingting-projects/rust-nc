@@ -674,7 +674,7 @@ checksum = "2af50177e190e07a26ab74f8b1efbfe2ef87da2116221318cb1c2e82baf7de06"
 
 [[package]]
 name = "bin-cloudflare"
-version = "26.10.1"
+version = "26.10.2"
 dependencies = [
  "anyhow",
  "console_error_panic_hook",
@@ -689,7 +689,7 @@ dependencies = [
 
 [[package]]
 name = "bin-gpui"
-version = "26.10.1"
+version = "26.10.2"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -713,7 +713,7 @@ dependencies = [
 
 [[package]]
 name = "bin-tests"
-version = "26.10.1"
+version = "26.10.2"
 dependencies = [
  "anyhow",
  "form_urlencoded",
@@ -4831,7 +4831,7 @@ checksum = "7a79a3332a6609480d7d0c9eab957bca6b455b91bb84e66d19f5ff66294b85b8"
 
 [[package]]
 name = "lib-biz"
-version = "26.10.1"
+version = "26.10.2"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -4852,7 +4852,7 @@ dependencies = [
 
 [[package]]
 name = "lib-converter"
-version = "26.10.1"
+version = "26.10.2"
 dependencies = [
  "anyhow",
  "indexmap 2.14.2",
@@ -4866,7 +4866,7 @@ dependencies = [
 
 [[package]]
 name = "lib-core"
-version = "26.10.1"
+version = "26.10.2"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -4887,7 +4887,7 @@ dependencies = [
 
 [[package]]
 name = "lib-db"
-version = "26.10.1"
+version = "26.10.2"
 dependencies = [
  "anyhow",
  "lib-core",
@@ -4900,7 +4900,7 @@ dependencies = [
 
 [[package]]
 name = "lib-fetch"
-version = "26.10.1"
+version = "26.10.2"
 dependencies = [
  "anyhow",
  "bytes",
@@ -4915,7 +4915,7 @@ dependencies = [
 
 [[package]]
 name = "lib-pick"
-version = "26.10.1"
+version = "26.10.2"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
@@ -4933,7 +4933,7 @@ dependencies = [
 
 [[package]]
 name = "lib-singbox"
-version = "26.10.1"
+version = "26.10.2"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -4951,7 +4951,7 @@ dependencies = [
 
 [[package]]
 name = "lib-system"
-version = "26.10.1"
+version = "26.10.2"
 dependencies = [
  "anyhow",
  "encoding",
@@ -8095,7 +8095,7 @@ dependencies = [
 
 [[package]]
 name = "service-core"
-version = "26.10.1"
+version = "26.10.2"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -9586,7 +9586,7 @@ checksum = "1dccffe3ce07af9386bfd29e80c0ab1a8205a2fc34e4bcd40364df902cfa8f3f"
 
 [[package]]
 name = "types-core"
-version = "26.10.1"
+version = "26.10.2"
 dependencies = [
  "anyhow",
  "framework-proc-auto",
