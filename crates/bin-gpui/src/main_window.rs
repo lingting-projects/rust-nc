@@ -46,7 +46,8 @@ pub fn init(cx: &mut App) {
 
 /// 创建主窗口。
 ///
-/// `hidden` 为真时窗口直接以隐藏状态创建，先显示再收起会闪一下。
+/// `hidden` 为真时窗口以隐藏状态创建：启动流程先这样建起来，再按启动方式决定显示
+/// （`false` 由托盘唤回时重建，创建即显示）还是销毁（最小化启动）。
 pub fn open(cx: &mut App, hidden: bool) -> Result<AnyWindowHandle> {
     // 窗口尺寸、居中与自绘标题栏所需的设置都取构建器的默认值。
     let mut options = WindowOptionsBuilder::new().title(APP_TITLE).build();
@@ -79,6 +80,16 @@ pub fn open(cx: &mut App, hidden: bool) -> Result<AnyWindowHandle> {
     // 窗口状态必须在页面创建之前就位：隐藏启动时页面会直接挂起轮询。
     window_state().set_visible(!hidden);
     Ok(window)
+}
+
+/// 销毁主窗口。
+///
+/// 进程、内核与托盘继续运行，需要时由 [`show_or_open`] 重建。
+pub fn close(cx: &mut App, window: AnyWindowHandle) {
+    let result = window.update(cx, |_, window, _| window.remove_window());
+    if let Err(error) = result {
+        log::error!("[窗口] 销毁主窗口失败: {error:#}");
+    }
 }
 
 /// 唤回主窗口：窗口还在就显示并前置，已经被销毁就重建。

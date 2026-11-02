@@ -59,16 +59,34 @@ fn main() {
         theme::apply(cx);
 
         main_window::init(cx);
-        // 「最小化启动」时窗口直接以隐藏状态创建：先显示再收起会闪一下。
-        // 没有托盘的平台不能隐藏，否则没有入口再把窗口叫回来。
-        let hidden = tray::SUPPORTED && SettingsHolder::software().minimize;
-        let window = main_window::open(cx, hidden).expect("failed to open window");
+        // 托盘必须在主线程创建，它依赖当前线程的消息循环接收点击与菜单事件。
+        // 初始化失败是致命的：常驻应用没有托盘就没有唤回窗口与退出应用的入口；
+        // 返回 `false` 只表示当前平台没有托盘，界面流程照常继续。
+        let tray_ready = match tray::init(cx) {
+            Ok(ready) => ready,
+            Err(error) => {
+                log::error!("[启动] 托盘初始化失败，退出: {error:#}");
+                cx.quit();
+                return;
+            }
+        };
 
-        // 托盘必须在主线程创建：它依赖当前线程的消息循环接收点击与菜单事件。
-        let tray_ready = tray::init(cx);
-        // 托盘没建起来就没有唤回入口，隐藏的窗口必须显示出来，否则应用等于不见了。
-        if hidden && !tray_ready {
-            log::error!("[启动] 托盘不可用，取消最小化启动");
+        // 主窗口一律以隐藏状态创建，再按启动方式决定显示还是销毁：
+        // 隐藏创建不会闪过一帧空白，销毁后由托盘唤回时重建。
+        let window = match main_window::open(cx, true) {
+            Ok(window) => window,
+            Err(error) => {
+                log::error!("[启动] 创建主窗口失败: {error:#}");
+                cx.quit();
+                return;
+            }
+        };
+        // 只有「托盘已创建 + 最小化启动」才销毁窗口：没有托盘就没有唤回入口，
+        // 窗口必须留着，否则应用等于不见了。
+        if tray_ready && SettingsHolder::software().minimize {
+            log::info!("[启动] 最小化启动, 销毁主窗口, 进程留在托盘");
+            main_window::close(cx, window);
+        } else {
             main_window::show(cx, window);
         }
 

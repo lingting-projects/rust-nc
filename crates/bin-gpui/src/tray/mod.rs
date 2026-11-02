@@ -43,11 +43,12 @@ pub fn close_action() -> CloseAction {
 /// 非 Windows 平台的空实现，调用点不需要平台判断。
 #[cfg(not(target_os = "windows"))]
 mod imp {
+    use anyhow::Result;
     use gpui_kit::App;
 
-    /// 当前平台没有托盘，返回「没有托盘入口」。
-    pub fn init(_: &mut App) -> bool {
-        false
+    /// 当前平台没有托盘：不是错误，只是没有托盘入口。
+    pub fn init(_: &mut App) -> Result<bool> {
+        Ok(false)
     }
 
     /// 当前平台没有托盘，没有唤回窗口的入口。
@@ -64,6 +65,7 @@ mod imp {
 
 #[cfg(target_os = "windows")]
 mod imp {
+    use anyhow::{Context as _, Result};
     use gpui_kit::*;
     use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
     use tray_icon::menu::MenuEvent;
@@ -106,9 +108,9 @@ mod imp {
 
     /// 创建托盘图标并开始消费它的事件。
     ///
-    /// 图标或菜单创建失败时只记录日志并返回 `false`：界面本身仍可用，只是没有托盘入口。
-    /// 调用方据此决定能不能把主窗口收起来——没有托盘就没有入口再把窗口叫回来。
-    pub fn init(cx: &mut App) -> bool {
+    /// 图标创建失败时返回错误：托盘是常驻应用的前提，调用方据此退出进程；
+    /// 创建成功返回 `true`。
+    pub fn init(cx: &mut App) -> Result<bool> {
         let (events, receiver) = unbounded_channel::<Event>();
 
         let tray_events = events.clone();
@@ -126,24 +128,14 @@ mod imp {
         }));
 
         let menu = TrayMenu::new();
-        let built = icon().and_then(|icon| {
-            TrayIconBuilder::new()
-                .with_tooltip(TOOLTIP)
-                .with_icon(icon)
-                // 左键用于唤回窗口，菜单交给右键
-                .with_menu_on_left_click(false)
-                .with_menu(menu.context_menu())
-                .build()
-                .map_err(anyhow::Error::from)
-        });
-
-        let icon = match built {
-            Ok(icon) => icon,
-            Err(error) => {
-                log::error!("[托盘] 创建托盘图标失败: {error:#}");
-                return false;
-            }
-        };
+        let icon = TrayIconBuilder::new()
+            .with_tooltip(TOOLTIP)
+            .with_icon(icon()?)
+            // 左键用于唤回窗口，菜单交给右键
+            .with_menu_on_left_click(false)
+            .with_menu(menu.context_menu())
+            .build()
+            .context("创建托盘图标失败")?;
 
         cx.set_global(Tray {
             _icon: icon,
@@ -153,7 +145,7 @@ mod imp {
 
         listen(cx, receiver);
         kernel::refresh(cx);
-        true
+        Ok(true)
     }
 
     /// 托盘是否可用。
