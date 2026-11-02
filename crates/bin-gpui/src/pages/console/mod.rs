@@ -106,6 +106,10 @@ pub struct Console {
     selected: Option<i64>,
     /// 是否正在刷新配置列表。
     refreshing: bool,
+    /// 是否有读取结果没能写回页面。
+    ///
+    /// 写不回去。页面重新显示时按这个标记补读一次，否则会一直停在加载中。
+    pending: bool,
     /// 监控控制栏中被选中的分区，默认全部选中。
     sections: Vec<MonitorSection>,
     monitor: Monitor,
@@ -192,12 +196,11 @@ impl Console {
         let select_subscription = toolbar::subscribe(&select, cx);
         // 配置或订阅变化都会影响本页：配置列表、预览栏与下拉框都取自这两份数据。
         // 先订阅再加载，二者之间到达的通知不会漏。
-        // 不缓存窗口句柄：窗口关闭后可能被销毁重建，缓存下来的句柄会失效。
         let config_subscription = cx.on_global_bus_notify::<ConfigChanged>(|console, cx| {
-            console.refresh_current(cx);
+            console.refresh(cx);
         });
         let subscribe_subscription = cx.on_global_bus_notify::<SubscribeChanged>(|console, cx| {
-            console.refresh_current(cx);
+            console.refresh(cx);
         });
 
         let mut console = Self {
@@ -206,6 +209,7 @@ impl Console {
             select,
             selected: None,
             refreshing: false,
+            pending: false,
             sections: MonitorSection::ALL
                 .iter()
                 .map(|(_, section)| *section)
@@ -215,30 +219,21 @@ impl Console {
             _select_subscription: select_subscription,
             _changed_subscriptions: vec![config_subscription, subscribe_subscription],
         };
-        console.reload(window, cx);
+        console.reload(cx);
         console
     }
 
     /// 手动刷新：刷新按钮进入加载态，读取结束后退出。
-    pub fn reload(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn reload(&mut self, cx: &mut Context<Self>) {
         self.refreshing = true;
         cx.notify();
-        self.refresh(window.window_handle(), cx);
-    }
-
-    /// 用当前窗口刷新本页。
-    ///
-    /// 窗口句柄每次现取：窗口关闭后可以被销毁重建，建页时缓存下来的句柄会失效。
-    fn refresh_current(&mut self, cx: &mut Context<Self>) {
-        if let Some(window) = cx.windows().into_iter().next() {
-            self.refresh(window, cx);
-        }
+        self.refresh(cx);
     }
 
     /// 读取配置与订阅。
     ///
     /// 事件驱动的刷新走这里：不动刷新按钮的加载态，避免后台数据变化让按钮闪一下。
-    fn refresh(&mut self, window: AnyWindowHandle, cx: &mut Context<Self>) {
+    fn refresh(&mut self, cx: &mut Context<Self>) {
         let services = match services::get(cx) {
             Some(AppServices::Ready(services)) => services.clone(),
             Some(AppServices::Failed(reason)) => {
@@ -261,12 +256,21 @@ impl Console {
                 Ok(Err(error)) => Err(format!("{error:#}")),
                 Err(error) => Err(format!("读取任务异常: {error}")),
             };
-            // 下拉框换选项需要窗口，而回调只拿到页面状态，因此回到窗口里执行
-            window
-                .update(cx, |_, window, cx| {
-                    this.update(cx, |console, cx| console.apply(result, window, cx))
+            // 下拉框换选项需要窗口，而回调只拿到页面状态，因此回到页面所在的窗口里执行；
+            // 不缓存建页时的窗口句柄：窗口销毁重建后句柄会失效。
+            // 读取期间窗口也可能被销毁（最小化启动），此时结果无处落地：复位加载态并留下标记，
+            // 等页面重新显示时补读一次。
+            let applied = this
+                .update_in(cx, |console, window, cx| console.apply(result, window, cx))
+                .is_ok();
+            if !applied {
+                this.update(cx, |console, cx| {
+                    console.refreshing = false;
+                    console.pending = true;
+                    cx.notify();
                 })
                 .ok();
+            }
         })
         .detach();
     }
@@ -465,7 +469,14 @@ impl Console {
 }
 
 impl Render for Console {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        // 上次读取没能写回页面（最小化启动在建页后立刻销毁窗口），此时页面重新显示，
+        // 补读一次；不补的话页面会一直停在加载中，配置列表与预览栏都是空的。
+        if self.pending {
+            self.pending = false;
+            cx.defer_in(window, |console, _, cx| console.reload(cx));
+        }
+
         // 失败日志按内容展开，窗口放不下时整页纵向滚动，日志因此可以完整查看。
         v_flex()
             .size_full()

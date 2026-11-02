@@ -14,7 +14,6 @@ use lingting_gpui_kit::card::Card;
 use lib_biz::kernel::Status;
 
 use super::Console;
-use super::LoadState;
 use super::PADDING;
 
 /// 配置下拉框的宽度。
@@ -24,7 +23,6 @@ const SELECT_WIDTH: Rems = rems(20.);
 ///
 /// 从左到右：启动/停止按钮、内核状态、刷新按钮、配置列表下拉框。
 pub fn render(console: &Console, cx: &mut Context<Console>) -> impl IntoElement {
-    let ready = matches!(console.load, LoadState::Ready(_));
     let running = console.kernel.running();
     let has_config = console.selected.is_some();
 
@@ -38,9 +36,8 @@ pub fn render(console: &Console, cx: &mut Context<Console>) -> impl IntoElement 
         .label(if running { "停止" } else { "启动" })
         // 本页发起的操作或全局任意入口（托盘、自动运行）发起的操作都算加载中
         .loading(console.kernel.loading || console.kernel.acting)
-        .disabled(
-            console.kernel.loading || console.kernel.acting || !ready || (!running && !has_config),
-        )
+        // 只看内核状态与能否启动：运行中随时可以停止，不需要等配置列表读完
+        .disabled(console.kernel.loading || console.kernel.acting || (!running && !has_config))
         .when(running, |this| this.danger())
         .when(!running, |this| this.primary())
         .on_click(cx.listener(|console, _, _, cx| console.toggle_kernel(cx)));
@@ -56,7 +53,7 @@ pub fn render(console: &Console, cx: &mut Context<Console>) -> impl IntoElement 
                     .icon(IconName::RefreshCw)
                     .label("刷新")
                     .loading(console.refreshing)
-                    .on_click(cx.listener(|console, _, window, cx| console.reload(window, cx))),
+                    .on_click(cx.listener(|console, _, _, cx| console.reload(cx))),
             )
             .child(
                 // 内核运行时禁用，避免切换正在生效的配置。
