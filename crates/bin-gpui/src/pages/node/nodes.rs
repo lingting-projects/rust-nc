@@ -90,6 +90,7 @@ fn render_item(
         .child(Delay::of(node.delay).render(theme));
 
     // 测速按钮每个节点都有：只测这一个节点，与分组行的整组测速互不影响。
+    // 点击在按钮上结束，不再冒泡到整行，因此不会顺带切换选中节点。
     let action = Button::new(format!("node-test:{}", node.tag))
         .ghost()
         .small()
@@ -101,6 +102,7 @@ fn render_item(
             let entity = entity.clone();
             let tag = node.tag.clone();
             move |_, _, cx| {
+                cx.stop_propagation();
                 entity.update(cx, |page, cx| page.test_node(&tag, cx));
             }
         });

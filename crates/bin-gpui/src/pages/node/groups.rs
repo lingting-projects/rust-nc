@@ -159,6 +159,8 @@ fn render_item(
             let entity = entity.clone();
             let tag = group.tag.clone();
             move |_, window, cx| {
+                // 点击在按钮上结束，不再冒泡到整行，因此不会顺带选中分组。
+                cx.stop_propagation();
                 entity.update(cx, |page, cx| page.url_test(&tag, window, cx));
             }
         });
