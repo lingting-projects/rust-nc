@@ -25,3 +25,19 @@ GPUI 的 rem 以 `window.rem_size()`（由 `gpui-component` 的 Root 设为 `the
 
 公共组件库 `lingting-gpui-kit` 有同一份规则的详细说明（含 `Menu` 收 `AbsoluteLength` 的原因），
 改动那里时以该仓库的 `AGENTS.md` 为准。
+
+## 已知日志噪声
+
+主窗口销毁后（`设置 → 关闭时留在托盘` 下关闭窗口，或系统摧毁窗口），日志里会出现几条 **target 为空**、形如 `ERROR : 消息` 的记录：
+
+```text
+ERROR : window not found
+ERROR : 无效的窗口句柄 (0x80040102)
+ERROR : 无效的窗口句柄。 (0x80070578)
+```
+
+- 来源：gpui / gpui-component 里已经排队的延迟任务在窗口销毁后仍去更新窗口或调用 Win32 窗口接口。
+  这些错误走 `gpui-pre-util` 的 `ResultExt::log_err()`，它按调用点源码路径反推 target；依赖源码不在
+  `crates/` 目录下时 target 退化成空字符串，所以打印成 `ERROR :`。
+- 含义：只说明窗口已经不存在，与应用状态无关，功能上无影响。
+- 排查崩溃时忽略这几条：崩溃原因看带 target 的日志（`lingting_nc::*` 等）与 panic hook 打的 `界面崩溃`。
