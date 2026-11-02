@@ -94,6 +94,10 @@ func setLog(color bool) {
 	formatter := log.Formatter{
 		BaseTime:      time.Now(),
 		DisableColors: !color,
+		// 输出绝对时间: 上层进程异常消失时没有自己的日志可查,
+		// 只能靠这里的记录反推崩溃的时间范围, 相对秒数无法换算。
+		FullTimestamp:   true,
+		TimestampFormat: "2006-01-02 15:04:05.000",
 	}
 	factory := log.NewDefaultFactory(context.Background(), formatter, os.Stdout, "", nil, false)
 	// 工厂必须启动, 否则日志会滞留在待输出队列, 内核异常原因将无处可见
