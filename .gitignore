@@ -5,6 +5,7 @@ node_modules/
 build/
 
 .plan/
+.crash
 
 # 集成测试订阅源与订阅地址, 只保留占位文件
 crates/bin-tests/assets/source/*

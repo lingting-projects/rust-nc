@@ -65,6 +65,10 @@ pub struct SingBoxInstance {
 struct Inner {
     /// 服务运行时的数据库上下文，未初始化时为空
     context: Option<Arc<DbContext>>,
+    /// 服务运行时的句柄，未初始化时为空
+    ///
+    /// 内核 gRPC 客户端必须在运行时里创建，创建内核对象时用它。
+    runtime: Option<tokio::runtime::Handle>,
     /// 正在运行的配置 id
     config_id: Option<i64>,
     /// 最近一次异常的原因
@@ -110,9 +114,11 @@ impl SingBoxInstance {
         &INSTANCE
     }
 
-    /// 注入服务运行时的数据库上下文，重复调用会覆盖旧值。
-    pub fn init(&self, context: Arc<DbContext>) {
-        self.lock().context = Some(context);
+    /// 注入服务运行时的数据库上下文与异步运行时，重复调用会覆盖旧值。
+    pub fn init(&self, context: Arc<DbContext>, runtime: tokio::runtime::Handle) {
+        let mut inner = self.lock();
+        inner.context = Some(context);
+        inner.runtime = Some(runtime);
     }
 
     /// 内核状态。
@@ -177,7 +183,11 @@ impl SingBoxInstance {
             return Ok(singbox);
         }
 
-        let singbox = Arc::new(lib_singbox::create()?);
+        let runtime = inner
+            .runtime
+            .clone()
+            .ok_or_else(|| anyhow!("内核实例未初始化"))?;
+        let singbox = Arc::new(lib_singbox::create(runtime)?);
         self.singbox.store(Some(singbox.clone()));
         inner.reason = None;
         Ok(singbox)

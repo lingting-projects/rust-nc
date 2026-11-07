@@ -47,7 +47,7 @@ impl Services {
     /// 内置规则必须先于内核启动下载完成, 因此与内核实例一起初始化。
     pub fn init_kernel(&self) {
         InnerRuleSync::instance().init(self.context(), self.runtime_handle());
-        SingBoxInstance::instance().init(self.context());
+        SingBoxInstance::instance().init(self.context(), self.runtime_handle());
     }
 }
 impl Services {

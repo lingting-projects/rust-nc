@@ -56,13 +56,18 @@ pub struct SingBox {
     bin: String,
     /// 与监控线程共享的运行状态。
     shared: Arc<Shared>,
+    /// 内核 gRPC 客户端所属的异步运行时。
+    ///
+    /// tonic 建频道时就会 `tokio::spawn` 一个后台任务，因此客户端必须在运行时上下文里创建；
+    /// 界面线程等非运行时线程取客户端时靠这个句柄进入运行时。
+    runtime: tokio::runtime::Handle,
 }
 
 impl SingBox {
-    /// 创建实例，`bin_dir` 为内核可执行文件所在目录。
+    /// 创建实例，`bin_dir` 为内核可执行文件所在目录，`runtime` 为异步运行时句柄。
     ///
     /// 同时启动常驻的监控线程，由它负责创建进程、结束进程与检测退出。
-    pub fn new(bin_dir: impl AsRef<Path>) -> Result<Self> {
+    pub fn new(bin_dir: impl AsRef<Path>, runtime: tokio::runtime::Handle) -> Result<Self> {
         let bin = bin_dir.as_ref().join(BIN_NAME);
         let bin = bin
             .to_str()
@@ -78,7 +83,11 @@ impl SingBox {
             .spawn(move || watch::run(watcher, command))
             .context("启动内核监控线程失败")?;
 
-        Ok(Self { bin, shared })
+        Ok(Self {
+            bin,
+            shared,
+            runtime,
+        })
     }
 
     /// 当前生命周期阶段。
@@ -116,7 +125,7 @@ impl SingBox {
             Some(grpc) => grpc,
             None => {
                 let api = self.shared.api.load();
-                let grpc = Arc::new(SingBoxGrpc::new(&api)?);
+                let grpc = Arc::new(self.build_grpc(&api)?);
                 self.shared.grpc.store(Some(grpc.clone()));
                 grpc
             }
@@ -129,6 +138,15 @@ impl SingBox {
             self.shared.connections.subscribe(Some(grpc.clone()));
         }
         Ok(Some(grpc))
+    }
+
+    /// 创建内核 gRPC 客户端。
+    ///
+    /// tonic 建频道时会立刻 `tokio::spawn` 一个后台任务，没有运行时上下文就 panic，
+    /// 因此这里先进本实例的运行时：界面线程等非运行时线程也能安全取用客户端。
+    fn build_grpc(&self, api: &str) -> Result<SingBoxGrpc> {
+        let _guard = self.runtime.enter();
+        SingBoxGrpc::new(api)
     }
 
     /// 测速任务队列。
@@ -165,10 +183,10 @@ impl Drop for SingBox {
     }
 }
 
-/// 创建内核实例，内核可执行文件位于安装目录。
-pub fn create() -> Result<SingBox> {
+/// 创建内核实例，内核可执行文件位于安装目录，`runtime` 为异步运行时句柄。
+pub fn create(runtime: tokio::runtime::Handle) -> Result<SingBox> {
     let directory = lib_core::directorys()?;
-    SingBox::new(&directory.install)
+    SingBox::new(&directory.install, runtime)
 }
 
 /// 安装目录下的内核可执行文件路径。

@@ -77,7 +77,7 @@ async fn run(item: &source::Source) -> (String, anyhow::Result<()>) {
 
 /// 走完生成、启动、探测与停止。
 async fn execute(item: &source::Source) -> anyhow::Result<()> {
-    let kernel = Kernel::new(&item.name)?;
+    let kernel = Kernel::new(&item.name, tokio::runtime::Handle::current())?;
     let pipeline = Pipeline::run(item, &kernel)?;
     let runtime = pipeline.runtime(SCENARIO)?;
 

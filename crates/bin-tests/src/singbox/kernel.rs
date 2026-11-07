@@ -29,7 +29,8 @@ impl Kernel {
     /// 为指定用例准备内核与独立工作目录。
     ///
     /// 工作目录每次重建, 避免上一次的缓存与日志干扰校验结果。
-    pub fn new(name: &str) -> Result<Self> {
+    /// `runtime` 为内核 gRPC 客户端所属的异步运行时。
+    pub fn new(name: &str, runtime: tokio::runtime::Handle) -> Result<Self> {
         let profile = profile_dir()?;
         let work = profile.join(WORK_DIR).join(name);
         if work.exists() {
@@ -39,7 +40,7 @@ impl Kernel {
         fs::create_dir_all(&work)
             .with_context(|| format!("创建工作目录失败: {}", work.display()))?;
 
-        let inner = SingBox::new(&profile)?;
+        let inner = SingBox::new(&profile, runtime)?;
         Ok(Self { inner, work })
     }
 
