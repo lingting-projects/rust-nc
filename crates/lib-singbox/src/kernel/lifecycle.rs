@@ -17,6 +17,27 @@ use super::shared::Intent;
 #[cfg(feature = "grpc")]
 use std::time::Instant;
 
+/// 等待内核 API 就绪超时。
+///
+/// 与「进程提前退出」区分开：超时说明进程仍然存活、只是没在时限内就绪，
+/// 调用方可以据此重试，而不是直接判定内核不可用。
+#[cfg(feature = "grpc")]
+#[derive(Debug)]
+pub struct WaitTimeout {
+    /// 超时前最后一次探测的失败原因。
+    pub reason: String,
+}
+
+#[cfg(feature = "grpc")]
+impl std::fmt::Display for WaitTimeout {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "等待内核 API 就绪超时: {}", self.reason)
+    }
+}
+
+#[cfg(feature = "grpc")]
+impl std::error::Error for WaitTimeout {}
+
 impl SingBox {
     /// 登记启动意图并唤醒监控线程，立即返回。
     ///
@@ -124,7 +145,8 @@ impl SingBox {
     /// 直到取得版本号才把阶段置为运行中；进程提前退出或超时都返回失败原因。
     ///
     /// 整个探测期间阶段保持 [`Phase::Starting`]：只有 API 验证通过才算启动完成，
-    /// 进程存在但 API 未响应的内核仍然不可用。超时视为启动失败，由调用方停止进程。
+    /// 进程存在但 API 未响应的内核仍然不可用。超时视为启动失败，由调用方停止进程；
+    /// 超时以 [`WaitTimeout`] 返回，与进程提前退出区分开，调用方可据此重试。
     #[cfg(feature = "grpc")]
     pub async fn wait_ready(&self, timeout: Duration) -> Result<()> {
         let start = Instant::now();
@@ -180,7 +202,7 @@ impl SingBox {
                     "[内核] 等待 API 就绪超时, 探测次数: {probe}, 阶段: {:?}, 原因: {reason}",
                     self.phase()
                 );
-                bail!("等待内核 API 就绪超时: {reason}");
+                return Err(WaitTimeout { reason }.into());
             }
 
             tokio::time::sleep(Duration::from_millis(200)).await;

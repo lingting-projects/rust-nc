@@ -18,7 +18,9 @@ mod url_test;
 pub use connection::{ConnectionInfo, ConnectionRecord, ConnectionSnapshot, ConnectionStore};
 #[cfg(feature = "grpc")]
 pub use grpc::{Group, GroupItem, ProcessInfo, SingBoxGrpc};
-pub use kernel::{Phase, SingBox, bin_path, create};
+#[cfg(feature = "grpc")]
+pub use kernel::WaitTimeout;
+pub use kernel::{Phase, SingBox, bin_path, create, failure_detail};
 pub use logs::{Level as LogLevel, LogBlock, LogSnapshot, LogStore};
 pub use url_test::UrlTestQueue;
 

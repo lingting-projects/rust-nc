@@ -10,6 +10,9 @@ mod process;
 mod shared;
 mod watch;
 
+#[cfg(feature = "grpc")]
+pub use lifecycle::WaitTimeout;
+
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -192,4 +195,12 @@ pub fn create(runtime: tokio::runtime::Handle) -> Result<SingBox> {
 /// 安装目录下的内核可执行文件路径。
 pub fn bin_path() -> Result<PathBuf> {
     Ok(lib_core::directorys()?.install.join(BIN_NAME))
+}
+
+/// 在失败原因后补充内核日志尾部内容，日志取不到时原样返回。
+///
+/// 等待超时这类失败没有退出码可取，内核进程还在运行，卡在哪一步只写在日志里，
+/// 因此由调用方在判定失败时把日志尾部并入原因。
+pub fn failure_detail(work_dir: &Path, reason: String) -> String {
+    process::failure(work_dir, reason)
 }

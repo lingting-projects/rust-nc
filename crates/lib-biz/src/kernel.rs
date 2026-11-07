@@ -5,7 +5,7 @@ use std::time::Duration;
 use anyhow::{Result, anyhow, bail};
 use arc_swap::ArcSwapOption;
 use lib_db::DbContext;
-use lib_singbox::{Phase, SingBox};
+use lib_singbox::{Phase, SingBox, WaitTimeout};
 use service_core::holder::settings::SettingsHolder;
 use service_core::service::config_service::ConfigService;
 
@@ -14,7 +14,13 @@ use crate::file;
 use crate::inner_rule_sync;
 
 /// 等待内核 API 就绪的超时时间。
-const READY_TIMEOUT: Duration = Duration::from_secs(15);
+///
+/// 正常启动 1s 内就能就绪，但开机自启时系统网络栈尚未初始化完成，内核创建 TUN 网卡
+/// 可能超过 10s，因此留足余量。内核自身出错时进程会退出，等待会立即返回，不会白等满超时。
+const READY_TIMEOUT: Duration = Duration::from_secs(60);
+
+/// 就绪超时后的重试次数。
+const READY_RETRY: usize = 1;
 
 /// 全局唯一的内核实例。
 static INSTANCE: LazyLock<SingBoxInstance> = LazyLock::new(SingBoxInstance::new);
@@ -320,7 +326,7 @@ impl SingBoxInstance {
         if let Err(error) = Self::launch(&singbox, &json, &work, &api).await {
             // 启动失败时不留残余进程, 状态回到未运行
             let _ = singbox.stop();
-            let reason = format!("{error:#}");
+            let reason = Self::failure_reason(&error, &work);
             log::error!("[内核] 启动失败: {reason}");
             self.set(None, Some(reason));
             return Err(error);
@@ -376,9 +382,42 @@ impl SingBoxInstance {
     }
 
     /// 启动内核进程并等待 API 就绪。
+    ///
+    /// 就绪超时说明内核还在启动，常见于开机自启时 TUN 网卡创建过慢；
+    /// 结束这一轮进程后重试 [`READY_RETRY`] 次，避免把仍在启动的内核判成失败。
+    /// 进程提前退出说明配置或二进制本身有问题，重试结果一样，直接返回。
     async fn launch(singbox: &SingBox, json: &Path, work: &Path, api: &str) -> Result<()> {
-        singbox.start(json, work, api)?;
-        singbox.wait_ready(READY_TIMEOUT).await
+        let mut retried = 0;
+        loop {
+            singbox.start(json, work, api)?;
+            let error = match singbox.wait_ready(READY_TIMEOUT).await {
+                Ok(()) => return Ok(()),
+                Err(error) => error,
+            };
+            if retried >= READY_RETRY || error.downcast_ref::<WaitTimeout>().is_none() {
+                return Err(error);
+            }
+
+            retried += 1;
+            log::warn!("[内核] 等待 API 就绪超时, 结束后重试第 {retried} 次: {error:#}");
+            // 重试前要等上一轮进程回收完成, 否则新一轮启动会因「内核正在停止」失败
+            let _ = singbox.stop();
+            if singbox.phase() != Phase::Stopped {
+                return Err(error);
+            }
+        }
+    }
+
+    /// 组装启动失败原因。
+    ///
+    /// 等待超时时内核进程还活着，卡在哪一步只写在日志里，因此补上日志尾部；
+    /// 进程提前退出的原因已由监控线程读过日志尾部，不再重复。
+    fn failure_reason(error: &anyhow::Error, work: &Path) -> String {
+        let reason = format!("{error:#}");
+        if error.downcast_ref::<WaitTimeout>().is_none() {
+            return reason;
+        }
+        lib_singbox::failure_detail(work, reason)
     }
 
     /// 同步正在运行的配置 id 与失败原因。
