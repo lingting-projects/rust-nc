@@ -42,6 +42,7 @@ pub async fn write_changed(context: &Arc<DbContext>, config: &Config) -> Result<
         ui_port: kernel.ui_port,
         mixed_listen: kernel.mixed_listen,
         mixed_port: kernel.mixed_port,
+        proxy_port: kernel.proxy_port,
         tun: tun(config),
         fake_ip: config.fake_ip,
         ipv6: config.ipv6,

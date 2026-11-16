@@ -98,12 +98,13 @@ impl Services {
         ui_port: u16,
         mixed_listen: &str,
         mixed_port: u16,
+        proxy_port: u16,
         log_level: LogLevel,
         auto_run: bool,
     ) -> Result<usize> {
         let manager = SettingManager::new(self.context());
         manager
-            .upsert_kernel_listen(ui_listen, ui_port, mixed_listen, mixed_port)
+            .upsert_kernel_listen(ui_listen, ui_port, mixed_listen, mixed_port, proxy_port)
             .await?;
         manager.upsert_kernel_log_level(log_level).await?;
         manager.upsert_kernel_auto_run(auto_run).await?;

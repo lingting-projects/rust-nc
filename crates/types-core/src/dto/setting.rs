@@ -15,6 +15,8 @@ pub struct SettingKernel {
     pub mixed_listen: String,
     /// 混合代理端口
     pub mixed_port: u16,
+    /// 代理入口端口
+    pub proxy_port: u16,
     /// 国内 dns
     pub dns_cn: Vec<String>,
     /// 代理 dns
@@ -33,6 +35,7 @@ impl Default for SettingKernel {
             ui_port: constants::KERNEL_UI_PORT,
             mixed_listen: constants::KERNEL_MIXED_LISTEN.to_string(),
             mixed_port: constants::KERNEL_MIXED_PORT,
+            proxy_port: constants::KERNEL_PROXY_PORT,
             dns_cn: to_vec(constants::KERNEL_DNS_CN),
             dns_proxy: to_vec(constants::KERNEL_DNS_PROXY),
             log_level: LogLevel::default(),

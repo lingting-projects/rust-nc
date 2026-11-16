@@ -27,6 +27,18 @@ pub const KERNEL_MIXED_PORT: u16 = KERNEL_MIXED_PORT_DEV;
 pub const KERNEL_MIXED_PORT_RELEASE: u16 = 7890;
 /// 混合代理端口: 开发环境默认值
 pub const KERNEL_MIXED_PORT_DEV: u16 = 7891;
+/// 代理入口端口
+///
+/// 走该入口的流量强制使用代理 dns 与代理出口, 忽略其他分流规则。
+/// 与 [`KERNEL_UI_PORT`] 同理，开发构建与正式版本使用不同的默认端口。
+#[cfg(not(debug_assertions))]
+pub const KERNEL_PROXY_PORT: u16 = KERNEL_PROXY_PORT_RELEASE;
+#[cfg(debug_assertions)]
+pub const KERNEL_PROXY_PORT: u16 = KERNEL_PROXY_PORT_DEV;
+/// 代理入口端口: 正式版本默认值
+pub const KERNEL_PROXY_PORT_RELEASE: u16 = 7892;
+/// 代理入口端口: 开发环境默认值
+pub const KERNEL_PROXY_PORT_DEV: u16 = 7893;
 /// 国内 dns
 pub const KERNEL_DNS_CN: &[&str] = &[
     // 阿里

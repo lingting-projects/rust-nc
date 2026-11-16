@@ -27,9 +27,12 @@ const LOG_LEVEL_HINT: &str = "保存后立即刷新全部配置，内核自动�
 /// 自动运行的生效说明。
 const AUTO_RUN_HINT: &str = "关闭后启动应用时不启动内核，仍可从控制台或托盘手动启动";
 
+/// 端口重复的提示。
+const REPEAT_PORT: &str = "不能与其他端口相同";
+
 /// 内核设置分区。
 ///
-/// 面板与混合代理的监听地址、端口就地修改，改完由「保存」一次性落库；
+/// 面板、混合代理与代理入口的监听地址、端口就地修改，改完由「保存」一次性落库；
 /// 只读的内核配置见同目录的 `config` 分区。
 pub struct Settings {
     /// 已保存的监听设置，用于判断是否有未保存的改动。
@@ -38,6 +41,7 @@ pub struct Settings {
     ui_port: Entity<InputState>,
     mixed_listen: Entity<InputState>,
     mixed_port: Entity<InputState>,
+    proxy_port: Entity<InputState>,
     /// 日志等级下拉框。
     log_level: Entity<SelectState<SearchableVec<LogLevelOption>>>,
     /// 已保存的日志等级，用于判断是否有未保存的改动。
@@ -52,13 +56,14 @@ pub struct Settings {
     _subscriptions: Vec<Subscription>,
 }
 
-/// 混合协议与内核面板的监听设置。
+/// 混合协议、代理入口与内核面板的监听设置。
 #[derive(Clone, PartialEq, Eq)]
 struct Listen {
     ui_listen: String,
     ui_port: String,
     mixed_listen: String,
     mixed_port: String,
+    proxy_port: String,
 }
 
 impl Listen {
@@ -69,6 +74,7 @@ impl Listen {
             ui_port: setting.ui_port.to_string(),
             mixed_listen: setting.mixed_listen.clone(),
             mixed_port: setting.mixed_port.to_string(),
+            proxy_port: setting.proxy_port.to_string(),
         }
     }
 }
@@ -83,6 +89,7 @@ impl Settings {
         let ui_port = input(window, cx, "1 - 65535");
         let mixed_listen = input(window, cx, "监听地址，例如 127.0.0.1");
         let mixed_port = input(window, cx, "1 - 65535");
+        let proxy_port = input(window, cx, "1 - 65535");
         let log_level = cx.new(|cx| {
             SelectState::new(
                 SearchableVec::new(LogLevelOption::all()),
@@ -95,17 +102,22 @@ impl Settings {
         let subscription = cx.subscribe(&log_level, |_, _, _: &SelectEvent<_>, cx| cx.notify());
 
         // 输入即改值，保存按钮的可用状态与提示都依赖输入内容，因此变化时要重绘分区。
-        let mut subscriptions: Vec<Subscription> =
-            [&ui_listen, &ui_port, &mixed_listen, &mixed_port]
-                .into_iter()
-                .map(|state| {
-                    cx.subscribe(state, |_, _, event: &InputEvent, cx| {
-                        if matches!(event, InputEvent::Change) {
-                            cx.notify();
-                        }
-                    })
-                })
-                .collect();
+        let mut subscriptions: Vec<Subscription> = [
+            &ui_listen,
+            &ui_port,
+            &mixed_listen,
+            &mixed_port,
+            &proxy_port,
+        ]
+        .into_iter()
+        .map(|state| {
+            cx.subscribe(state, |_, _, event: &InputEvent, cx| {
+                if matches!(event, InputEvent::Change) {
+                    cx.notify();
+                }
+            })
+        })
+        .collect();
         subscriptions.push(subscription);
 
         Self {
@@ -114,11 +126,13 @@ impl Settings {
                 ui_port: String::new(),
                 mixed_listen: String::new(),
                 mixed_port: String::new(),
+                proxy_port: String::new(),
             },
             ui_listen,
             ui_port,
             mixed_listen,
             mixed_port,
+            proxy_port,
             log_level,
             saved_log_level: LogLevel::default(),
             auto_run: true,
@@ -142,6 +156,9 @@ impl Settings {
         });
         self.mixed_port.update(cx, |state, cx| {
             state.set_value(saved.mixed_port.clone(), window, cx)
+        });
+        self.proxy_port.update(cx, |state, cx| {
+            state.set_value(saved.proxy_port.clone(), window, cx)
         });
         self.saved = saved;
 
@@ -169,9 +186,10 @@ impl Settings {
         if self.errors(cx).iter().any(Option::is_some) {
             return;
         }
-        let (Ok(ui_port), Ok(mixed_port)) = (
+        let (Ok(ui_port), Ok(mixed_port), Ok(proxy_port)) = (
             listen.ui_port.parse::<u16>(),
             listen.mixed_port.parse::<u16>(),
+            listen.proxy_port.parse::<u16>(),
         ) else {
             return;
         };
@@ -197,6 +215,7 @@ impl Settings {
                             ui_port,
                             &mixed_listen,
                             mixed_port,
+                            proxy_port,
                             log_level,
                             auto_run,
                         )
@@ -250,18 +269,22 @@ impl Settings {
             ui_port: text(&self.ui_port, cx),
             mixed_listen: text(&self.mixed_listen, cx),
             mixed_port: text(&self.mixed_port, cx),
+            proxy_port: text(&self.proxy_port, cx),
         }
     }
 
     /// 校验输入，返回每个字段的错误提示，顺序与界面一致。
-    fn errors(&self, cx: &App) -> [Option<&'static str>; 4] {
+    fn errors(&self, cx: &App) -> [Option<&'static str>; 5] {
         let raw = self.raw(cx);
+        // 三个端口同属一个内核实例，两两不得相同
+        let repeat = repeat_port(&raw);
 
         [
             address_error(&raw.ui_listen),
-            port_error(&raw.ui_port),
+            port_error(&raw.ui_port).or(repeat[0].then_some(REPEAT_PORT)),
             address_error(&raw.mixed_listen),
-            port_error(&raw.mixed_port),
+            port_error(&raw.mixed_port).or(repeat[1].then_some(REPEAT_PORT)),
+            port_error(&raw.proxy_port).or(repeat[2].then_some(REPEAT_PORT)),
         ]
     }
 }
@@ -281,6 +304,7 @@ impl Render for Settings {
             .child(input_row("面板端口", &self.ui_port, errors[1], cx))
             .child(input_row("混合监听", &self.mixed_listen, errors[2], cx))
             .child(input_row("混合端口", &self.mixed_port, errors[3], cx))
+            .child(input_row("代理入口端口", &self.proxy_port, errors[4], cx))
             .child(select_row(
                 "日志等级",
                 Select::new(&self.log_level)
@@ -339,6 +363,26 @@ fn port_error(value: &str) -> Option<&'static str> {
         Ok(port) if port > 0 => None,
         _ => Some("请填写 1 - 65535 之间的端口"),
     }
+}
+
+/// 判断每个端口是否与另一个端口相同，顺序同 [`Listen`] 中的端口字段。
+///
+/// 未填写或非法的端口不参与比较，由 [`port_error`] 单独提示。
+fn repeat_port(listen: &Listen) -> [bool; 3] {
+    let ports = [
+        listen.ui_port.parse::<u16>().ok(),
+        listen.mixed_port.parse::<u16>().ok(),
+        listen.proxy_port.parse::<u16>().ok(),
+    ];
+
+    let mut repeat = [false; 3];
+    for (index, port) in ports.iter().enumerate() {
+        repeat[index] = ports
+            .iter()
+            .enumerate()
+            .any(|(other, value)| other != index && value == port);
+    }
+    repeat
 }
 
 /// 日志等级下拉框的一个选项。

@@ -50,6 +50,7 @@ impl Snapshot {
             AppConfigKey::SettingKernelUiPort,
             AppConfigKey::SettingKernelMixedListen,
             AppConfigKey::SettingKernelMixedPort,
+            AppConfigKey::SettingKernelProxyPort,
             AppConfigKey::SettingKernelDnsCn,
             AppConfigKey::SettingKernelDnsProxy,
             AppConfigKey::SettingKernelLogLevel,
@@ -63,10 +64,11 @@ impl Snapshot {
             ui_port: self.number(&keys[2]).unwrap_or(default.ui_port),
             mixed_listen: self.text(&keys[3], default.mixed_listen),
             mixed_port: self.number(&keys[4]).unwrap_or(default.mixed_port),
-            dns_cn: self.list(&keys[5]).unwrap_or(default.dns_cn),
-            dns_proxy: self.list(&keys[6]).unwrap_or(default.dns_proxy),
-            log_level: self.level(&keys[7]).unwrap_or(default.log_level),
-            auto_run: self.boolean(&keys[8]).unwrap_or(default.auto_run),
+            proxy_port: self.number(&keys[5]).unwrap_or(default.proxy_port),
+            dns_cn: self.list(&keys[6]).unwrap_or(default.dns_cn),
+            dns_proxy: self.list(&keys[7]).unwrap_or(default.dns_proxy),
+            log_level: self.level(&keys[8]).unwrap_or(default.log_level),
+            auto_run: self.boolean(&keys[9]).unwrap_or(default.auto_run),
         }
     }
 

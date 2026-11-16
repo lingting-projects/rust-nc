@@ -68,6 +68,7 @@ impl SettingManager {
         ui_port: u16,
         mixed_listen: &str,
         mixed_port: u16,
+        proxy_port: u16,
     ) -> Result<()> {
         let items = [
             (AppConfigKey::SettingKernelUiListen, ui_listen.to_string()),
@@ -77,6 +78,7 @@ impl SettingManager {
                 mixed_listen.to_string(),
             ),
             (AppConfigKey::SettingKernelMixedPort, mixed_port.to_string()),
+            (AppConfigKey::SettingKernelProxyPort, proxy_port.to_string()),
         ];
         self.app_config.set_all(&items).await?;
         SettingsHolder::wake_and_wait().await;
@@ -135,6 +137,10 @@ impl SettingManager {
         items.push((
             AppConfigKey::SettingKernelMixedPort,
             setting.kernel.mixed_port.to_string(),
+        ));
+        items.push((
+            AppConfigKey::SettingKernelProxyPort,
+            setting.kernel.proxy_port.to_string(),
         ));
         items.push((
             AppConfigKey::SettingKernelDnsCn,

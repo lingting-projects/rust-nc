@@ -20,6 +20,9 @@ pub const TAG_AUTO: &str = "自动选择";
 /// 默认选择组
 pub const TAG_FALLBACK: &str = "默认选择";
 
+/// 代理入口, 走该入口的流量强制走代理 dns 与代理出口
+pub const TAG_INBOUND_MIXED_PROXY: &str = "mixed-proxy-in";
+
 /// 连通性测试地址
 pub const TEST_URL: &str = "http://www.gstatic.com/generate_204";
 

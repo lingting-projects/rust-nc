@@ -10,8 +10,8 @@ use serde::Serialize;
 
 use crate::constants::{
     FAKE_IPV4, FAKE_IPV6, INNER_IPV4, INNER_IPV6, LOOPBACK_IPV4, LOOPBACK_IPV6, OUT_DIRECT,
-    ROUTE_IPV4, ROUTE_IPV6, TAG_AUTO, TAG_FALLBACK, TAG_HTTP_CLIENT, TAG_SELECTOR, VIRTUAL_IPV4,
-    VIRTUAL_IPV6,
+    ROUTE_IPV4, ROUTE_IPV6, TAG_AUTO, TAG_FALLBACK, TAG_HTTP_CLIENT, TAG_INBOUND_MIXED_PROXY,
+    TAG_SELECTOR, VIRTUAL_IPV4, VIRTUAL_IPV6,
 };
 use crate::platform::Kernel;
 use crate::source::Source;
@@ -167,6 +167,7 @@ fn inbounds(kernel: &Kernel) -> Vec<Inbound> {
         inbounds.push(tun(kernel));
     }
     inbounds.push(mixed(kernel));
+    inbounds.push(mixed_proxy(kernel));
     inbounds
 }
 
@@ -218,6 +219,22 @@ fn mixed(kernel: &Kernel) -> Inbound {
         set_system_proxy: false,
         listen: kernel.config.mixed_listen.clone(),
         listen_port: kernel.config.mixed_port,
+        tcp_fast_open: true,
+        tcp_multi_path: true,
+        udp_fragment: false,
+    }
+}
+
+/// 强制走代理的混合入口。
+///
+/// 该入口的流量与 dns 查询由路由与 dns 规则单独匹配, 忽略其余规则。
+fn mixed_proxy(kernel: &Kernel) -> Inbound {
+    Inbound::Mixed {
+        kind: "mixed".to_string(),
+        tag: TAG_INBOUND_MIXED_PROXY.to_string(),
+        set_system_proxy: false,
+        listen: kernel.config.mixed_listen.clone(),
+        listen_port: kernel.config.proxy_port,
         tcp_fast_open: true,
         tcp_multi_path: true,
         udp_fragment: false,

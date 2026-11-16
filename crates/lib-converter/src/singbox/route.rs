@@ -2,7 +2,7 @@ use serde::Serialize;
 
 use crate::constants::{
     GEO_IP_CN, INNER_RULE_GEO_IP_CN, KEY_DIRECT, KEY_PROXY, KEY_REJECT, OUT_DIRECT, TAG_DNS_CN,
-    TAG_FALLBACK, TAG_HTTP_CLIENT, TAG_SELECTOR,
+    TAG_FALLBACK, TAG_HTTP_CLIENT, TAG_INBOUND_MIXED_PROXY, TAG_SELECTOR,
 };
 use crate::platform::Kernel;
 use crate::rule::{Rule, RuleType};
@@ -16,6 +16,8 @@ pub struct RouteRule {
     pub rule_set: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub protocol: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub inbound: Option<Vec<String>>,
     pub action: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub timeout: Option<String>,
@@ -32,6 +34,7 @@ impl RouteRule {
             action: "sniff".to_string(),
             timeout: Some("1s".to_string()),
             outbound: None,
+            inbound: None,
         }
     }
 
@@ -43,6 +46,7 @@ impl RouteRule {
             action: "hijack-dns".to_string(),
             timeout: None,
             outbound: None,
+            inbound: None,
         }
     }
 
@@ -54,6 +58,7 @@ impl RouteRule {
             action: "reject".to_string(),
             timeout: None,
             outbound: None,
+            inbound: None,
         }
     }
 
@@ -65,6 +70,19 @@ impl RouteRule {
             action: "route".to_string(),
             timeout: None,
             outbound: Some(outbound),
+            inbound: None,
+        }
+    }
+
+    /// 按入站指定出口。
+    pub fn inbound_out(inbound: String, outbound: String) -> Self {
+        Self {
+            rule_set: None,
+            protocol: None,
+            action: "route".to_string(),
+            timeout: None,
+            outbound: Some(outbound),
+            inbound: Some(vec![inbound]),
         }
     }
 }
@@ -112,7 +130,15 @@ pub(crate) fn build(kernel: &Kernel) -> RouteConfig {
     rule_set.extend(other);
     rule_set.extend(ip);
 
-    let mut rules = vec![RouteRule::sniff(), RouteRule::dns()];
+    // 代理入口的流量忽略其余规则, 强制走代理出口
+    let mut rules = vec![
+        RouteRule::sniff(),
+        RouteRule::dns(),
+        RouteRule::inbound_out(
+            TAG_INBOUND_MIXED_PROXY.to_string(),
+            TAG_SELECTOR.to_string(),
+        ),
+    ];
     for rule in &rule_set {
         if rule.tag.starts_with(KEY_REJECT) {
             rules.push(RouteRule::reject(rule.tag.clone()));

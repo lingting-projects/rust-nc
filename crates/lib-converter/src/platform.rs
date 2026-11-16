@@ -27,6 +27,10 @@ pub struct PlatformConfig {
     pub mixed_listen: String,
     /// 混合代理端口
     pub mixed_port: u16,
+    /// 代理入口端口
+    ///
+    /// 走该入口的流量强制走代理 dns 与代理出口, 与混合代理共用监听地址。
+    pub proxy_port: u16,
     /// 是否启用 tun
     pub tun: bool,
     /// 是否启用 fake ip
@@ -66,6 +70,7 @@ impl Default for PlatformConfig {
             ui_port: lib_core::constants::KERNEL_UI_PORT,
             mixed_listen: lib_core::constants::KERNEL_MIXED_LISTEN.to_string(),
             mixed_port: lib_core::constants::KERNEL_MIXED_PORT,
+            proxy_port: lib_core::constants::KERNEL_PROXY_PORT,
             tun: true,
             fake_ip: true,
             ipv6: true,

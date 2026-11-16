@@ -2,7 +2,7 @@ use serde::Serialize;
 
 use crate::constants::{
     FAKE_IPV4, FAKE_IPV6, KEY_DIRECT, KEY_PROXY, OUT_DIRECT, TAG_DNS_CN, TAG_DNS_FAKE,
-    TAG_DNS_PROXY, TAG_SELECTOR,
+    TAG_DNS_PROXY, TAG_INBOUND_MIXED_PROXY, TAG_SELECTOR,
 };
 use crate::platform::Kernel;
 
@@ -82,17 +82,20 @@ impl DnsServer {
 
 #[derive(Serialize)]
 struct DnsRule {
-    rule_set: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    rule_set: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    inbound: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     server: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     action: Option<String>,
 }
-
 impl DnsRule {
     fn route(rule_set: String, server: &str) -> Self {
         Self {
-            rule_set,
+            rule_set: Some(rule_set),
+            inbound: None,
             server: Some(server.to_string()),
             action: Some("route".to_string()),
         }
@@ -100,9 +103,20 @@ impl DnsRule {
 
     fn reject(rule_set: String) -> Self {
         Self {
-            rule_set,
+            rule_set: Some(rule_set),
+            inbound: None,
             server: None,
             action: Some("reject".to_string()),
+        }
+    }
+
+    /// 按入站指定 dns 服务器。
+    fn inbound_route(inbound: &str, server: &str) -> Self {
+        Self {
+            rule_set: None,
+            inbound: Some(vec![inbound.to_string()]),
+            server: Some(server.to_string()),
+            action: Some("route".to_string()),
         }
     }
 }
@@ -130,7 +144,18 @@ pub(crate) fn build(kernel: &Kernel, route: &RouteConfig) -> DnsConfig {
         ));
     }
 
+    // 代理入口的 dns 查询强制使用代理 dns, 与其他规则无关
     let mut rules = Vec::new();
+    if kernel.config.fake_ip {
+        rules.push(DnsRule::inbound_route(
+            TAG_INBOUND_MIXED_PROXY,
+            TAG_DNS_FAKE,
+        ));
+    }
+    rules.push(DnsRule::inbound_route(
+        TAG_INBOUND_MIXED_PROXY,
+        TAG_DNS_PROXY,
+    ));
     for rule in &route.rule_set {
         let tag = rule.tag.as_str();
         // 仅其他类规则参与 dns 分流

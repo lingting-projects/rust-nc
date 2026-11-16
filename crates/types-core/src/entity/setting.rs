@@ -43,6 +43,10 @@ pub enum AppConfigKey {
     #[strum(serialize = "setting:kernel:mixed_port")]
     #[serde(rename = "setting:kernel:mixed_port")]
     SettingKernelMixedPort,
+    /// 内核: 代理入口端口
+    #[strum(serialize = "setting:kernel:proxy_port")]
+    #[serde(rename = "setting:kernel:proxy_port")]
+    SettingKernelProxyPort,
     /// 内核: 国内 dns
     #[strum(serialize = "setting:kernel:dns_cn")]
     #[serde(rename = "setting:kernel:dns_cn")]
