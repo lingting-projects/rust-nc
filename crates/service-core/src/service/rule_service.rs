@@ -29,6 +29,11 @@ impl RuleService {
         repository::all_id(self.pool()).await
     }
 
+    /// 查询可用规则的 id，有效规则数量为 0 的规则不可用于生成配置。
+    pub async fn list_available_ids(&self) -> Result<Vec<i64>> {
+        repository::all_available_id(self.pool()).await
+    }
+
     /// 按 id 查询规则。
     pub async fn find(&self, id: i64) -> Result<Option<Rule>> {
         repository::find(self.pool(), id).await

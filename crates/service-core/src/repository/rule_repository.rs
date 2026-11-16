@@ -32,6 +32,13 @@ pub(crate) async fn all_id(pool: &DbPool) -> Result<Vec<i64>> {
     rows.iter().map(|row| mapping::id(row, "id")).collect()
 }
 
+/// 查询可用规则的 id, 有效规则数量为 0 的规则不可用于生成配置。
+pub(crate) async fn all_available_id(pool: &DbPool) -> Result<Vec<i64>> {
+    let sql = format!("select `id` from {TABLE} where `count` > 0");
+    let rows = sqlx::query(&sql).fetch_all(pool).await?;
+    rows.iter().map(|row| mapping::id(row, "id")).collect()
+}
+
 /// 按 id 查询规则。
 pub(crate) async fn find(pool: &DbPool, id: i64) -> Result<Option<Rule>> {
     let sql = format!("select {LIST_FIELDS} from {TABLE} where `id` = ? limit 1");
