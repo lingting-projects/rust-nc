@@ -191,7 +191,7 @@ impl ConfigTable {
 
     /// 操作列：同步、编辑、删除。
     ///
-    /// 三个都是图标按钮，用 tooltip 说明含义，并以 `accessibility_label` 给出可读名称。
+    /// 都是图标按钮，用 tooltip 说明含义，并以 `accessibility_label` 给出可读名称。
     fn action(&self, item: &Config, cx: &App) -> AnyElement {
         let page = self.page.clone();
         let id = item.id;

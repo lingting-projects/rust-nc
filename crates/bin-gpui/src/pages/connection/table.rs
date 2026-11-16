@@ -165,7 +165,7 @@ impl ConnectionTable {
 
     /// 操作列：详情与断开。
     ///
-    /// 两个都是图标按钮，用 tooltip 说明含义，并以 `accessibility_label` 给出可读名称。
+    /// 都是图标按钮，用 tooltip 说明含义，并以 `accessibility_label` 给出可读名称。
     /// 只有活动连接才展示断开按钮：已关闭的连接再断开没有意义，
     /// 留一个禁用按钮既占位又让人以为还能点。
     fn action(&self, item: &ConnectionRecord, cx: &App) -> AnyElement {

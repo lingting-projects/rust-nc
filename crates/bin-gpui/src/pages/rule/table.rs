@@ -22,7 +22,7 @@ const COUNT_WIDTH: Rems = rems(8.);
 const KIND_WIDTH: Rems = rems(6.);
 const STATE_WIDTH: Rems = rems(7.);
 const REFRESH_WIDTH: Rems = rems(8.);
-const ACTION_WIDTH: Rems = rems(9.);
+const ACTION_WIDTH: Rems = rems(11.);
 
 /// 列定义：键、表头文案、宽度。
 const COLUMNS: [(&str, &str, Rems); 6] = [
@@ -185,20 +185,35 @@ impl RuleTable {
             .into_any_element()
     }
 
-    /// 操作列：同步、编辑、删除。
+    /// 操作列：详情、同步、编辑、删除。
     ///
-    /// 三个都是图标按钮，用 tooltip 说明含义，并以 `accessibility_label` 给出可读名称。
+    /// 都是图标按钮，用 tooltip 说明含义，并以 `accessibility_label` 给出可读名称。
     fn action(&self, item: &Rule, cx: &App) -> AnyElement {
         let page = self.page.clone();
         let id = item.id;
         let name = item.name.clone();
+        // 点击时把内容拷贝进弹窗：弹窗是快照，之后的列表刷新不会改到它
+        let title = item.name.clone();
+        let content = item.content.clone();
         // 按钮标识跟随规则 id：过滤后行号会变，用行号会串掉按钮的内部状态。
+        let detail_id: ElementId = format!("rule-detail:{}", item.id).into();
         let sync_id: ElementId = format!("rule-sync:{}", item.id).into();
         let edit_id: ElementId = format!("rule-edit:{}", item.id).into();
         let delete_id: ElementId = format!("rule-delete:{}", item.id).into();
 
         h_flex()
             .gap_1()
+            .child(
+                Button::new(detail_id)
+                    .ghost()
+                    .small()
+                    .icon(IconName::Info)
+                    .tooltip("查看详情")
+                    .accessibility_label("查看详情")
+                    .on_click(move |_, window, cx| {
+                        super::dialog::open_detail(title.clone(), content.clone(), window, cx);
+                    }),
+            )
             .child(
                 Button::new(sync_id)
                     .ghost()

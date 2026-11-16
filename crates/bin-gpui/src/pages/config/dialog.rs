@@ -308,7 +308,7 @@ fn field(
         .into_any_element()
 }
 
-/// 开关行：五个布尔字段，随表单一起提交。
+/// 开关行：随表单一起提交。
 fn switches(form: &Entity<ConfigForm>, cx: &mut App) -> AnyElement {
     let state = form.read(cx);
 
