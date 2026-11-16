@@ -124,6 +124,7 @@ fn config(params: &ConvertParams, rules: (Vec<Rule>, Vec<Rule>, Vec<Rule>)) -> P
         ipv6: params.ipv6,
         fake_ip: params.fake_ip,
         geo_cn: params.geo_cn,
+        process_first: params.process_first,
         log_level: params.log_level,
         rules_direct,
         rules_proxy,

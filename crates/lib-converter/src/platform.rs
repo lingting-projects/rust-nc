@@ -39,6 +39,12 @@ pub struct PlatformConfig {
     pub ipv6: bool,
     /// geo cn 直连
     pub geo_cn: bool,
+    /// 进程优先
+    ///
+    /// 关闭时 dns 只按 ip/域名规则集分流, 进程访问直连域名时按域名规则直连;
+    /// 开启后 dns 追加进程规则集, 并与内核路由保持同一优先级: 拒绝 -> 直连进程 ->
+    /// 代理进程 -> 直连其他 -> 代理其他。
+    pub process_first: bool,
     /// 内置规则集目录, geo cn 直连规则集由该目录下的本地文件提供
     ///
     /// 由内置规则机制提前下载; 为空时退回由内核自行下载远程规则集。
@@ -75,6 +81,7 @@ impl Default for PlatformConfig {
             fake_ip: true,
             ipv6: true,
             geo_cn: true,
+            process_first: false,
             inner_rule_dir: PathBuf::new(),
             log_level: LogLevel::default(),
             log_path: PathBuf::new(),

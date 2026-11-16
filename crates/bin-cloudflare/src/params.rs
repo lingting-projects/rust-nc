@@ -12,6 +12,8 @@ pub struct ConvertParams {
     pub ipv6: bool,
     pub fake_ip: bool,
     pub geo_cn: bool,
+    /// 进程优先, 默认关闭
+    pub process_first: bool,
     /// 内核或 clash 面板输出的日志等级
     pub log_level: LogLevel,
     /// 节点包含条件
@@ -46,6 +48,7 @@ impl ConvertParams {
             ipv6: Self::convert_bool(source.get("ipv6")).unwrap_or(true),
             fake_ip: Self::convert_bool(source.get("fake_ip")).unwrap_or(true),
             geo_cn: Self::convert_bool(source.get("geo_cn")).unwrap_or(true),
+            process_first: Self::convert_bool(source.get("process_first")).unwrap_or(false),
             log_level: Self::convert_log_level(source.get("debug")),
             include,
             exclude,

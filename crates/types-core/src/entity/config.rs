@@ -17,6 +17,8 @@ pub struct Config {
     pub subscribe_id: Option<i64>,
     /// geo cn 直连
     pub geo_cn: bool,
+    /// 进程优先: dns 分流是否按进程规则集判定
+    pub process_first: bool,
     /// 直连规则 id 集合
     pub rule_direct_ids: Vec<i64>,
     /// 代理规则 id 集合

@@ -1,10 +1,11 @@
 use serde::Serialize;
 
 use crate::constants::{
-    FAKE_IPV4, FAKE_IPV6, KEY_DIRECT, KEY_PROXY, OUT_DIRECT, TAG_DNS_CN, TAG_DNS_FAKE,
+    FAKE_IPV4, FAKE_IPV6, KEY_DIRECT, KEY_PROXY, KEY_REJECT, OUT_DIRECT, TAG_DNS_CN, TAG_DNS_FAKE,
     TAG_DNS_PROXY, TAG_INBOUND_MIXED_PROXY, TAG_SELECTOR,
 };
 use crate::platform::Kernel;
+use crate::rule::dns_matched;
 
 use super::route::RouteConfig;
 
@@ -156,13 +157,18 @@ pub(crate) fn build(kernel: &Kernel, route: &RouteConfig) -> DnsConfig {
         TAG_INBOUND_MIXED_PROXY,
         TAG_DNS_PROXY,
     ));
-    for rule in &route.rule_set {
-        let tag = rule.tag.as_str();
-        // 仅其他类规则参与 dns 分流
-        if !tag.contains("_o_") {
-            continue;
-        }
+    // 默认只按 ip/域名规则集分流: 进程访问直连域名时仍然按域名规则直连。
+    // 开启进程优先后 dns 追加进程规则集, 顺序为 拒绝 -> 直连进程 -> 代理进程 -> 直连其他 -> 代理其他。
+    let mut tags: Vec<&str> = route
+        .rule_set
+        .iter()
+        .map(|rule| rule.tag.as_str())
+        .filter(|tag| dns_matched(tag, kernel.config.process_first))
+        .collect();
+    // 拒绝规则始终最先匹配, 其余沿用规则集自身的顺序(进程类在其他类之前)
+    tags.sort_by_key(|tag| !tag.starts_with(KEY_REJECT));
 
+    for tag in tags {
         if tag.starts_with(KEY_PROXY) {
             if kernel.config.fake_ip {
                 rules.push(DnsRule::route(tag.to_string(), TAG_DNS_FAKE));

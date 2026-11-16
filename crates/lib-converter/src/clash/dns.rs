@@ -3,6 +3,7 @@ use serde::Serialize;
 
 use crate::constants::{FAKE_IP_FILTER, FAKE_IPV4, KEY_DIRECT, KEY_PROXY};
 use crate::platform::Kernel;
+use crate::rule::dns_matched;
 
 #[derive(Serialize)]
 pub(crate) struct DnsConfig {
@@ -37,8 +38,9 @@ pub(crate) fn build_dns(kernel: &Kernel, rule_names: Vec<String>) -> DnsConfig {
 
     let mut nameserver_policy = IndexMap::new();
     for name in rule_names {
-        // IP 规则与 geo 规则不参与 dns 分流
-        if name.contains("_i_") || name.ends_with("_geo") {
+        // IP 规则与 geo 规则不参与 dns 分流; 进程规则只在内核路由里生效,
+        // 进程优先开启后才参与 dns 分流
+        if !dns_matched(&name, kernel.config.process_first) {
             continue;
         }
 

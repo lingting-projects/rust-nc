@@ -47,6 +47,7 @@ pub async fn write_changed(context: &Arc<DbContext>, config: &Config) -> Result<
         fake_ip: config.fake_ip,
         ipv6: config.ipv6,
         geo_cn: config.geo_cn,
+        process_first: config.process_first,
         inner_rule_dir: inner_rule_file::inner_rule_root()?,
         log_level: kernel.log_level,
         log_path: file::sing_box_log()?,

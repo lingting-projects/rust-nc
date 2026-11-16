@@ -266,6 +266,7 @@ pub struct ConfigForm {
     pub ipv6: bool,
     pub fake_ip: bool,
     pub geo_cn: bool,
+    pub process_first: bool,
     /// 包含: 是否包含无区域节点
     pub include_area_non: bool,
     /// 包含区域，ISO 代码
@@ -282,6 +283,7 @@ impl ConfigForm {
             ipv6: config.ipv6,
             fake_ip: config.fake_ip,
             geo_cn: config.geo_cn,
+            process_first: config.process_first,
             include_area_non: config.include_area_non,
             include_area: config.include_area.clone(),
             exclude_area: config.exclude_area.clone(),
@@ -296,6 +298,7 @@ impl ConfigForm {
             ipv6: dto.ipv6,
             fake_ip: dto.fake_ip,
             geo_cn: dto.geo_cn,
+            process_first: dto.process_first,
             include_area_non: dto.include_area_non,
             include_area: dto.include_area,
             exclude_area: dto.exclude_area,

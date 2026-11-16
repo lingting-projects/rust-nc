@@ -208,6 +208,7 @@ pub fn open(
                                     .selected_value()
                                     .map(|value| value.parse().unwrap_or_default()),
                                 geo_cn: state.geo_cn,
+                                process_first: state.process_first,
                                 rule_direct_ids: values(&direct, cx),
                                 rule_proxy_ids: values(&proxy, cx),
                                 rule_reject_ids: values(&reject, cx),
@@ -307,7 +308,7 @@ fn field(
         .into_any_element()
 }
 
-/// 开关行：四个布尔字段，随表单一起提交。
+/// 开关行：五个布尔字段，随表单一起提交。
 fn switches(form: &Entity<ConfigForm>, cx: &mut App) -> AnyElement {
     let state = form.read(cx);
 
@@ -332,6 +333,13 @@ fn switches(form: &Entity<ConfigForm>, cx: &mut App) -> AnyElement {
             state.geo_cn,
             form,
             |form| &mut form.geo_cn,
+        ))
+        .child(toggle(
+            "config-process-first",
+            "进程优先",
+            state.process_first,
+            form,
+            |form| &mut form.process_first,
         ))
         .into_any_element()
 }

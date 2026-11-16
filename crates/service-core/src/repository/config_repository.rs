@@ -8,8 +8,8 @@ use super::mapping;
 const TABLE: &str = "tbl2_config";
 
 /// 查询字段，与 [`Config`] 字段一一对应。
-const FIELDS: &str = "`id`,`name`,`tun`,`fake_ip`,`ipv6`,`subscribe_id`,`geo_cn`,\
-    `rule_direct_ids`,`rule_proxy_ids`,`rule_reject_ids`,\
+const FIELDS: &str = "`id`,`name`,`tun`,`fake_ip`,`ipv6`,`subscribe_id`,\
+    `geo_cn`,`process_first`,`rule_direct_ids`,`rule_proxy_ids`,`rule_reject_ids`,\
     `include_area_non`,`include_area`,`include_name_contains`,\
     `exclude_area`,`exclude_name_contains`,\
     `refresh_time`,`update_time`,`create_time`";
@@ -65,11 +65,12 @@ pub(crate) async fn find(pool: &DbPool, id: i64) -> Result<Option<Config>> {
 pub(crate) async fn insert(pool: &DbPool, entity: &Config) -> Result<()> {
     let sql = format!(
         "insert into {TABLE} (`id`,`name`,`tun`,`fake_ip`,`ipv6`,\
-         `subscribe_id`,`geo_cn`,`rule_direct_ids`,`rule_proxy_ids`,`rule_reject_ids`,\
+         `subscribe_id`,`geo_cn`,`process_first`,\
+         `rule_direct_ids`,`rule_proxy_ids`,`rule_reject_ids`,\
          `include_area_non`,`include_area`,`include_name_contains`,\
          `exclude_area`,`exclude_name_contains`,\
          `refresh_time`,`update_time`,`create_time`) \
-         values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+         values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
     );
     sqlx::query(&sql)
         .bind(entity.id)
@@ -79,6 +80,7 @@ pub(crate) async fn insert(pool: &DbPool, entity: &Config) -> Result<()> {
         .bind(entity.ipv6)
         .bind(entity.subscribe_id)
         .bind(entity.geo_cn)
+        .bind(entity.process_first)
         .bind(to_json(&entity.rule_direct_ids)?)
         .bind(to_json(&entity.rule_proxy_ids)?)
         .bind(to_json(&entity.rule_reject_ids)?)
@@ -100,7 +102,7 @@ pub(crate) async fn insert(pool: &DbPool, entity: &Config) -> Result<()> {
 pub(crate) async fn update(pool: &DbPool, entity: &Config) -> Result<()> {
     let sql = format!(
         "update {TABLE} set `name` = ?, `tun` = ?, `fake_ip` = ?, `ipv6` = ?, \
-         `subscribe_id` = ?, `geo_cn` = ?, \
+         `subscribe_id` = ?, `geo_cn` = ?, `process_first` = ?, \
          `rule_direct_ids` = ?, `rule_proxy_ids` = ?, `rule_reject_ids` = ?, \
          `include_area_non` = ?, `include_area` = ?, `include_name_contains` = ?, \
          `exclude_area` = ?, `exclude_name_contains` = ?, \
@@ -113,6 +115,7 @@ pub(crate) async fn update(pool: &DbPool, entity: &Config) -> Result<()> {
         .bind(entity.ipv6)
         .bind(entity.subscribe_id)
         .bind(entity.geo_cn)
+        .bind(entity.process_first)
         .bind(to_json(&entity.rule_direct_ids)?)
         .bind(to_json(&entity.rule_proxy_ids)?)
         .bind(to_json(&entity.rule_reject_ids)?)
@@ -159,6 +162,7 @@ fn from_row(row: &DbRow) -> Result<Config> {
         ipv6: mapping::boolean(row, "ipv6")?,
         subscribe_id: mapping::option_id(row, "subscribe_id")?,
         geo_cn: mapping::boolean(row, "geo_cn")?,
+        process_first: mapping::boolean(row, "process_first")?,
         rule_direct_ids: mapping::json_vec(row, "rule_direct_ids")?,
         rule_proxy_ids: mapping::json_vec(row, "rule_proxy_ids")?,
         rule_reject_ids: mapping::json_vec(row, "rule_reject_ids")?,

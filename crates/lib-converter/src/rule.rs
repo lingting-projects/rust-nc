@@ -52,3 +52,11 @@ impl Rule {
         }
     }
 }
+
+/// 规则标签是否参与 dns 分流。
+///
+/// 其他类(ip/域名)规则集始终参与; 进程规则集只在进程优先开启后加入,
+/// 此时进程访问的域名同样按进程所属的规则集选 dns。
+pub(crate) fn dns_matched(tag: &str, process_first: bool) -> bool {
+    tag.contains("_o_") || (process_first && tag.contains("_p_"))
+}
