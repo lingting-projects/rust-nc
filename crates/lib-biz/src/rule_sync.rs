@@ -121,9 +121,9 @@ async fn sync(context: &Arc<DbContext>, id: i64) -> Result<()> {
         }
     };
     if files.total == 0 {
-        // 无可用规则时不落盘, 规则目录保持上一次的可用内容
-        warn!("[规则] [{}] 未解析到规则, 结束同步", rule.name);
-        return Ok(());
+        // 有效规则为空也属于正常结果: 规则文件已在写入流程里清掉,
+        // 这里照常保存空结果并推送依赖配置, 由配置生成忽略该规则
+        warn!("[规则] [{}] 未解析到有效规则, 保存空结果", rule.name);
     }
 
     debug!(
