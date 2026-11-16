@@ -10,6 +10,7 @@ use service_core::service::rule_service::RuleService;
 use service_core::service::subscribe_service::SubscribeService;
 use types_core::dto::setting::SettingKernel;
 use types_core::entity::config::Config;
+use types_core::entity::rule::Rule as RuleEntity;
 use types_core::entity::subscribe::SubscribeSource;
 
 use crate::file;
@@ -121,7 +122,7 @@ async fn rules(
     context: &Arc<DbContext>,
     config: &Config,
 ) -> Result<(Vec<Rule>, Vec<Rule>, Vec<Rule>)> {
-    let exist = RuleService::new(context.clone()).list_ids().await?;
+    let exist = RuleService::new(context.clone()).list().await?;
     let id = config.id;
 
     Ok((
@@ -135,11 +136,20 @@ async fn rules(
 ///
 /// 每个规则按类型各有 json 与 srs 两份产物, 存在 srs 时优先使用。
 /// 规则文件由规则同步经临时文件原子替换, 内核的文件监听据此热更新, 无需在配置目录再存副本。
-fn collect(config_id: i64, exist: &[i64], ids: &[i64]) -> Result<Vec<Rule>> {
+fn collect(config_id: i64, exist: &[RuleEntity], ids: &[i64]) -> Result<Vec<Rule>> {
     let mut rules = Vec::new();
     for id in ids {
-        if !exist.contains(id) {
+        let Some(rule) = exist.iter().find(|item| item.id == *id) else {
             log::warn!("[配置] [{}] 规则不存在, 跳过: {id}", config_id);
+            continue;
+        };
+        if rule.count == 0 {
+            // 有效规则数量为空的规则没有可引用的规则集文件, 生成配置时忽略
+            log::warn!(
+                "[配置] [{}] 规则「{}」有效规则数量为 0, 跳过: {id}",
+                config_id,
+                rule.name
+            );
             continue;
         }
 
