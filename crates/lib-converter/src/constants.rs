@@ -55,10 +55,19 @@ pub const LOOPBACK_IPV6: &str = "::2";
 /// 路由地址
 pub const ROUTE_IPV4: &str = "0.0.0.0/1";
 pub const ROUTE_IPV6: &str = "::/1";
-/// fake ip 网段, 172.20.0.0 - 172.23.0.0
+/// fake ip 网段
+///
+/// 开发构建与正式版本使用互不重叠的网段：内核只在自己配置的网段内做 fake ip
+/// 反向查找，网段重叠时会把对方签发的 fake ip 当成自己的记录而查不到，直接报错。
+#[cfg(not(debug_assertions))]
 pub const FAKE_IPV4: &str = "172.20.0.0/14";
-/// 约 1844 亿亿个 ip
+#[cfg(debug_assertions)]
+pub const FAKE_IPV4: &str = "172.24.0.0/24";
+/// fake ip ipv6 网段, 约 1844 亿亿个 ip
+#[cfg(not(debug_assertions))]
 pub const FAKE_IPV6: &str = "fd93:0d0b:4e8a:2233::/64";
+#[cfg(debug_assertions)]
+pub const FAKE_IPV6: &str = "fd93:0d0b:4e8a:2234::/64";
 /// 虚拟网段
 pub const VIRTUAL_IPV4: &str = "172.16.0.0/24";
 pub const VIRTUAL_IPV6: &str = "fd93:0d0b:4e8a:0::/64";
