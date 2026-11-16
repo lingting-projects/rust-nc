@@ -1,0 +1,10 @@
+root = true
+
+# SQL 文件：LF 换行、UTF-8、空格缩进
+[*.sql]
+charset = utf-8
+end_of_line = lf
+indent_style = space
+indent_size = 4
+insert_final_newline = true
+trim_trailing_whitespace = true
