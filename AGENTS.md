@@ -1,5 +1,10 @@
 # AGENTS.md
 
+## 文档索引
+
+- [`docs/develop.md`](docs/develop.md)：开发环境说明。`cargo run` 起的开发构建不带管理员权限、没有 tun，
+  测代理流量必须用 `socks5h://` / `http://` 这类由代理解析域名的协议；含开发/发布两套端口与 fake ip 网段对照。
+
 ## 长度单位
 
 适用于 `crates/bin-gpui`：GPUI 自绘界面的长度一律用 **`Rems`**（`rems()`）。
