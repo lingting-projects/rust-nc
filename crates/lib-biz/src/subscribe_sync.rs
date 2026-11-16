@@ -110,8 +110,9 @@ async fn sync(context: &Arc<DbContext>, id: i64) -> Result<()> {
     };
 
     if source.remote.nodes.is_empty() {
-        error!("[订阅] [{}] 未解析到节点, 结束同步", subscribe.name);
-        return Ok(());
+        // 有效节点为空也属于正常结果: 照常保存空节点并推送依赖配置,
+        // 引用它的配置生成时保留已有的配置文件
+        warn!("[订阅] [{}] 未解析到有效节点, 保存空结果", subscribe.name);
     }
 
     // 远端内容未变更时只刷新刷新时间, 避免重复写入相同的节点;
