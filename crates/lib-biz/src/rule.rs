@@ -46,8 +46,7 @@ impl RuleBiz {
         Ok(id)
     }
 
-    /// 修改规则，地址变更后触发一次同步。
-    ///
+    /// 修改规则，地址变更或本地规则保存后触发一次同步。
     /// 地址变更后已保存的远端内容不再对应当前地址，因此清空；
     /// 地址未变更时沿用调用方提交的内容（本地规则即手写内容），未提交则保留原内容。
     pub async fn edit(&self, dto: RuleUpsertDTO) -> Result<i64> {
@@ -55,6 +54,8 @@ impl RuleBiz {
         let service = self.service();
         let current = service.find(id).await?;
         let changed = current.as_ref().is_none_or(|item| item.url != dto.url);
+        // 本地规则的内容就是规则本身, 保存后需要立刻重新统计并更新规则文件
+        let local = dto.url.is_empty();
         let content = match (&dto.content, &current) {
             (Some(content), _) => Some(content.clone()),
             (None, _) if changed => Some(String::new()),
@@ -65,7 +66,7 @@ impl RuleBiz {
         let dto = RuleUpsertDTO { content, ..dto };
         let id = service.upsert(dto, current_millis()?).await?;
         self.changed();
-        if changed {
+        if changed || local {
             self.push(id);
         }
         Ok(id)
