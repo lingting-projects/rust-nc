@@ -1,7 +1,7 @@
 use indexmap::IndexMap;
 use serde::Serialize;
 
-use crate::constants::{FAKE_IP_FILTER, KEY_DIRECT, KEY_PROXY};
+use crate::constants::{FAKE_IP_FILTER, FAKE_IPV4, KEY_DIRECT, KEY_PROXY};
 use crate::platform::Kernel;
 
 #[derive(Serialize)]
@@ -62,7 +62,8 @@ pub(crate) fn build_dns(kernel: &Kernel, rule_names: Vec<String>) -> DnsConfig {
             "redir-host"
         }
         .to_string(),
-        fake_ip_range: "198.18.0.1/16".to_string(),
+        // 与 sing-box 共用同一份 fake ip 网段，开发构建与正式版本互不重叠
+        fake_ip_range: FAKE_IPV4.to_string(),
         fake_ip_filter: FAKE_IP_FILTER.clone(),
         default_nameserver: dns_cn.clone(),
         nameserver: dns_cn.clone(),
