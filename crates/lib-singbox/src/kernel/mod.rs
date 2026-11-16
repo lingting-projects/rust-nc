@@ -38,21 +38,34 @@ pub enum Phase {
     Starting,
     /// 运行中。
     Running,
+    /// 重载中：进程仍在运行，内核正在按新配置重建实例。
+    ///
+    /// 此阶段内核 API 不可用，也不提供客户端：旧实例的连接在实例关闭后仍然存活但其
+    /// gRPC 服务已停止，重建期间建连只会得到不再返回状态的僵尸连接。内核创建重载
+    /// 完成标记后才回到运行中。
+    Reloading,
     /// 停止中：已登记停止意图，进程尚未回收。
     Stopping,
 }
 
 impl Phase {
     /// 是否处于运行中。
+    ///
+    /// 重载中不算运行中：内核进程还在，但 API 与连接都不可用。
     pub fn is_running(self) -> bool {
         self == Phase::Running
+    }
+
+    /// 内核进程是否还在，期间「运行中的配置」等信息可以沿用。
+    pub fn is_active(self) -> bool {
+        matches!(self, Phase::Running | Phase::Reloading)
     }
 }
 
 /// 内核实例。
 ///
 /// 仅支持随包分发的二进制内核，实例创建时即绑定可执行文件路径，
-/// 之后通过 [`SingBox::start`] 与 [`SingBox::stop`] 管理其生命周期。
+/// 之后通过 [`SingBox::start`]、[`SingBox::stop`] 与 [`SingBox::reload`] 管理其生命周期。
 /// 实例可由多个线程共享，读取状态不加锁。
 pub struct SingBox {
     /// 内核可执行文件路径，创建后不变。
@@ -115,12 +128,17 @@ impl SingBox {
     ///
     /// 测速队列与连接订阅只在内核就绪后接上：启动期间客户端仅用于探测，
     /// 提前订阅只会得到一连串连接失败。
+    /// 重载中返回 `None`：内核正在重建实例，此时建连可能落在即将关闭的旧实例上。
     pub fn grpc(&self) -> Result<Option<Arc<SingBoxGrpc>>> {
         let phase = self.phase();
         if matches!(phase, Phase::Stopped | Phase::Stopping) {
             // 内核已不在运行, 队列里的客户端与连接数据一并失效
             self.shared.url_test.set_grpc(None);
             self.shared.connections.subscribe(None);
+            return Ok(None);
+        }
+        if phase == Phase::Reloading {
+            // 内核进程还在, 但实例正在重建: 客户端与订阅已由重载处理作废
             return Ok(None);
         }
 

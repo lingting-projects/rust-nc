@@ -64,6 +64,13 @@ pub const KERNEL_STDERR_FILE: &str = "stderr.log";
 /// 发现即重新读取配置并重建实例, 用完自行删除; 未传入时内核不启用自动重载。
 /// Windows 无法向子进程发送 SIGHUP, 因此统一用标记文件触发重载。
 pub const KERNEL_RELOAD_FILE: &str = "reload.flag";
+/// 内核重载完成标记文件名, 位于内核工作目录
+///
+/// 内核完成实例重建后创建, 上层看到它才能重建 gRPC 客户端: 旧实例的 api 连接是
+/// h2c 劫持连接, 实例关闭后仍然存活但 grpc 服务已停止, 此时建连会得到只回 200
+/// 且没有 grpc-status 的僵尸连接, 直到重启内核进程才能恢复。
+/// 文件名由内核按「重载标记名 + .done」拼出, 两侧必须一致。
+pub const KERNEL_RELOAD_DONE_FILE: &str = "reload.flag.done";
 
 // endregion
 

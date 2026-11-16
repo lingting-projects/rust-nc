@@ -47,7 +47,7 @@ impl SingBox {
     pub fn start_async(&self, config_path: &Path, work_dir: &Path, api: &str) -> Result<()> {
         match self.phase() {
             // 已在启动或已运行，重复登记没有意义
-            Phase::Spawn | Phase::Starting | Phase::Running => return Ok(()),
+            Phase::Spawn | Phase::Starting | Phase::Running | Phase::Reloading => return Ok(()),
             Phase::Stopping => bail!("内核正在停止"),
             Phase::Stopped => {}
         }
@@ -95,7 +95,8 @@ impl SingBox {
     pub fn stop_async(&self) {
         match self.phase() {
             Phase::Stopped | Phase::Stopping => return,
-            Phase::Spawn | Phase::Starting | Phase::Running => {}
+            // 重载期间进程还在, 同样允许停止
+            Phase::Spawn | Phase::Starting | Phase::Running | Phase::Reloading => {}
         }
 
         {
@@ -117,25 +118,31 @@ impl SingBox {
 
     /// 让内核重载配置, 不重启进程。
     ///
-    /// 内核按秒检查工作目录下的重载标记文件, 发现后自行删除并按新配置重建实例。
-    /// 标记文件是跨平台的重载方式, Windows 无法向子进程发送 SIGHUP, 因此不依赖信号。
+    /// 只登记重载意图, 由监控线程写重载标记并等待结果: 内核按秒检查工作目录下的标记
+    /// 文件, 发现后自行删除并按新配置重建实例。标记文件是跨平台的重载方式,
+    /// Windows 无法向子进程发送 SIGHUP, 因此不依赖信号。
     ///
-    /// 旧实例会随重载关闭, 其 gRPC 连接、连接订阅与测速队列随之失效;
-    /// 因此这里先把客户端作废, 重载后的第一次取用会按新配置的监听地址重建。
+    /// 返回时阶段为 [`Phase::Reloading`]: 重载是异步的, 标记写完到新实例接管流量之间
+    /// 有一到两秒的窗口, 旧实例的 api 连接是 h2c 劫持连接, 实例关闭后连接仍然存活但
+    /// grpc 服务已停止, 此时建连会得到只回 200 且没有 grpc-status 的僵尸连接且无法
+    /// 自愈。因此重载期间不提供客户端, 内核给出重载完成标记后才回到 [`Phase::Running`]。
     /// 内核未运行时返回错误, 避免调用方误以为刷新成功。
-    pub fn reload(&self, work_dir: &Path) -> Result<()> {
-        if !self.phase().is_running() {
-            bail!("内核未运行");
+    pub fn reload(&self) -> Result<()> {
+        match self.phase() {
+            Phase::Running => {
+                {
+                    let mut control = self.shared.lock();
+                    control.intent = Intent::Reload;
+                }
+                // 先登记意图再置阶段: 监控线程被唤醒时意图已经就绪, 取客户端的地方立刻拿不到客户端
+                self.shared.set_phase(Phase::Reloading, None);
+            }
+            // 重载中再来的请求在当前这一轮结束后立刻补一轮, 免得新配置被丢掉
+            Phase::Reloading => self.shared.lock().reload_pending = true,
+            Phase::Spawn | Phase::Starting => bail!("内核正在启动"),
+            Phase::Stopped | Phase::Stopping => bail!("内核未运行"),
         }
 
-        let flag = work_dir.join(lib_core::constants::KERNEL_RELOAD_FILE);
-        std::fs::write(&flag, [])
-            .with_context(|| format!("创建内核重载标记失败: {}", flag.display()))?;
-
-        self.shared.grpc.store(None);
-        self.shared.url_test.set_grpc(None);
-        self.shared.connections.subscribe(None);
-        self.shared.connections.reset();
         Ok(())
     }
 
@@ -189,8 +196,8 @@ impl SingBox {
                         }
                     }
                 }
-                // 进程尚未创建或已在停止，继续等下一次探测
-                Phase::Spawn | Phase::Stopping => {}
+                // 进程尚未创建、正在停止或正在重载实例，继续等下一次探测
+                Phase::Spawn | Phase::Stopping | Phase::Reloading => {}
             }
 
             if start.elapsed() >= timeout {

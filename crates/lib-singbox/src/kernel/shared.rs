@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 use std::sync::{Arc, Condvar, Mutex, MutexGuard};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use arc_swap::{ArcSwap, ArcSwapOption};
 use lib_system::process::Process;
@@ -54,6 +54,10 @@ pub(super) struct Control {
     pub(super) work: Option<PathBuf>,
     /// 实例是否已释放，监控线程看到后退出。
     pub(super) closed: bool,
+    /// 等待内核完成重载的最后期限，为空表示没有等待中的重载。
+    pub(super) reload_deadline: Option<Instant>,
+    /// 重载期间又收到的重载请求，当前这一轮结束后立刻补一轮，新配置不会被丢掉。
+    pub(super) reload_pending: bool,
 }
 
 /// 启停意图。
@@ -66,6 +70,10 @@ pub(super) enum Intent {
     Start { config: PathBuf, work: PathBuf },
     /// 停止内核。
     Stop,
+    /// 按新配置重建内核实例，不重启进程。
+    ///
+    /// 监控线程写入重载标记后由内核自行重建，等内核给出完成标记后再回到运行中。
+    Reload,
 }
 
 impl Shared {

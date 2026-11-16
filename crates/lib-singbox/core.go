@@ -69,6 +69,28 @@ const (
 	RuleReadError
 )
 
+// reloadDoneSuffix 重载完成标记的后缀。
+//
+// 重载是异步的: 上层写入重载标记后并不知道实例何时重建完成。
+// 旧实例的 api 连接是 h2c 劫持连接, 实例关闭后仍然存活, 只是 grpc 服务已停止,
+// 此时新建的连接每次请求都只回 200 且没有 grpc-status, 直到重启内核进程才能恢复。
+// 因此实例重建完成后创建该标记, 上层看到标记才重建 gRPC 客户端。
+const reloadDoneSuffix = ".done"
+
+// markReloadDone 创建重载完成标记, 通知上层可以重新连接内核 API。
+//
+// 未启用自动重载 (path 为空) 时不做任何事。
+func markReloadDone(path string) {
+	if path == "" {
+		return
+	}
+	if err := os.WriteFile(path, nil, 0o666); err != nil {
+		log.Error("创建重载完成标记失败: ", err)
+		return
+	}
+	log.Info("重载完成, 已创建标记: ", path)
+}
+
 func isAlive(pid int, debug bool) bool {
 	if pid < 1 {
 		return true
@@ -228,6 +250,7 @@ func Check(configPath string, workDir string) string {
 //
 // reload 为重载标记文件名, 由上层传入: 上层生成新配置后在工作目录创建该文件,
 // 内核发现后重建实例。为空表示未启用自动重载, 此时只响应信号。
+// 实例重建完成后内核创建「重载标记 + .done」的完成标记, 上层据此才重新连接内核 API。
 func Start(configPath string, workDir string, pid int, reload string, debug bool) (SingBoxError, error) {
 	setLog(false)
 	osSignals := make(chan os.Signal, 1)
@@ -236,8 +259,11 @@ func Start(configPath string, workDir string, pid int, reload string, debug bool
 
 	// Windows 无法向子进程发送 SIGHUP, 因此重载统一走标记文件, 信号只保留给其他平台。
 	reloadFile := ""
+	// 重载完成标记: 实例重建完成后创建, 上层据此才重新连接内核 API
+	reloadDoneFile := ""
 	if reload != "" {
 		reloadFile = filepath.Join(workDir, reload)
+		reloadDoneFile = reloadFile + reloadDoneSuffix
 		log.Info("自动重载已启用, 标记文件: ", reloadFile)
 	}
 
@@ -262,6 +288,8 @@ func Start(configPath string, workDir string, pid int, reload string, debug bool
 	}()
 
 	for {
+		// 本轮是否由重载触发: 重载要等实例重建完成后通知上层
+		reloading := restart.Swap(false)
 		rdebug.FreeOSMemory()
 		log.Info("开始创建内核实例, 配置文件: ", configPath, ", 工作目录: ", workDir)
 		_c, _i, _e := create(configPath, workDir)
@@ -271,6 +299,10 @@ func Start(configPath string, workDir string, pid int, reload string, debug bool
 			// 创建异常, 但是不存在已启动实例
 			if instance == nil {
 				return StartCreateError, _e
+			}
+			// 旧实例继续服务, 但重载已经结束, 让上层按新状态重新连接
+			if reloading {
+				markReloadDone(reloadDoneFile)
 			}
 		} else {
 			if instance != nil {
@@ -287,7 +319,12 @@ func Start(configPath string, workDir string, pid int, reload string, debug bool
 			done()
 			if err != nil {
 				log.Error("实例启动异常: ", err)
+				// 进程随后退出, 重载由上层从进程退出收尾
 				return StartError, err
+			}
+			// 新实例已监听并接管流量, 此时通知上层: 新建的连接一定落在新实例上
+			if reloading {
+				markReloadDone(reloadDoneFile)
 			}
 		}
 
@@ -318,8 +355,8 @@ func Start(configPath string, workDir string, pid int, reload string, debug bool
 		}
 
 		// 刷新配置. 重启实例
+		// restart 留到下一轮开头清除, 下一轮据此判断是否需要创建重载完成标记
 		if !stop.Load() {
-			restart.Store(false)
 			continue
 		}
 		// 其他的关闭实例

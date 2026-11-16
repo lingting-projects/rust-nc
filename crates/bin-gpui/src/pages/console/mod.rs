@@ -81,9 +81,12 @@ impl Kernel {
         }
     }
 
-    /// 是否正在运行。
+    /// 内核进程是否在运行。
+    ///
+    /// 重载中进程仍在，只是内核在重建实例、API 暂时不可用；监控曲线与按钮按运行中处理，
+    /// 避免每次刷新配置都清掉曲线。读数本身由内核状态接口决定，重载期间取不到就跳过。
     pub fn running(&self) -> bool {
-        self.status == Status::Running
+        self.status.is_running()
     }
 }
 

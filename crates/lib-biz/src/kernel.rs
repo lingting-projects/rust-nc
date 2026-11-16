@@ -27,8 +27,9 @@ static INSTANCE: LazyLock<SingBoxInstance> = LazyLock::new(SingBoxInstance::new)
 
 /// 内核运行状态。
 ///
-/// 取自 `lib-singbox` 的进程阶段，「创建中」与「启动中」都归为启动中，
-/// 供界面在启动与停止过程尚未完成时给出准确的反馈。
+/// 取自 `lib-singbox` 的进程阶段，「创建中」与「启动中」都归为启动中；
+/// 重载中单独成一态：内核进程还在，但实例正在重建，API 与连接都不可用。
+/// 供界面在启动、重载与停止过程尚未完成时给出准确的反馈。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Status {
     /// 未运行
@@ -38,6 +39,8 @@ pub enum Status {
     Starting,
     /// 运行中
     Running,
+    /// 重载中：内核进程还在，正在按新配置重建实例，期间 API 不可用
+    Reloading,
     /// 停止中
     Stopping,
 }
@@ -48,8 +51,19 @@ impl From<Phase> for Status {
             Phase::Stopped => Status::Stopped,
             Phase::Spawn | Phase::Starting => Status::Starting,
             Phase::Running => Status::Running,
+            Phase::Reloading => Status::Reloading,
             Phase::Stopping => Status::Stopping,
         }
+    }
+}
+
+impl Status {
+    /// 内核进程是否还在运行。
+    ///
+    /// 重载中进程仍在，只是实例在重建、API 暂不可用：界面按「运行中」处理按钮与监控，
+    /// 避免每次刷新配置都当成内核已停止。
+    pub fn is_running(self) -> bool {
+        matches!(self, Status::Running | Status::Reloading)
     }
 }
 
@@ -144,9 +158,10 @@ impl SingBoxInstance {
     /// 内核已被监控线程判定退出时同步清掉，避免界面还显示上一轮的配置。
     pub fn config_id(&self) -> Option<i64> {
         let singbox = self.singbox.load_full();
-        let running = singbox.is_some_and(|singbox| singbox.phase().is_running());
+        // 重载期间内核进程还在、运行中的配置也没变，不能当成已停止清掉
+        let active = singbox.is_some_and(|singbox| singbox.phase().is_active());
         let mut inner = self.lock();
-        if !running {
+        if !active {
             inner.config_id = None;
         }
         inner.config_id
@@ -340,16 +355,19 @@ impl SingBoxInstance {
     /// 让内核重载正在运行的配置, 不重启内核进程。
     ///
     /// 只对内核正在运行的配置生效: `id` 不是运行中的配置或内核未运行时返回 `false`;
-    /// 配置文件由调用方负责生成, 这里只通知内核按新配置重建实例。
+    /// 配置文件由调用方负责生成, 这里只登记重载意图, 内核按新配置重建实例,
+    /// 期间阶段为 [`Status::Reloading`], 内核 API 暂不可用。
+    /// 重载中再次来的请求不丢: 内核会在本轮重建完成后立刻补一轮, 用上最新配置。
     pub fn reload(&self, id: i64) -> Result<bool> {
         if self.config_id() != Some(id) {
             return Ok(false);
         }
-        if self.status() != Status::Running {
-            return Ok(false);
+        match self.status() {
+            Status::Running | Status::Reloading => {}
+            _ => return Ok(false),
         }
 
-        self.singbox()?.reload(&file::sing_box_workspace()?)?;
+        self.singbox()?.reload()?;
         log::info!("[内核] 配置已刷新, 配置: {id}");
         Ok(true)
     }

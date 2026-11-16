@@ -75,10 +75,15 @@ pub(super) fn failure(work_dir: &Path, reason: String) -> String {
     }
 }
 
-/// 删除工作目录下的重载标记，不存在时视为成功。
+/// 删除遗留的重载标记与重载完成标记，不存在时视为成功。
 fn remove_reload(work_dir: &Path) {
-    let flag = work_dir.join(lib_core::constants::KERNEL_RELOAD_FILE);
-    if let Err(error) = std::fs::remove_file(&flag)
+    remove_marker(&work_dir.join(lib_core::constants::KERNEL_RELOAD_FILE));
+    remove_marker(&work_dir.join(lib_core::constants::KERNEL_RELOAD_DONE_FILE));
+}
+
+/// 删除指定标记文件，不存在时视为成功。
+pub(super) fn remove_marker(path: &Path) {
+    if let Err(error) = std::fs::remove_file(path)
         && error.kind() != std::io::ErrorKind::NotFound
     {
         log::warn!("删除内核重载标记失败: {error}");

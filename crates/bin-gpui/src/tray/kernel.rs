@@ -14,9 +14,13 @@ use super::refresh_kernel;
 /// 按内核的当前状态刷新菜单项。
 pub fn refresh(cx: &mut App) {
     let data = services::kernel_data();
-    let running = data.status == Status::Running;
-    // 启动中/停止中不允许再次操作；停止态还要求有可启动的配置
-    let busy = !matches!(data.status, Status::Running | Status::Stopped);
+    let running = data.status.is_running();
+    // 启动中/停止中不允许再次操作；重载中进程还在，按运行中处理（只允许停止）；
+    // 停止态还要求有可启动的配置
+    let busy = !matches!(
+        data.status,
+        Status::Running | Status::Reloading | Status::Stopped
+    );
     let has_config = SettingsHolder::run().selected.is_some();
 
     refresh_kernel(cx, running, !busy && (running || has_config));
@@ -29,7 +33,7 @@ pub fn toggle(cx: &mut App) {
     };
     let services = services.clone();
 
-    let running = services::kernel_data().status == Status::Running;
+    let running = services::kernel_data().status.is_running();
     let selected = SettingsHolder::run().selected;
 
     let runner = services.clone();
