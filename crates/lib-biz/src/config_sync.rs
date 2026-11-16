@@ -192,24 +192,22 @@ async fn validate(context: &Arc<DbContext>, config: &Config) -> Result<usize> {
     Ok(count)
 }
 
-/// 校验订阅已同步出节点, 返回节点数量。
+/// 校验订阅存在, 返回节点数量。
+///
+/// 节点数量为 0 时不算校验失败: 由配置生成输出警告并保留已有的配置文件。
 async fn nodes(context: &Arc<DbContext>, config: &Config) -> Result<usize> {
     let Some(subscribe_id) = config.subscribe_id else {
         return Err(anyhow!("未选择订阅"));
     };
 
     let service = SubscribeService::new(context.clone());
-    let Some(subscribe) = service.find(subscribe_id).await? else {
+    if service.find(subscribe_id).await?.is_none() {
         return Err(anyhow!("订阅不存在: {subscribe_id}"));
-    };
+    }
 
     let (nodes, _) = service.find_nodes(subscribe_id).await?.unwrap_or_default();
-    let count = match nodes.trim().is_empty() {
-        true => 0,
-        false => serde_json::from_str::<Vec<serde_json::Value>>(&nodes)?.len(),
-    };
-    if count == 0 {
-        return Err(anyhow!("订阅「{}」尚未同步出节点", subscribe.name));
+    if nodes.trim().is_empty() {
+        return Ok(0);
     }
-    Ok(count)
+    Ok(serde_json::from_str::<Vec<serde_json::Value>>(&nodes)?.len())
 }

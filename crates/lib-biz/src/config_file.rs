@@ -29,10 +29,19 @@ pub async fn write(context: &Arc<DbContext>, config: &Config) -> Result<PathBuf>
 ///
 /// 内容未变化时内核无需重载, 调用方据此避免无谓地重建内核实例。
 /// 目录不再重建, 文件修改时间不能作为判断依据, 因此按内容比较。
+/// 订阅节点数为 0 时生成不出可用配置, 只输出警告并保留已有的配置文件。
 pub async fn write_changed(context: &Arc<DbContext>, config: &Config) -> Result<(PathBuf, bool)> {
     let path = file::sing_box_json(config.id)?;
     let before = std::fs::read_to_string(&path).ok();
-    let nodes = nodes(context, config.subscribe_id).await?;
+    let Some(nodes) = nodes(context, config.subscribe_id).await? else {
+        // 订阅节点数为 0 时生成不出可用的配置, 保留已有的配置文件
+        log::warn!(
+            "[配置] [{}] 订阅节点数为 0, 保留已有配置文件: {}",
+            config.name,
+            path.display()
+        );
+        return Ok((path, false));
+    };
     let kernel = kernel();
     // 内置规则在生成配置前登记, 保证内核启动前的就绪检查能覆盖到本次引用的规则集
     register_inner_rules(context, config).await?;
@@ -78,7 +87,9 @@ pub async fn write_changed(context: &Arc<DbContext>, config: &Config) -> Result<
 }
 
 /// 读取订阅已同步的节点, 按订阅记录的源类型解析。
-async fn nodes(context: &Arc<DbContext>, id: Option<i64>) -> Result<PickNodes> {
+///
+/// 订阅节点数为 0 时返回 `None`, 由调用方保留已有的配置文件。
+async fn nodes(context: &Arc<DbContext>, id: Option<i64>) -> Result<Option<PickNodes>> {
     let Some(id) = id else {
         bail!("未选择订阅");
     };
@@ -88,15 +99,16 @@ async fn nodes(context: &Arc<DbContext>, id: Option<i64>) -> Result<PickNodes> {
         .await?
         .unwrap_or_default();
     if nodes.trim().is_empty() {
-        bail!("订阅尚未同步出节点");
+        return Ok(None);
     }
 
-    match kind {
+    let nodes = match kind {
         SubscribeSource::Clash => PickNodes::from_json_key(&nodes, KEY_TYPE),
         SubscribeSource::Pure => PickNodes::from_json_key(&nodes, KEY_SCHEME),
         // 尚未识别源类型时由节点自身内容判定
         SubscribeSource::Unknown => PickNodes::from_json(&nodes),
-    }
+    }?;
+    Ok((!nodes.is_empty()).then_some(nodes))
 }
 
 /// 读取内核设置。
