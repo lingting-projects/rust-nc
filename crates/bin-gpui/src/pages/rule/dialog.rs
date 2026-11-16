@@ -1,9 +1,8 @@
-use gpui_kit::base::{StyledExt as _, h_flex, v_flex};
+use gpui_kit::base::{StyledExt as _, v_flex};
 use gpui_kit::component::button::ButtonVariants as _;
 use gpui_kit::component::button::{Button, ButtonVariant};
 use gpui_kit::component::dialog::DialogFooter;
 use gpui_kit::component::input::{Input, InputState, Textarea, TextareaState};
-use gpui_kit::component::scroll::ScrollableElement as _;
 use gpui_kit::component::{ActiveTheme as _, Disableable as _, WindowExt as _};
 use gpui_kit::*;
 
@@ -24,10 +23,6 @@ const DIALOG_WIDTH: Rems = rems(28.);
 const LOCAL_DIALOG_WIDTH: Rems = rems(38.);
 /// 规则内容编辑器的高度，单位为 rem。
 const CONTENT_HEIGHT: Rems = rems(16.);
-/// 详情弹窗宽度：规则内容一行可能较长，留出足够的横向空间。
-const DETAIL_DIALOG_WIDTH: Rems = rems(48.);
-/// 详情弹窗里规则内容的最大高度，超出后滚动查看。
-const DETAIL_CONTENT_HEIGHT: Rems = rems(24.);
 
 /// 本地规则的初始内容示例，说明支持的规则写法。
 const CONTENT_EXAMPLE: &str = "\
@@ -297,53 +292,6 @@ fn required_hint(cx: &App, text: &'static str) -> AnyElement {
     div()
         .text_color(cx.theme().danger)
         .child(text)
-        .into_any_element()
-}
-/// 打开规则详情弹窗，展示规则保存的完整内容。
-///
-/// 内容在点击时由表格拷贝进来，展示的是点击那一刻的快照，不会因为列表刷新而中途改内容。
-pub fn open_detail(name: String, content: String, window: &mut Window, cx: &mut App) {
-    let width = DETAIL_DIALOG_WIDTH.to_pixels(window.rem_size());
-
-    window.open_dialog(cx, move |dialog, _, _| {
-        ExDialog::from(dialog)
-            .title(name.clone())
-            .w(width)
-            .content({
-                let content = content.clone();
-                move |content_panel, _, cx| content_panel.child(detail(&content, cx))
-            })
-            .footer(
-                h_flex().justify_end().child(
-                    Button::new("rule-detail-close")
-                        .label("关闭")
-                        .on_click(|_, window, cx| window.close_dialog(cx)),
-                ),
-            )
-            .into_dialog()
-    });
-}
-
-/// 详情正文：完整内容按等宽字体展示，超出高度后纵向滚动。
-///
-/// 规则文件的写法一行一条，等宽字体才能对齐 `类型,值` 的逗号位置；
-/// 本地规则可能还没写过内容，此时说明情况而不是留一片空白。
-fn detail(content: &str, cx: &App) -> AnyElement {
-    let theme = cx.theme();
-    if content.trim().is_empty() {
-        return div()
-            .text_color(theme.muted_foreground)
-            .child("该规则还没有内容")
-            .into_any_element();
-    }
-
-    div()
-        .id("rule-detail-content")
-        .w_full()
-        .max_h(DETAIL_CONTENT_HEIGHT)
-        .overflow_y_scrollbar()
-        .font_family(theme.mono_font_family.clone())
-        .child(content.to_string())
         .into_any_element()
 }
 

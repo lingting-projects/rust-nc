@@ -39,6 +39,13 @@ impl RuleService {
         repository::find(self.pool(), id).await
     }
 
+    /// 按 id 查询规则保存的完整内容，远端规则同样返回。
+    ///
+    /// 列表查询不回传远端规则的内容，展示详情时用这个方法单独读取。
+    pub async fn content(&self, id: i64) -> Result<Option<String>> {
+        repository::content(self.pool(), id).await
+    }
+
     /// 查询全部规则的刷新字段。
     pub async fn list_refresh(&self) -> Result<Vec<RuleRefreshDTO>> {
         repository::all_refresh(self.pool()).await

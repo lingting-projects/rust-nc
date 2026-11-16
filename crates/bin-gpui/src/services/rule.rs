@@ -12,6 +12,13 @@ impl Services {
     pub async fn rule_list(&self) -> Result<Vec<Rule>> {
         RuleService::new(self.context()).list().await
     }
+
+    /// 按 id 查询规则保存的完整内容，远端规则同样返回。
+    ///
+    /// 列表查询不回传远端规则的内容，展示详情时用这个方法单独读取。
+    pub async fn rule_content(&self, id: i64) -> Result<Option<String>> {
+        RuleService::new(self.context()).content(id).await
+    }
 }
 
 impl Services {

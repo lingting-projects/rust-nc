@@ -46,6 +46,17 @@ pub(crate) async fn find(pool: &DbPool, id: i64) -> Result<Option<Rule>> {
     row.as_ref().map(from_row).transpose()
 }
 
+/// 按 id 查询规则保存的完整内容。
+///
+/// 列表查询会把远端规则的内容置空以减小返回体积, 需要展示全文时用这里单独读取。
+pub(crate) async fn content(pool: &DbPool, id: i64) -> Result<Option<String>> {
+    let sql = format!("select `content` from {TABLE} where `id` = ? limit 1");
+    let row = sqlx::query(&sql).bind(id).fetch_optional(pool).await?;
+    row.as_ref()
+        .map(|row| mapping::string(row, "content"))
+        .transpose()
+}
+
 /// 查询全部规则的刷新字段。
 pub(crate) async fn all_refresh(pool: &DbPool) -> Result<Vec<RuleRefreshDTO>> {
     let sql = format!("select {REFRESH_FIELDS} from {TABLE}");

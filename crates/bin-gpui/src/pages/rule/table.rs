@@ -192,9 +192,6 @@ impl RuleTable {
         let page = self.page.clone();
         let id = item.id;
         let name = item.name.clone();
-        // 点击时把内容拷贝进弹窗：弹窗是快照，之后的列表刷新不会改到它
-        let title = item.name.clone();
-        let content = item.content.clone();
         // 按钮标识跟随规则 id：过滤后行号会变，用行号会串掉按钮的内部状态。
         let detail_id: ElementId = format!("rule-detail:{}", item.id).into();
         let sync_id: ElementId = format!("rule-sync:{}", item.id).into();
@@ -210,8 +207,12 @@ impl RuleTable {
                     .icon(IconName::Info)
                     .tooltip("查看详情")
                     .accessibility_label("查看详情")
-                    .on_click(move |_, window, cx| {
-                        super::dialog::open_detail(title.clone(), content.clone(), window, cx);
+                    .on_click({
+                        let page = page.clone();
+                        move |_, window, cx| {
+                            page.update(cx, |page, cx| page.open_detail(id, window, cx))
+                                .ok();
+                        }
                     }),
             )
             .child(

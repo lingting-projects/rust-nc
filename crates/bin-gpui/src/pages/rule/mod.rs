@@ -1,3 +1,4 @@
+mod detail;
 mod dialog;
 mod table;
 mod toolbar;
@@ -158,6 +159,46 @@ impl RulePage {
             }
             None => dialog::open(self, None, true, window, cx),
         }
+    }
+
+    /// 打开规则详情弹窗，展示规则保存的完整内容。
+    ///
+    /// 列表查询为了减小体积不回传远端规则的完整内容，远端规则按 id 重新读取；
+    /// 本地规则的内容就在列表里，直接展示，少一次查询。
+    pub fn open_detail(&mut self, id: i64, window: &mut Window, cx: &mut Context<Self>) {
+        let Some(rule) = self
+            .rules()
+            .and_then(|items| items.iter().find(|item| item.id == id))
+        else {
+            return;
+        };
+        let name = rule.name.clone();
+        let local = rule.url.is_empty();
+        let content = rule.content.clone();
+
+        if local {
+            detail::open(name, content, window, cx);
+            return;
+        }
+
+        let Some(services) = self.ready_services(cx) else {
+            return;
+        };
+        let loader = services.clone();
+        let runner = services.clone();
+        cx.spawn_in(window, async move |this, cx| {
+            let result = loader
+                .spawn(async move { runner.rule_content(id).await })
+                .await;
+
+            this.update_in(cx, |page, window, cx| match result {
+                Ok(Ok(content)) => detail::open(name, content.unwrap_or_default(), window, cx),
+                Ok(Err(error)) => page.failed(window, cx, format!("读取规则内容失败: {error:#}")),
+                Err(error) => page.failed(window, cx, format!("读取规则内容任务异常: {error}")),
+            })
+            .ok();
+        })
+        .detach();
     }
 
     /// 提交新增或修改。成功后关闭弹窗并刷新列表。
